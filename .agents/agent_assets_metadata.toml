@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "L-nqgsTFD_Cly7NJXY8eb"
@@ -24,3 +23,9 @@ id = "taxmfiymmmeUUdvDvsl8f"
 uri = "file://artifacts/basmah/public/jerseys/jordan.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "88XffuXzRXCZMsn1DT5LH"
+uri = "file://attached_assets/basmah-source.tar.gz"
+type = "unspecified"
+title = "بصمة — كل الأكواد المصدرية"
