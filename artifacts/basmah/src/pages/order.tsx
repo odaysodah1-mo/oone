@@ -106,7 +106,7 @@ export default function Order() {
               </div>
               <div className="flex justify-between pt-4">
                 <span className="text-xl font-bold">الإجمالي</span>
-                <span className="text-2xl font-black text-primary">{order.basePrice} ر.س</span>
+                <span className="text-2xl font-black text-primary">{order.basePrice} د.أ</span>
               </div>
             </div>
           </motion.div>
@@ -122,7 +122,7 @@ export default function Order() {
                 <Label className="text-lg">رقم الجوال</Label>
                 <Input 
                   required
-                  placeholder="05xxxxxxxx"
+                  placeholder="07xxxxxxxx"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="h-14 text-lg bg-background border-border"
@@ -134,7 +134,7 @@ export default function Order() {
                 <Label className="text-lg">المدينة</Label>
                 <Input 
                   required
-                  placeholder="الرياض، جدة، الدمام..."
+                  placeholder="عمان، إربد، الزرقاء، العقبة..."
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   className="h-14 text-lg bg-background border-border"

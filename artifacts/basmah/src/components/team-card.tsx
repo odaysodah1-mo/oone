@@ -36,7 +36,7 @@ export function TeamCard({ team, index = 0 }: { team: Team; index?: number }) {
               <h3 className="text-2xl font-bold text-white mb-1 group-hover:text-primary transition-colors">{team.name}</h3>
               <p className="text-gray-400 text-sm font-medium uppercase tracking-wider">{team.nameEn}</p>
               <div className="flex items-center justify-between mt-4">
-                <span className="text-primary font-bold text-lg">{team.basePrice} ر.س</span>
+                <span className="text-primary font-bold text-lg">{team.basePrice} د.أ</span>
                 <span className="text-xs bg-white/10 text-white px-2 py-1 rounded border border-white/10">{team.league}</span>
               </div>
             </div>

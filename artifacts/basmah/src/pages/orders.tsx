@@ -49,13 +49,13 @@ export default function Orders() {
                       </Badge>
                     </div>
                     <p className="text-muted-foreground font-medium">الاسم: <span className="text-foreground uppercase">{order.customerName}</span> | المقاس: <span className="text-foreground uppercase">{order.size}</span></p>
-                    <p className="text-sm text-muted-foreground mt-1">تاريخ الطلب: {new Date(order.createdAt).toLocaleDateString('ar-SA')}</p>
+                    <p className="text-sm text-muted-foreground mt-1">تاريخ الطلب: {new Date(order.createdAt).toLocaleDateString('ar-JO')}</p>
                   </div>
                 </div>
                 
                 <div className="text-left md:text-right w-full md:w-auto border-t md:border-t-0 border-border pt-4 md:pt-0">
                   <p className="text-sm text-muted-foreground mb-1">المبلغ الإجمالي</p>
-                  <p className="text-3xl font-black text-primary">{order.totalPrice} ر.س</p>
+                  <p className="text-3xl font-black text-primary">{order.totalPrice} د.أ</p>
                 </div>
               </motion.div>
             ))}
