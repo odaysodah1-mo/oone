@@ -1,22 +1,24 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Basmah - Sports T-Shirt Customization API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: teams
+    description: Sports teams
+  - name: orders
+    description: Customer orders
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +26,113 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /teams:
+    get:
+      operationId: listTeams
+      tags: [teams]
+      summary: List all available teams
+      responses:
+        "200":
+          description: List of teams
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Team"
+
+  /teams/{id}:
+    get:
+      operationId: getTeam
+      tags: [teams]
+      summary: Get team details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Team details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        "404":
+          description: Team not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /teams/popular:
+    get:
+      operationId: getPopularTeams
+      tags: [teams]
+      summary: Get most popular teams
+      responses:
+        "200":
+          description: Popular teams list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Team"
+
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List all orders
+      responses:
+        "200":
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Create a new order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderBody"
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /orders/stats:
+    get:
+      operationId: getOrderStats
+      tags: [orders]
+      summary: Get order statistics
+      responses:
+        "200":
+          description: Order statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +143,162 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    Team:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          description: Team name in Arabic
+        nameEn:
+          type: string
+          description: Team name in English
+        league:
+          type: string
+          description: League name
+        country:
+          type: string
+        primaryColor:
+          type: string
+          description: Hex color
+        secondaryColor:
+          type: string
+          description: Hex color
+        availableColors:
+          type: array
+          items:
+            type: string
+          description: Available jersey colors as hex codes
+        availableSizes:
+          type: array
+          items:
+            type: string
+          description: Available sizes (XS, S, M, L, XL, XXL)
+        basePrice:
+          type: number
+        logoUrl:
+          type: string
+        orderCount:
+          type: integer
+          description: Number of orders for this team
+      required:
+        - id
+        - name
+        - nameEn
+        - league
+        - country
+        - primaryColor
+        - secondaryColor
+        - availableColors
+        - availableSizes
+        - basePrice
+        - orderCount
+
+    CreateOrderBody:
+      type: object
+      properties:
+        teamId:
+          type: integer
+        customerName:
+          type: string
+          description: Name to print on jersey
+        jerseyNumber:
+          type: string
+          description: Number to print on jersey
+        size:
+          type: string
+          enum: [XS, S, M, L, XL, XXL]
+        color:
+          type: string
+          description: Selected jersey color (hex)
+        quantity:
+          type: integer
+          minimum: 1
+        customerPhone:
+          type: string
+        customerCity:
+          type: string
+      required:
+        - teamId
+        - customerName
+        - jerseyNumber
+        - size
+        - color
+        - quantity
+        - customerPhone
+        - customerCity
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        teamId:
+          type: integer
+        teamName:
+          type: string
+        customerName:
+          type: string
+        jerseyNumber:
+          type: string
+        size:
+          type: string
+        color:
+          type: string
+        quantity:
+          type: integer
+        totalPrice:
+          type: number
+        customerPhone:
+          type: string
+        customerCity:
+          type: string
+        status:
+          type: string
+          enum: [pending, confirmed, shipped, delivered]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - teamId
+        - teamName
+        - customerName
+        - jerseyNumber
+        - size
+        - color
+        - quantity
+        - totalPrice
+        - customerPhone
+        - customerCity
+        - status
+        - createdAt
+
+    OrderStats:
+      type: object
+      properties:
+        totalOrders:
+          type: integer
+        totalRevenue:
+          type: number
+        topTeam:
+          type: string
+        popularSize:
+          type: string
+        popularColor:
+          type: string
+      required:
+        - totalOrders
+        - totalRevenue
+        - topTeam
+        - popularSize
+        - popularColor
