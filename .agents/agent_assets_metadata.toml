@@ -1,0 +1,26 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "L-nqgsTFD_Cly7NJXY8eb"
+uri = "file://attached_assets/generated_images/generated_image.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "_akyLxvE3_2g_6d9ZD8ZO"
+uri = "file://artifacts/basmah/public/jerseys/wehdat.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Am1LMUA-lbXDFtD2L7Iuh"
+uri = "file://artifacts/basmah/public/jerseys/faisali.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "taxmfiymmmeUUdvDvsl8f"
+uri = "file://artifacts/basmah/public/jerseys/jordan.png"
+type = "image"
+title = "generated_image"
