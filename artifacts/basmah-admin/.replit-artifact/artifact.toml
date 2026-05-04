@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/basmah-admin/"
+title = "بصمة — لوحة التحكم"
+version = "1.0.0"
+id = "artifacts/basmah-admin"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/basmah-admin/" ]
+localPort = 21583
+
+[services.development]
+run = "pnpm --filter @workspace/basmah-admin run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/basmah-admin", "run", "build" ]
+publicDir = "artifacts/basmah-admin/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21583"
+BASE_PATH = "/basmah-admin/"
