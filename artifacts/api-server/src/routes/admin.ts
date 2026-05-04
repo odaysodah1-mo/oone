@@ -5,6 +5,7 @@ import {
   jerseyColorsTable,
   nahfatPresetsTable,
   teamsTable,
+  stickersTable,
 } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 
@@ -310,6 +311,86 @@ router.get("/nahfat", async (req, res) => {
     res.json(presets);
   } catch (err) {
     req.log.error({ err }, "failed to list nahfat");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* ════════════════════════════════════════════════════
+   STICKERS
+════════════════════════════════════════════════════ */
+router.get("/admin/stickers", async (req, res) => {
+  try {
+    const rows = await db.select().from(stickersTable).orderBy(stickersTable.sortOrder);
+    res.json(rows);
+  } catch (err) {
+    req.log.error({ err }, "admin: failed to list stickers");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/admin/stickers", async (req, res) => {
+  const { name, url, category, isActive, sortOrder } = req.body as Record<string, unknown>;
+  if (!name || typeof name !== "string") { res.status(400).json({ error: "name is required" }); return; }
+  if (!url  || typeof url  !== "string") { res.status(400).json({ error: "url is required"  }); return; }
+  try {
+    const [sticker] = await db.insert(stickersTable).values({
+      name,
+      url,
+      category: typeof category === "string" && category ? category : "عام",
+      isActive: typeof isActive === "boolean" ? isActive : true,
+      sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
+    }).returning();
+    res.status(201).json(sticker);
+  } catch (err) {
+    req.log.error({ err }, "admin: failed to create sticker");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/admin/stickers/:id", async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { name, url, category, isActive, sortOrder } = req.body as Record<string, unknown>;
+  const update: Record<string, unknown> = {};
+  if (typeof name     === "string")  update.name      = name;
+  if (typeof url      === "string")  update.url       = url;
+  if (typeof category === "string")  update.category  = category;
+  if (typeof isActive === "boolean") update.isActive  = isActive;
+  if (typeof sortOrder=== "number")  update.sortOrder = sortOrder;
+  if (Object.keys(update).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
+  try {
+    const [updated] = await db.update(stickersTable)
+      .set(update as Parameters<typeof db.update>[0])
+      .where(eq(stickersTable.id, id)).returning();
+    if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(updated);
+  } catch (err) {
+    req.log.error({ err }, "admin: failed to update sticker");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/admin/stickers/:id", async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    await db.delete(stickersTable).where(eq(stickersTable.id, id));
+    res.status(204).end();
+  } catch (err) {
+    req.log.error({ err }, "admin: failed to delete sticker");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* Public — active stickers */
+router.get("/stickers", async (req, res) => {
+  try {
+    const rows = await db.select().from(stickersTable)
+      .where(eq(stickersTable.isActive, true))
+      .orderBy(stickersTable.sortOrder);
+    res.json(rows);
+  } catch (err) {
+    req.log.error({ err }, "failed to list stickers");
     res.status(500).json({ error: "Internal server error" });
   }
 });

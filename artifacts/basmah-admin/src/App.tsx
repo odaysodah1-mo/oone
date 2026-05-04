@@ -6,7 +6,7 @@ import {
   ShoppingBag, Shirt, Type, LogOut, LayoutDashboard,
   ChevronDown, Plus, Trash2, Pencil, Check, X, Upload,
   BarChart3, Package, TrendingUp, RefreshCw, Eye, EyeOff,
-  Star, RotateCcw,
+  Star, RotateCcw, Sticker, Link as LinkIcon,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -128,13 +128,14 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
 }
 
 /* ─── Sidebar ─────────────────────────────────────────── */
-type Section = "dashboard" | "orders" | "teams" | "nahfat";
+type Section = "dashboard" | "orders" | "teams" | "nahfat" | "stickers";
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: "dashboard", label: "لوحة المعلومات", icon: <LayoutDashboard size={18} /> },
   { id: "orders",    label: "الطلبات",          icon: <ShoppingBag size={18} /> },
-  { id: "teams",     label: "الفرق", icon: <Shirt size={18} /> },
+  { id: "teams",     label: "الفرق",             icon: <Shirt size={18} /> },
   { id: "nahfat",    label: "النهفات",           icon: <Type size={18} /> },
+  { id: "stickers",  label: "الملصقات",          icon: <Sticker size={18} /> },
 ];
 
 function Sidebar({ active, onSelect, onLogout }: {
@@ -1153,6 +1154,261 @@ function TeamsSection() {
 }
 
 /* ─── Nahfat ─────────────────────────────────────────────── */
+/* ─── Stickers ──────────────────────────────────────────── */
+interface StickerItem {
+  id: number; name: string; url: string;
+  category: string; isActive: boolean; sortOrder: number;
+}
+
+function StickersSection() {
+  const [stickers, setStickers] = useState<StickerItem[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [showAdd, setShowAdd]   = useState(false);
+  const [urlMode, setUrlMode]   = useState<"upload" | "link">("upload");
+
+  const [addName, setAddName]   = useState("");
+  const [addCat, setAddCat]     = useState("عام");
+  const [addUrl, setAddUrl]     = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editCat,  setEditCat]  = useState("");
+
+  const { uploadFile, isUploading } = useUpload();
+
+  useEffect(() => {
+    apiFetch("/admin/stickers")
+      .then(setStickers)
+      .catch(() => toast.error("فشل تحميل الملصقات"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleFileUpload(file: File) {
+    const res = await uploadFile(file);
+    if (res) {
+      setAddUrl(`/api/storage${res.objectPath}`);
+      toast.success("تم رفع الصورة");
+    } else {
+      toast.error("فشل رفع الصورة");
+    }
+  }
+
+  async function handleAdd() {
+    if (!addName.trim()) { toast.error("أدخل اسم الملصق"); return; }
+    if (!addUrl.trim())  { toast.error("ارفع صورة أو أدخل رابطاً"); return; }
+    setSaving(true);
+    try {
+      const s = await apiFetch("/admin/stickers", {
+        method: "POST",
+        body: JSON.stringify({ name: addName, url: addUrl, category: addCat, isActive: true, sortOrder: stickers.length }),
+      });
+      setStickers(prev => [...prev, s]);
+      setAddName(""); setAddUrl(""); setAddCat("عام"); setShowAdd(false);
+      toast.success("تم إضافة الملصق");
+    } catch { toast.error("فشل الإضافة"); }
+    finally { setSaving(false); }
+  }
+
+  async function toggleActive(s: StickerItem) {
+    try {
+      const updated = await apiFetch(`/admin/stickers/${s.id}`, {
+        method: "PUT", body: JSON.stringify({ isActive: !s.isActive }),
+      });
+      setStickers(prev => prev.map(x => x.id === s.id ? updated : x));
+    } catch { toast.error("فشل التحديث"); }
+  }
+
+  async function handleEdit(id: number) {
+    if (!editName.trim()) { toast.error("الاسم مطلوب"); return; }
+    setSaving(true);
+    try {
+      const updated = await apiFetch(`/admin/stickers/${id}`, {
+        method: "PUT", body: JSON.stringify({ name: editName, category: editCat }),
+      });
+      setStickers(prev => prev.map(x => x.id === id ? updated : x));
+      setEditingId(null);
+      toast.success("تم التحديث");
+    } catch { toast.error("فشل التحديث"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm("حذف هذا الملصق؟")) return;
+    try {
+      await apiFetch(`/admin/stickers/${id}`, { method: "DELETE" });
+      setStickers(prev => prev.filter(x => x.id !== id));
+      toast.success("تم الحذف");
+    } catch { toast.error("فشل الحذف"); }
+  }
+
+  const categories = [...new Set(stickers.map(s => s.category))];
+
+  if (loading) return <PageLoader />;
+
+  return (
+    <div dir="rtl">
+      <PageHeader title="إدارة الملصقات" subtitle={`${stickers.length} ملصق`}>
+        <button onClick={() => setShowAdd(!showAdd)}
+          className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
+          <Plus size={14} /> إضافة ملصق
+        </button>
+      </PageHeader>
+
+      {/* Add form */}
+      {showAdd && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6 space-y-4">
+          <h3 className="font-semibold text-slate-700">ملصق جديد</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-slate-600 mb-1">اسم الملصق *</label>
+              <input type="text" value={addName} onChange={e => setAddName(e.target.value)}
+                placeholder="مثال: كرة نار، نجمة ذهبية..."
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-600 mb-1">الفئة</label>
+              <input type="text" value={addCat} onChange={e => setAddCat(e.target.value)}
+                placeholder="رياضة، كوميك، عام..."
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" />
+            </div>
+          </div>
+
+          {/* Image source toggle */}
+          <div>
+            <label className="block text-sm text-slate-600 mb-2">الصورة</label>
+            <div className="flex gap-2 mb-3">
+              <button onClick={() => setUrlMode("upload")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${urlMode === "upload" ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                <Upload size={12} /> رفع صورة
+              </button>
+              <button onClick={() => setUrlMode("link")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${urlMode === "link" ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                <LinkIcon size={12} /> رابط خارجي
+              </button>
+            </div>
+
+            {urlMode === "upload" ? (
+              <div className="flex items-center gap-4">
+                <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-dashed cursor-pointer text-sm transition-colors ${isUploading ? "opacity-50 pointer-events-none" : "border-slate-300 hover:border-emerald-400 hover:bg-emerald-50"}`}>
+                  <Upload size={16} className="text-slate-400" />
+                  <span className="text-slate-500">{isUploading ? "جاري الرفع..." : "اختر صورة PNG/WebP"}</span>
+                  <input type="file" accept="image/png,image/webp,image/gif,image/svg+xml"
+                    className="sr-only"
+                    onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
+                </label>
+                {addUrl && (
+                  <img src={addUrl} alt="preview"
+                    className="w-14 h-14 object-contain rounded-lg border border-slate-200 bg-slate-50" />
+                )}
+              </div>
+            ) : (
+              <input type="url" value={addUrl} onChange={e => setAddUrl(e.target.value)}
+                placeholder="https://..."
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" />
+            )}
+          </div>
+
+          {/* Preview */}
+          {addUrl && (
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <img src={addUrl} alt="preview" className="w-16 h-16 object-contain" />
+              <div>
+                <p className="font-semibold text-slate-700 text-sm">{addName || "بدون اسم"}</p>
+                <p className="text-slate-400 text-xs">{addCat}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            <button onClick={handleAdd} disabled={saving || isUploading || !addName || !addUrl}
+              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+              {saving ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
+              حفظ الملصق
+            </button>
+            <button onClick={() => { setShowAdd(false); setAddName(""); setAddUrl(""); setAddCat("عام"); }}
+              className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 border border-slate-200 rounded-lg">
+              إلغاء
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {stickers.length === 0 && !showAdd && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center">
+          <p className="text-5xl mb-3">🎨</p>
+          <p className="font-semibold text-slate-600 mb-1">لا توجد ملصقات بعد</p>
+          <p className="text-slate-400 text-sm">أضف ملصقات يستطيع العملاء وضعها على جيرسيهاتهم</p>
+        </div>
+      )}
+
+      {/* Stickers grid by category */}
+      {categories.length > 0 && categories.map(cat => {
+        const catStickers = stickers.filter(s => s.category === cat);
+        return (
+          <div key={cat} className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{cat}</span>
+              <span className="text-xs text-slate-400">({catStickers.length})</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {catStickers.map(s => (
+                <div key={s.id}
+                  className={`bg-white border rounded-2xl overflow-hidden transition-all ${s.isActive ? "border-slate-200" : "border-slate-100 opacity-50"}`}>
+                  {/* Image */}
+                  <div className="bg-slate-50 flex items-center justify-center p-3 h-24 relative">
+                    <img src={s.url} alt={s.name}
+                      className="max-w-full max-h-full object-contain"
+                      onError={e => { (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%23ccc' stroke-width='2'%3E%3Crect width='18' height='18' x='3' y='3' rx='2' ry='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21'/%3E%3C/svg%3E"; }} />
+                    {/* Active toggle */}
+                    <button onClick={() => toggleActive(s)}
+                      className={`absolute top-1.5 left-1.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${s.isActive ? "bg-emerald-500 border-emerald-500" : "bg-white border-slate-300"}`}>
+                      {s.isActive && <Check size={10} className="text-white" />}
+                    </button>
+                  </div>
+
+                  {/* Info + actions */}
+                  {editingId === s.id ? (
+                    <div className="p-2 space-y-1.5">
+                      <input type="text" value={editName} onChange={e => setEditName(e.target.value)}
+                        className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+                      <input type="text" value={editCat} onChange={e => setEditCat(e.target.value)}
+                        className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+                      <div className="flex gap-1">
+                        <button onClick={() => handleEdit(s.id)} disabled={saving}
+                          className="flex-1 bg-emerald-500 text-white text-xs py-1 rounded flex items-center justify-center gap-1">
+                          {saving ? <RefreshCw size={10} className="animate-spin" /> : <Check size={10} />} حفظ
+                        </button>
+                        <button onClick={() => setEditingId(null)} className="px-2 text-slate-400 hover:text-slate-600">
+                          <X size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="px-2 py-2">
+                      <p className="text-xs font-semibold text-slate-700 truncate">{s.name}</p>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <button onClick={() => { setEditingId(s.id); setEditName(s.name); setEditCat(s.category); }}
+                          className="text-slate-400 hover:text-emerald-600 transition-colors p-0.5">
+                          <Pencil size={12} />
+                        </button>
+                        <button onClick={() => handleDelete(s.id)}
+                          className="text-slate-400 hover:text-red-500 transition-colors p-0.5">
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function NahfatSection() {
   const [presets, setPresets] = useState<NahfatPreset[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1334,6 +1590,7 @@ export default function App() {
         {section === "orders" && <OrdersSection />}
         {section === "teams" && <TeamsSection />}
         {section === "nahfat" && <NahfatSection />}
+        {section === "stickers" && <StickersSection />}
       </main>
       <Toaster position="top-center" richColors />
     </div>
