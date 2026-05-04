@@ -3,5 +3,9 @@ type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/basmah-redesign/BoldVariant.tsx": () => import("../components/mockups/basmah-redesign/BoldVariant.tsx"),
   "./components/mockups/basmah-redesign/GlassVariant.tsx": () => import("../components/mockups/basmah-redesign/GlassVariant.tsx"),
-  "./components/mockups/basmah-redesign/StreetVariant.tsx": () => import("../components/mockups/basmah-redesign/StreetVariant.tsx")
+  "./components/mockups/basmah-redesign/StreetVariant.tsx": () => import("../components/mockups/basmah-redesign/StreetVariant.tsx"),
+  "./components/mockups/configurator/BigSquares.tsx": () => import("../components/mockups/configurator/BigSquares.tsx"),
+  "./components/mockups/configurator/Current.tsx": () => import("../components/mockups/configurator/Current.tsx"),
+  "./components/mockups/configurator/StripCard.tsx": () => import("../components/mockups/configurator/StripCard.tsx"),
+  "./components/mockups/configurator/SwipeZone.tsx": () => import("../components/mockups/configurator/SwipeZone.tsx")
 };
