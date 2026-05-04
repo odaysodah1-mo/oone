@@ -4,8 +4,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGetTeam } from "@workspace/api-client-react";
 import { getGetTeamQueryKey } from "@workspace/api-client-react";
 import { useOrder } from "@/components/order-context";
-import { ConfiguratorJersey, FONT_STYLES, type JerseyColors } from "@/components/configurator-jersey";
+import { FONT_STYLES, type JerseyColors } from "@/components/configurator-jersey";
+import { ShirtStickerStage } from "@/components/shirt-sticker-stage";
+import {
+  STICKER_LIBRARY,
+  getStickerCanvas,
+  type StickerDef,
+} from "@/components/sticker-library";
 
+/* ─── Static data ──────────────────────────────────────────────────────────── */
 const BACK_JERSEY_URLS: Record<number, string> = {
   3: "/jerseys/jordan-back.png",
 };
@@ -22,8 +29,12 @@ const SIZE_INFO: Record<string, string> = {
   L: "178–186 سم", XL: "186–194 سم", XXL: "> 194 سم",
 };
 
-type Tab = "colors" | "name" | "size";
+const STICKER_CATS = Array.from(new Set(STICKER_LIBRARY.map((s) => s.category)));
 
+type CustomTab = "colors" | "name" | "size";
+type MobileTab = "stickers" | "colors" | "name" | "size";
+
+/* ─── ZonePicker ─────────────────────────────────────────────────────────── */
 function ZonePicker({ label, value, onChange, palette }: {
   label: string; value: string; onChange: (c: string) => void; palette: string[];
 }) {
@@ -42,33 +53,78 @@ function ZonePicker({ label, value, onChange, palette }: {
             className="w-7 h-7 rounded-full transition-all duration-150 hover:scale-110 active:scale-95"
             style={{
               backgroundColor: c,
-              border: value === c ? "2.5px solid #bfff00" : "2px solid rgba(255,255,255,0.10)",
+              border:    value === c ? "2.5px solid #bfff00" : "2px solid rgba(255,255,255,0.10)",
               boxShadow: value === c ? "0 0 10px rgba(191,255,0,0.65)" : "none",
               transform: value === c ? "scale(1.2)" : "scale(1)",
-            }}
-          />
+            }} />
         ))}
       </div>
     </div>
   );
 }
 
+/* ─── StickerBtn ─────────────────────────────────────────────────────────── */
+function StickerBtn({ s, selected, onClick }: {
+  s: StickerDef; selected: boolean; onClick: () => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const img = getStickerCanvas(s);
+    if (!img || !canvasRef.current) return;
+    const c = canvasRef.current;
+    c.width = img.width; c.height = img.height;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0);
+  }, [s]);
+
+  return (
+    <button onClick={onClick}
+      className="flex flex-col items-center gap-1 p-1.5 rounded-xl transition-all duration-150 active:scale-90"
+      style={{
+        background: selected ? "rgba(191,255,0,0.14)" : "rgba(255,255,255,0.03)",
+        border:     selected ? "1.5px solid #bfff00"  : "1.5px solid rgba(255,255,255,0.06)",
+        boxShadow:  selected ? "0 0 12px rgba(191,255,0,0.35)" : "none",
+      }}>
+      <canvas ref={canvasRef} width={80} height={80} className="w-10 h-10" />
+      <span className="text-[9px] text-white/45 font-bold truncate max-w-[44px] text-center leading-tight">
+        {s.label}
+      </span>
+    </button>
+  );
+}
+
+/* ─── Main page ─────────────────────────────────────────────────────────── */
 export default function TeamDetail() {
-  const { id } = useParams();
+  const { id }          = useParams();
   const [, setLocation] = useLocation();
   const { data: team, isLoading } = useGetTeam(Number(id), {
     query: { enabled: !!id, queryKey: getGetTeamQueryKey(Number(id)) },
   });
   const { updateOrder } = useOrder();
 
-  const [tab, setTab]     = useState<Tab>("colors");
-  const [name, setName]   = useState("");
-  const [number, setNumber] = useState("");
-  const [size, setSize]   = useState("");
-  const [fontId, setFontId] = useState("block");
-  const [colors, setColors] = useState<JerseyColors>({
+  /* customization */
+  const [tab, setTab]         = useState<CustomTab>("colors");
+  const [name, setName]       = useState("");
+  const [number, setNumber]   = useState("");
+  const [size, setSize]       = useState("");
+  const [fontId, setFontId]   = useState("block");
+  const [colors, setColors]   = useState<JerseyColors>({
     body: "#cc0000", sleeves: "#ffffff", collar: "#cc0000", trim: "#ffffff",
   });
+
+  /* stickers */
+  const [stickerCat, setStickerCat]         = useState(STICKER_CATS[0]);
+  const [pendingSticker, setPendingSticker] = useState<StickerDef | null>(null);
+  const [placedCount, setPlacedCount]       = useState(0);
+
+  /* nahfa — custom text sticker */
+  const [nahfaText, setNahfaText] = useState("");
+
+  /* mobile */
+  const [mobileTab, setMobileTab] = useState<MobileTab>("stickers");
 
   useEffect(() => {
     if (team) {
@@ -80,57 +136,6 @@ export default function TeamDetail() {
 
   const setZone = (zone: keyof JerseyColors) => (c: string) =>
     setColors((prev) => ({ ...prev, [zone]: c }));
-
-  /* ── Flip-based drag (no rotateY box effect) ── */
-  const [view, setView]           = useState<"front"|"back">("front");
-  const [flipping, setFlipping]   = useState(false);
-  const [scaleX, setScaleX]       = useState(1);
-  const [tiltY, setTiltY]         = useState(0); // face-on by default
-  const isDrag   = useRef(false);
-  const lastX    = useRef(0);
-  const accumX   = useRef(0);
-  const isFront  = view === "front";
-
-  const doFlip = useCallback((nextView: "front"|"back") => {
-    if (flipping) return;
-    setFlipping(true);
-    setScaleX(0);
-    setTimeout(() => {
-      setView(nextView);
-      setScaleX(1);
-      setTimeout(() => setFlipping(false), 320);
-    }, 280);
-  }, [flipping]);
-
-  const onPD = useCallback((e: React.PointerEvent) => {
-    isDrag.current = true;
-    lastX.current  = e.clientX;
-    accumX.current = 0;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  }, []);
-
-  const onPM = useCallback((e: React.PointerEvent) => {
-    if (!isDrag.current) return;
-    const dx = e.clientX - lastX.current;
-    lastX.current = e.clientX;
-    accumX.current += dx;
-    // Subtle real-time tilt follows drag
-    setTiltY(-8 + accumX.current * 0.06);
-    // Flip when dragged far enough
-    if (Math.abs(accumX.current) > 110) {
-      const nextView = accumX.current < 0
-        ? (view === "front" ? "back" : "front")
-        : (view === "front" ? "back" : "front");
-      doFlip(nextView);
-      accumX.current = 0;
-    }
-  }, [view, doFlip]);
-
-  const onPU = useCallback(() => {
-    isDrag.current = false;
-    setTiltY(-8); // spring back to neutral
-    accumX.current = 0;
-  }, []);
 
   const handleOrder = () => {
     if (!size) { alert("الرجاء اختيار المقاس"); return; }
@@ -144,15 +149,37 @@ export default function TeamDetail() {
     setLocation("/order");
   };
 
-  const hasPhoto = !!team?.logoUrl;
+  const selectSticker = useCallback((s: StickerDef) => {
+    setPendingSticker((prev) => (prev?.id === s.id ? null : s));
+  }, []);
+
+  const addNahfa = useCallback(() => {
+    const txt = nahfaText.trim();
+    if (!txt) return;
+    const def: StickerDef = {
+      id:        `nahfa-${Date.now()}`,
+      label:     txt,
+      category:  "عربي",
+      text:      txt,
+      textColor: "#bfff00",
+      isArabic:  /[\u0600-\u06FF]/.test(txt),
+    };
+    setPendingSticker(def);
+    setNahfaText("");
+  }, [nahfaText]);
+
+  const filteredStickers = STICKER_LIBRARY.filter((s) => s.category === stickerCat);
+
+  const hasPhoto  = !!team?.logoUrl;
   const backPhoto = id ? BACK_JERSEY_URLS[Number(id)] : undefined;
 
-  const tabs: { id: Tab; icon: string; label: string }[] = [
+  const customTabs: { id: CustomTab; icon: string; label: string }[] = [
     { id: "colors", icon: "🎨", label: "الألوان" },
     { id: "name",   icon: "✏️",  label: "الاسم"  },
     { id: "size",   icon: "📐",  label: "المقاس" },
   ];
 
+  /* ── Loading / 404 ──────────────────────────────────────────────────────── */
   if (isLoading) return (
     <div className="fixed inset-0 bg-black flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
@@ -166,49 +193,169 @@ export default function TeamDetail() {
     <div className="fixed inset-0 bg-black flex items-center justify-center">
       <div className="text-center space-y-4">
         <h2 className="text-3xl font-black text-white">الفريق غير موجود</h2>
-        <button onClick={() => setLocation("/teams")} className="px-6 py-3 bg-[#bfff00] text-black font-black">العودة</button>
+        <button onClick={() => setLocation("/teams")}
+          className="px-6 py-3 bg-[#bfff00] text-black font-black">العودة</button>
       </div>
     </div>
   );
 
+  /* ── Render ─────────────────────────────────────────────────────────────── */
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden bg-black">
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-black" dir="rtl">
 
-      {/* ── TOP BAR ── */}
-      <div className="flex items-center justify-between px-4 md:px-6 py-3 shrink-0 z-20 border-b border-white/[0.06] bg-black/80 backdrop-blur-sm">
+      {/* ══ TOP BAR ══ */}
+      <div className="flex items-center justify-between px-4 md:px-6 py-3 shrink-0 z-20
+                      border-b border-white/[0.06] bg-black/80 backdrop-blur-sm">
         <button onClick={() => setLocation("/teams")}
           className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white transition-colors font-bold">
-          <span className="text-base">←</span> الفرق
+          <span className="text-base">→</span> الفرق
         </button>
         <div className="text-center">
           <div className="flex items-center justify-center gap-2 text-xs text-white/40 mb-0.5">
-            <span className="bg-[#bfff00]/20 text-[#bfff00] px-2 py-0.5 rounded text-[10px] font-black">{team.league}</span>
+            <span className="bg-[#bfff00]/20 text-[#bfff00] px-2 py-0.5 rounded text-[10px] font-black">
+              {team.league}
+            </span>
             <span>·</span><span>{team.country}</span>
           </div>
           <h1 className="text-sm md:text-lg font-black text-white leading-tight">{team.name}</h1>
         </div>
-        <div className="text-right">
+        <div className="text-left">
           <div className="text-[10px] text-white/30">السعر</div>
-          <div className="text-xl font-black text-[#bfff00]">{team.basePrice}<span className="text-xs text-white/50 mr-1">د.أ</span></div>
+          <div className="text-xl font-black text-[#bfff00]">
+            {team.basePrice}<span className="text-xs text-white/50 ml-1">د.أ</span>
+          </div>
         </div>
       </div>
 
-      {/* ── MAIN ── */}
+      {/* ══ MAIN ══ */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {/* ── LEFT PANEL (desktop) ── */}
+        {/* ══ STICKER PANEL — right (RTL = visual left) ══ */}
         <motion.div
-          initial={{ x: -340, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
+          initial={{ x: 280, opacity: 0 }}
+          animate={{ x: 0,   opacity: 1 }}
           transition={{ type: "spring", stiffness: 260, damping: 28 }}
-          className="w-[300px] md:w-[320px] shrink-0 hidden md:flex flex-col bg-[#0a0a0a] border-r border-white/[0.06] z-10 overflow-hidden"
+          className="w-[155px] shrink-0 hidden md:flex flex-col bg-[#090909]
+                     border-l border-white/[0.06] z-10 overflow-hidden"
         >
-          {/* Tabs */}
+          {/* header */}
+          <div className="px-3 py-2.5 border-b border-white/[0.06] flex items-center gap-1.5">
+            <span className="text-base">🎯</span>
+            <p className="text-[10px] font-black text-white/35 uppercase tracking-widest">ستيكرات</p>
+          </div>
+
+          {/* category tabs */}
+          <div className="flex border-b border-white/[0.06] overflow-x-auto scrollbar-none">
+            {STICKER_CATS.map((cat) => (
+              <button key={cat} onClick={() => setStickerCat(cat)}
+                className="shrink-0 px-2.5 py-2 text-[10px] font-black transition-colors"
+                style={{
+                  color:        stickerCat === cat ? "#bfff00" : "rgba(255,255,255,0.3)",
+                  borderBottom: stickerCat === cat ? "2px solid #bfff00" : "2px solid transparent",
+                }}>
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* sticker grid */}
+          <div className="flex-1 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-white/10">
+            <div className="grid grid-cols-2 gap-1.5">
+              <AnimatePresence mode="wait">
+                <motion.div key={stickerCat}
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="contents">
+                  {filteredStickers.map((s) => (
+                    <StickerBtn key={s.id} s={s}
+                      selected={pendingSticker?.id === s.id}
+                      onClick={() => selectSticker(s)} />
+                  ))}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* nahfa */}
+          <div className="p-2.5 border-t border-white/[0.06] space-y-2">
+            <p className="text-[10px] font-black text-[#bfff00]/60 uppercase tracking-widest">
+              نهفة ✍️
+            </p>
+            <textarea
+              value={nahfaText} onChange={(e) => setNahfaText(e.target.value)}
+              placeholder="اكتب نصك…" maxLength={20} rows={2} dir="auto"
+              className="w-full px-2 py-1.5 bg-white/[0.04] border border-white/[0.08]
+                         text-white text-xs font-bold resize-none focus:outline-none
+                         focus:border-[#bfff00]/40 placeholder:text-white/20"
+            />
+            <button onClick={addNahfa} disabled={!nahfaText.trim()}
+              className="w-full py-1.5 text-xs font-black disabled:opacity-30 transition-all"
+              style={{
+                background: nahfaText.trim() ? "#bfff00" : "#1a1a1a",
+                color:      nahfaText.trim() ? "#000"    : "#444",
+              }}>
+              إضافة للقميص
+            </button>
+          </div>
+
+          {/* pending hint */}
+          {pendingSticker && (
+            <div className="px-2.5 pb-2.5">
+              <div className="bg-[#bfff00]/10 border border-[#bfff00]/25 rounded-lg p-2 text-center">
+                <p className="text-[9px] text-[#bfff00] font-black leading-tight">
+                  انقر على<br />القميص لوضعه
+                </p>
+                <button onClick={() => setPendingSticker(null)}
+                  className="mt-1.5 text-[9px] text-white/30 hover:text-white/60 underline">
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          )}
+
+          {placedCount > 0 && (
+            <div className="px-2.5 pb-2 text-center">
+              <span className="text-[9px] text-white/22">
+                {placedCount} ستيكر
+              </span>
+            </div>
+          )}
+        </motion.div>
+
+        {/* ══ CENTER — Shirt Stage ══ */}
+        <div className="flex-1 relative min-w-0 overflow-hidden">
+          <ShirtStickerStage
+            colors={colors}
+            name={name}
+            number={number}
+            fontId={fontId}
+            photoFront={hasPhoto ? team.logoUrl! : undefined}
+            photoBack={backPhoto}
+            pendingSticker={pendingSticker}
+            onStickerPlaced={() => {
+              setPendingSticker(null);
+              setPlacedCount((n) => n + 1);
+            }}
+            accentColor={colors.body}
+          />
+        </div>
+
+        {/* ══ CUSTOMIZATION PANEL — left (RTL = visual right) ══ */}
+        <motion.div
+          initial={{ x: -300, opacity: 0 }}
+          animate={{ x: 0,    opacity: 1 }}
+          transition={{ type: "spring", stiffness: 260, damping: 28, delay: 0.05 }}
+          className="w-[280px] md:w-[300px] shrink-0 hidden md:flex flex-col
+                     bg-[#0a0a0a] border-r border-white/[0.06] z-10 overflow-hidden"
+        >
+          {/* tabs */}
           <div className="flex border-b border-white/[0.07]">
-            {tabs.map((t) => (
+            {customTabs.map((t) => (
               <button key={t.id} onClick={() => setTab(t.id)}
-                className={`flex-1 flex flex-col items-center py-3.5 gap-0.5 text-xs font-black transition-all duration-200 ${
-                  tab === t.id ? "text-[#bfff00] border-b-2 border-[#bfff00] bg-[#bfff00]/5" : "text-white/30 hover:text-white/70"
+                className={`flex-1 flex flex-col items-center py-3.5 gap-0.5 text-xs font-black
+                            transition-all duration-200 ${
+                  tab === t.id
+                    ? "text-[#bfff00] border-b-2 border-[#bfff00] bg-[#bfff00]/5"
+                    : "text-white/30 hover:text-white/70"
                 }`}>
                 <span className="text-base">{t.icon}</span>
                 <span>{t.label}</span>
@@ -216,57 +363,76 @@ export default function TeamDetail() {
             ))}
           </div>
 
-          {/* Tab Body */}
+          {/* tab body */}
           <div className="flex-1 overflow-y-auto p-5 space-y-5 scrollbar-thin scrollbar-thumb-white/10">
             <AnimatePresence mode="wait">
+
               {tab === "colors" && (
-                <motion.div key="c" initial={{ opacity:0,y:8 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0,y:-8 }} className="space-y-6">
+                <motion.div key="c"
+                  initial={{ opacity:0,y:8 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0,y:-8 }}
+                  className="space-y-6">
                   {!hasPhoto ? (
                     <>
-                      <ZonePicker label="لون الجسم"        value={colors.body}    onChange={setZone("body")}    palette={PALETTE} />
+                      <ZonePicker label="لون الجسم"    value={colors.body}    onChange={setZone("body")}    palette={PALETTE} />
                       <div className="h-px bg-white/[0.06]" />
-                      <ZonePicker label="لون الأكمام"      value={colors.sleeves} onChange={setZone("sleeves")} palette={PALETTE} />
+                      <ZonePicker label="لون الأكمام"  value={colors.sleeves} onChange={setZone("sleeves")} palette={PALETTE} />
                       <div className="h-px bg-white/[0.06]" />
-                      <ZonePicker label="لون الطوق"        value={colors.collar}  onChange={setZone("collar")}  palette={PALETTE} />
+                      <ZonePicker label="لون الطوق"    value={colors.collar}  onChange={setZone("collar")}  palette={PALETTE} />
                       <div className="h-px bg-white/[0.06]" />
-                      <ZonePicker label="الاسم والرقم"     value={colors.trim}    onChange={setZone("trim")}    palette={PALETTE} />
+                      <ZonePicker label="الاسم والرقم" value={colors.trim}    onChange={setZone("trim")}    palette={PALETTE} />
                     </>
                   ) : (
-                    <div className="space-y-3">
-                      <p className="text-xs text-white/35 leading-relaxed">هذا القميص بتصميم رسمي — يمكنك تخصيص الاسم والرقم.</p>
-                    </div>
+                    <p className="text-xs text-white/35 leading-relaxed">
+                      هذا القميص بتصميم رسمي — يمكنك إضافة ستيكرات من اللوحة اليسرى.
+                    </p>
                   )}
                 </motion.div>
               )}
 
               {tab === "name" && (
-                <motion.div key="n" initial={{ opacity:0,y:8 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0,y:-8 }} className="space-y-6">
+                <motion.div key="n"
+                  initial={{ opacity:0,y:8 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0,y:-8 }}
+                  className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-white/50 uppercase tracking-widest block">الاسم</label>
-                    <input value={name} onChange={(e) => setName(e.target.value.toUpperCase())} placeholder="AHMED" maxLength={12}
-                      className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.10] text-white placeholder:text-white/20 font-black text-lg focus:outline-none focus:border-[#bfff00]/50 transition-colors" />
+                    <label className="text-xs font-black text-white/50 uppercase tracking-widest block">
+                      الاسم (على ظهر القميص)
+                    </label>
+                    <input value={name}
+                      onChange={(e) => setName(e.target.value.toUpperCase())}
+                      placeholder="AHMED" maxLength={12}
+                      className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.10]
+                                 text-white placeholder:text-white/20 font-black text-lg
+                                 focus:outline-none focus:border-[#bfff00]/50 transition-colors" />
                     <div className="flex justify-between text-[10px] text-white/25">
                       <span>باللغة الإنجليزية</span><span>{name.length}/12</span>
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-white/50 uppercase tracking-widest block">الرقم</label>
-                    <input value={number} onChange={(e) => setNumber(e.target.value.replace(/[^0-9]/g,"").slice(0,2))} placeholder="10" maxLength={2}
-                      className="w-full px-4 py-4 bg-white/[0.04] border border-white/[0.10] text-white placeholder:text-white/20 font-black text-5xl text-center focus:outline-none focus:border-[#bfff00]/50 transition-colors" />
+                    <label className="text-xs font-black text-white/50 uppercase tracking-widest block">
+                      الرقم
+                    </label>
+                    <input value={number}
+                      onChange={(e) => setNumber(e.target.value.replace(/[^0-9]/g,"").slice(0,2))}
+                      placeholder="10" maxLength={2}
+                      className="w-full px-4 py-4 bg-white/[0.04] border border-white/[0.10]
+                                 text-white placeholder:text-white/20 font-black text-5xl text-center
+                                 focus:outline-none focus:border-[#bfff00]/50 transition-colors" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-white/50 uppercase tracking-widest block">نمط الخط</label>
+                    <label className="text-xs font-black text-white/50 uppercase tracking-widest block">
+                      نمط الخط
+                    </label>
                     <div className="grid grid-cols-2 gap-2">
                       {FONT_STYLES.map((f) => (
                         <button key={f.id} onClick={() => setFontId(f.id)}
                           className="px-3 py-3 border text-sm font-bold transition-all duration-200"
                           style={{
-                            fontFamily: f.family,
-                            fontStyle: (f.style as Record<string,string>).fontStyle ?? "normal",
-                            letterSpacing: (f.style as Record<string,string>).letterSpacing ?? "normal",
-                            borderColor: fontId === f.id ? "#bfff00" : "rgba(255,255,255,0.08)",
-                            background:  fontId === f.id ? "rgba(191,255,0,0.10)" : "rgba(255,255,255,0.02)",
-                            color:       fontId === f.id ? "#bfff00" : "rgba(255,255,255,0.35)",
+                            fontFamily:   f.family,
+                            fontStyle:    (f.style as Record<string,string>).fontStyle ?? "normal",
+                            letterSpacing:(f.style as Record<string,string>).letterSpacing ?? "normal",
+                            borderColor:  fontId === f.id ? "#bfff00" : "rgba(255,255,255,0.08)",
+                            background:   fontId === f.id ? "rgba(191,255,0,0.10)" : "rgba(255,255,255,0.02)",
+                            color:        fontId === f.id ? "#bfff00" : "rgba(255,255,255,0.35)",
                           }}>
                           {f.label}
                         </button>
@@ -277,7 +443,9 @@ export default function TeamDetail() {
               )}
 
               {tab === "size" && (
-                <motion.div key="s" initial={{ opacity:0,y:8 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0,y:-8 }} className="space-y-2">
+                <motion.div key="s"
+                  initial={{ opacity:0,y:8 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0,y:-8 }}
+                  className="space-y-2">
                   <p className="text-xs text-white/30 mb-4">اختر المقاس المناسب لطولك</p>
                   {team.availableSizes.map((s) => (
                     <button key={s} onClick={() => setSize(s)}
@@ -286,7 +454,9 @@ export default function TeamDetail() {
                         borderColor: size === s ? "#bfff00" : "rgba(255,255,255,0.07)",
                         background:  size === s ? "rgba(191,255,0,0.08)" : "rgba(255,255,255,0.02)",
                       }}>
-                      <span className={`text-2xl font-black transition-colors ${size === s ? "text-[#bfff00]" : "text-white/50 group-hover:text-white/80"}`}>{s}</span>
+                      <span className={`text-2xl font-black transition-colors ${
+                        size === s ? "text-[#bfff00]" : "text-white/50 group-hover:text-white/80"
+                      }`}>{s}</span>
                       <span className="text-xs text-white/30">{SIZE_INFO[s] ?? ""}</span>
                       {size === s && <span className="text-[#bfff00] text-lg font-black">✓</span>}
                     </button>
@@ -298,141 +468,152 @@ export default function TeamDetail() {
 
           {/* CTA */}
           <div className="p-4 border-t border-white/[0.06] shrink-0 bg-black/60">
-            {!size && <p className="text-[10px] text-center text-amber-400/70 mb-2">⚠ اختر المقاس من تبويب 📐</p>}
+            {!size && (
+              <p className="text-[10px] text-center text-amber-400/70 mb-2">
+                ⚠ اختر المقاس من تبويب 📐
+              </p>
+            )}
             <button onClick={handleOrder} disabled={!size}
-              className="w-full py-4 text-lg font-black transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="w-full py-4 text-lg font-black transition-all duration-200
+                         disabled:opacity-30 disabled:cursor-not-allowed"
               style={{
-                background: size ? "linear-gradient(135deg,#bfff00 0%,#7ecf00 100%)" : "#1a1a1a",
-                color: size ? "#000" : "#444",
-                boxShadow: size ? "0 0 30px rgba(191,255,0,0.30), 0 4px 16px rgba(0,0,0,0.5)" : "none",
+                background: size
+                  ? "linear-gradient(135deg,#bfff00 0%,#7ecf00 100%)"
+                  : "#1a1a1a",
+                color:     size ? "#000" : "#444",
+                boxShadow: size
+                  ? "0 0 30px rgba(191,255,0,0.30), 0 4px 16px rgba(0,0,0,0.5)"
+                  : "none",
               }}>
               {size ? "🛒 إتمام الطلب" : "اختر المقاس أولاً"}
             </button>
           </div>
         </motion.div>
-
-        {/* ── CENTER STAGE ── */}
-        <div
-          className="flex-1 flex flex-col items-center justify-center relative overflow-hidden min-w-0 select-none"
-          style={{ cursor: flipping ? "default" : "ew-resize" }}
-          onPointerDown={onPD} onPointerMove={onPM} onPointerUp={onPU} onPointerLeave={onPU}
-        >
-          {/* Spotlight glow (color-matched) */}
-          <div className="absolute inset-0 pointer-events-none" style={{
-            background: `radial-gradient(ellipse 65% 60% at 50% 45%, ${colors.body}22 0%, transparent 68%)`,
-            transition: "background 0.8s ease",
-          }} />
-          {/* Subtle floor bounce light */}
-          <div className="absolute bottom-0 left-0 right-0 h-1/3 pointer-events-none" style={{
-            background: `radial-gradient(ellipse 70% 40% at 50% 100%, ${colors.body}10 0%, transparent 70%)`,
-          }} />
-
-          {/* ── The Jersey (fixed tilt + scaleX flip) ── */}
-          <div style={{
-            width:  hasPhoto ? "min(360px,68vw)" : "min(420px,78vw)",
-            height: hasPhoto ? "min(470px,68vh)" : "min(510px,72vh)",
-            transform: tiltY !== 0 ? `perspective(900px) rotateX(2deg) rotateY(${tiltY}deg)` : "none",
-            transition: flipping ? "none" : "transform 0.35s cubic-bezier(0.34,1.56,0.64,1)",
-          }}>
-            {/* scaleX flip wrapper */}
-            <div style={{
-              width:"100%", height:"100%",
-              transform: `scaleX(${scaleX})`,
-              transition: `transform ${flipping ? "0.28s" : "0s"} cubic-bezier(0.4,0,0.6,1)`,
-              filter: "drop-shadow(0 28px 52px rgba(0,0,0,0.82))",
-            }}>
-              {hasPhoto ? (
-                <img
-                  src={view === "back" && backPhoto ? backPhoto : team.logoUrl!}
-                  alt={view}
-                  style={{ width:"100%", height:"100%", objectFit:"contain", objectPosition:"center top" }}
-                />
-              ) : (
-                <ConfiguratorJersey
-                  colors={colors}
-                  name={name || "BASMAH"}
-                  number={number || "10"}
-                  view={view}
-                  fontId={fontId}
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Ground shadow */}
-          <div style={{
-            width:"min(300px,58vw)", height:"14px", marginTop:"4px",
-            background:"radial-gradient(ellipse at center, rgba(0,0,0,0.65) 0%, transparent 72%)",
-            pointerEvents:"none", flexShrink:0,
-          }} />
-
-          {/* Drag hint */}
-          <p className="absolute bottom-4 left-0 right-0 text-center text-[10px] text-white/18 pointer-events-none select-none tracking-widest">
-            اسحب لتدوير القميص ↔
-          </p>
-
-          {/* Face indicator pill */}
-          <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-white/[0.05] px-2.5 py-1 rounded-full border border-white/[0.08]">
-            <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-400 ${isFront ? "bg-[#bfff00]" : "bg-white/40"}`} />
-            <span className="text-[10px] text-white/30 font-bold">{isFront ? "الأمام" : "الخلف"}</span>
-          </div>
-        </div>
       </div>
 
-      {/* ── MOBILE BOTTOM ── */}
-      <div className="md:hidden border-t border-white/[0.06] bg-black shrink-0 z-20">
+      {/* ══ MOBILE BOTTOM BAR ══ */}
+      <div className="md:hidden border-t border-white/[0.06] bg-[#080808] shrink-0 z-20">
+
         <div className="flex border-b border-white/[0.06]">
-          {tabs.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex-1 flex flex-col items-center py-2.5 gap-0.5 text-xs font-black transition-all ${
-                tab === t.id ? "text-[#bfff00] border-t-2 border-[#bfff00]" : "text-white/30"
+          {[
+            { id: "stickers" as MobileTab, icon: "🎯", label: "ستيكرات" },
+            { id: "colors"   as MobileTab, icon: "🎨", label: "ألوان"   },
+            { id: "name"     as MobileTab, icon: "✏️",  label: "اسم"     },
+            { id: "size"     as MobileTab, icon: "📐",  label: "مقاس"    },
+          ].map((t) => (
+            <button key={t.id} onClick={() => setMobileTab(t.id)}
+              className={`flex-1 flex flex-col items-center py-2.5 gap-0.5 text-[10px] font-black
+                          transition-all ${
+                mobileTab === t.id
+                  ? "text-[#bfff00] border-t-2 border-[#bfff00]"
+                  : "text-white/30"
               }`}>
               <span>{t.icon}</span><span>{t.label}</span>
             </button>
           ))}
         </div>
-        <div className="max-h-40 overflow-y-auto p-3">
+
+        <div className="max-h-44 overflow-hidden">
           <AnimatePresence mode="wait">
-            {tab === "colors" && !hasPhoto && (
-              <motion.div key="mc" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="space-y-3">
-                <ZonePicker label="الجسم"   value={colors.body}    onChange={setZone("body")}    palette={PALETTE} />
-                <ZonePicker label="الأكمام" value={colors.sleeves} onChange={setZone("sleeves")} palette={PALETTE} />
-              </motion.div>
-            )}
-            {tab === "name" && (
-              <motion.div key="mn" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex gap-2">
-                <input value={name} onChange={(e) => setName(e.target.value.toUpperCase())} placeholder="الاسم" maxLength={12}
-                  className="flex-1 px-3 py-2.5 bg-white/[0.04] border border-white/[0.08] text-white text-sm font-black focus:outline-none focus:border-[#bfff00]/40" />
-                <input value={number} onChange={(e) => setNumber(e.target.value.replace(/[^0-9]/g,"").slice(0,2))} placeholder="10" maxLength={2}
-                  className="w-20 px-3 py-2.5 bg-white/[0.04] border border-white/[0.08] text-white text-2xl font-black text-center focus:outline-none focus:border-[#bfff00]/40" />
-              </motion.div>
-            )}
-            {tab === "size" && (
-              <motion.div key="ms" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex flex-wrap gap-2">
-                {team.availableSizes.map((s) => (
-                  <button key={s} onClick={() => setSize(s)}
-                    className="px-4 py-2 text-sm font-black border transition-all"
+
+            {mobileTab === "stickers" && (
+              <motion.div key="ms" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+                className="flex flex-col h-44">
+                <div className="flex gap-2 px-3 pt-2 pb-1 overflow-x-auto scrollbar-none shrink-0">
+                  {STICKER_CATS.map((cat) => (
+                    <button key={cat} onClick={() => setStickerCat(cat)}
+                      className="shrink-0 px-3 py-1 rounded-full text-[10px] font-black transition-all"
+                      style={{
+                        background: stickerCat === cat ? "#bfff00" : "rgba(255,255,255,0.06)",
+                        color:      stickerCat === cat ? "#000" : "rgba(255,255,255,0.4)",
+                      }}>
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2 px-3 py-1.5 overflow-x-auto scrollbar-none flex-1 items-center">
+                  {filteredStickers.map((s) => (
+                    <StickerBtn key={s.id} s={s}
+                      selected={pendingSticker?.id === s.id}
+                      onClick={() => selectSticker(s)} />
+                  ))}
+                </div>
+                <div className="flex gap-2 px-3 pb-2 shrink-0">
+                  <input value={nahfaText} onChange={(e) => setNahfaText(e.target.value)}
+                    placeholder="نهفة: اكتب نصك…" maxLength={20} dir="auto"
+                    className="flex-1 px-3 py-2 bg-white/[0.04] border border-white/[0.08]
+                               text-white text-xs font-bold focus:outline-none
+                               focus:border-[#bfff00]/40 placeholder:text-white/20" />
+                  <button onClick={addNahfa} disabled={!nahfaText.trim()}
+                    className="px-4 py-2 text-xs font-black disabled:opacity-30"
                     style={{
-                      borderColor: size === s ? "#bfff00" : "rgba(255,255,255,0.10)",
-                      background:  size === s ? "rgba(191,255,0,0.12)" : "transparent",
-                      color:       size === s ? "#bfff00" : "rgba(255,255,255,0.4)",
-                    }}>{s}
+                      background: nahfaText.trim() ? "#bfff00" : "#1a1a1a",
+                      color:      nahfaText.trim() ? "#000"    : "#444",
+                    }}>
+                    إضافة
                   </button>
-                ))}
+                </div>
+              </motion.div>
+            )}
+
+            {mobileTab === "colors" && (
+              <motion.div key="mc" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+                className="p-3 overflow-y-auto h-44 space-y-3">
+                {!hasPhoto ? (
+                  <>
+                    <ZonePicker label="الجسم"   value={colors.body}    onChange={setZone("body")}    palette={PALETTE} />
+                    <ZonePicker label="الأكمام" value={colors.sleeves} onChange={setZone("sleeves")} palette={PALETTE} />
+                  </>
+                ) : (
+                  <p className="text-xs text-white/30">أضف ستيكرات من تبويب 🎯</p>
+                )}
+              </motion.div>
+            )}
+
+            {mobileTab === "name" && (
+              <motion.div key="mn" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+                className="p-3 flex gap-2 h-44 items-start">
+                <input value={name} onChange={(e) => setName(e.target.value.toUpperCase())}
+                  placeholder="الاسم" maxLength={12}
+                  className="flex-1 px-3 py-3 bg-white/[0.04] border border-white/[0.08]
+                             text-white text-sm font-black focus:outline-none
+                             focus:border-[#bfff00]/40" />
+                <input value={number}
+                  onChange={(e) => setNumber(e.target.value.replace(/[^0-9]/g,"").slice(0,2))}
+                  placeholder="10" maxLength={2}
+                  className="w-20 px-3 py-3 bg-white/[0.04] border border-white/[0.08]
+                             text-white text-2xl font-black text-center focus:outline-none
+                             focus:border-[#bfff00]/40" />
+              </motion.div>
+            )}
+
+            {mobileTab === "size" && (
+              <motion.div key="mz" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+                className="p-3 overflow-y-auto h-44">
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {team.availableSizes.map((s) => (
+                    <button key={s} onClick={() => setSize(s)}
+                      className="px-5 py-2.5 text-sm font-black border transition-all"
+                      style={{
+                        borderColor: size === s ? "#bfff00" : "rgba(255,255,255,0.10)",
+                        background:  size === s ? "rgba(191,255,0,0.12)" : "transparent",
+                        color:       size === s ? "#bfff00" : "rgba(255,255,255,0.4)",
+                      }}>{s}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={handleOrder} disabled={!size}
+                  className="w-full py-3.5 text-base font-black transition-all disabled:opacity-30"
+                  style={{
+                    background: size ? "linear-gradient(135deg,#bfff00,#7ecf00)" : "#111",
+                    color:      size ? "#000" : "#444",
+                    boxShadow:  size ? "0 0 24px rgba(191,255,0,0.28)" : "none",
+                  }}>
+                  {size ? `🛒 إتمام الطلب — ${team.basePrice} د.أ` : "اختر المقاس أولاً"}
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
-        <div className="px-4 pb-4 pt-2">
-          <button onClick={handleOrder} disabled={!size}
-            className="w-full py-3.5 text-base font-black transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-            style={{
-              background: size ? "linear-gradient(135deg,#bfff00,#7ecf00)" : "#111",
-              color: size ? "#000" : "#444",
-              boxShadow: size ? "0 0 24px rgba(191,255,0,0.28)" : "none",
-            }}>
-            {size ? `🛒 إتمام الطلب — ${team.basePrice} د.أ` : "اختر المقاس أولاً"}
-          </button>
         </div>
       </div>
     </div>
