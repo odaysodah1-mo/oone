@@ -15,7 +15,7 @@ import {
 /* ─── Types ──────────────────────────────────────────────── */
 interface JerseyColor {
   id: number; teamId: number; name: string;
-  frontImageUrl: string; backImageUrl: string | null;
+  frontImageUrl: string; backImageUrl: string | null; isSoldOut?: boolean;
   hexCode: string; secondaryHexCode: string;
   isDefault: boolean; sortOrder: number;
 }
@@ -123,8 +123,10 @@ function JerseyColorPicker({ colors, selected, onSelect, view, onToggleView }: {
       {/* Color cards */}
       <div className="flex flex-wrap gap-2">
         {colors.map(c => (
-          <button key={c.id} onClick={() => onSelect(c)}
-            className="relative flex-shrink-0 rounded-xl overflow-hidden transition-all duration-200 hover:scale-105 active:scale-95"
+          <button key={c.id}
+            onClick={() => !c.isSoldOut && onSelect(c)}
+            disabled={!!c.isSoldOut}
+            className="relative flex-shrink-0 rounded-xl overflow-hidden transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
             style={{
               width: 52, height: 62,
               border: selected?.id === c.id ? "2px solid #bfff00" : "2px solid rgba(255,255,255,0.08)",
@@ -139,6 +141,12 @@ function JerseyColorPicker({ colors, selected, onSelect, view, onToggleView }: {
                 const parent = (e.target as HTMLImageElement).parentElement;
                 if (parent) parent.style.backgroundColor = c.hexCode;
               }} />
+            {/* Sold Out overlay */}
+            {c.isSoldOut && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/55">
+                <span className="text-[7px] font-black text-white bg-red-600 px-1 py-0.5 rounded rotate-[-10deg] leading-none tracking-wide">SOLD OUT</span>
+              </div>
+            )}
             {selected?.id === c.id && (
               <div className="absolute bottom-0 inset-x-0 bg-[#bfff00]/90 text-black text-[8px] font-black text-center py-0.5 truncate px-1">
                 {c.name}

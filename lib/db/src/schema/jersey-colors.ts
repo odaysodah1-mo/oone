@@ -13,6 +13,7 @@ export const jerseyColorsTable = pgTable("jersey_colors", {
   secondaryHexCode: text("secondary_hex_code").notNull().default("#000000"),
   isDefault: boolean("is_default").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
+  isSoldOut: boolean("is_sold_out").notNull().default(false),
 });
 
 export const insertJerseyColorSchema = createInsertSchema(jerseyColorsTable).omit({ id: true });

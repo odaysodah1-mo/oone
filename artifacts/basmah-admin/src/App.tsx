@@ -37,7 +37,20 @@ interface JerseyColor {
   frontImageUrl: string; backImageUrl: string | null;
   hexCode: string; secondaryHexCode: string;
   isDefault: boolean; sortOrder: number;
+  isSoldOut: boolean;
 }
+
+const LEAGUES = [
+  "الدوري الأردني",
+  "الدوري الإنجليزي (بريميرليغ)",
+  "الدوري الإسباني (لاليغا)",
+  "الدوري الألماني (بوندسليغا)",
+  "الدوري الإيطالي (سيريا أ)",
+  "الدوري الفرنسي (ليغ 1)",
+  "دوري أبطال أوروبا",
+  "المنتخبات",
+  "أخرى",
+];
 
 interface NahfatPreset {
   id: number; text: string; category: string; isActive: boolean; sortOrder: number;
@@ -596,8 +609,15 @@ function JerseyColorCard({ color, onDelete, onUpdate }: {
         )}
       </div>
 
+      {/* Sold Out overlay */}
+      {color.isSoldOut && (
+        <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-20 pointer-events-none">
+          <span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full tracking-wider rotate-[-8deg] shadow-lg">SOLD OUT</span>
+        </div>
+      )}
+
       {/* Info */}
-      <div className="px-2 pt-1 pb-2 space-y-1 border-t border-slate-100">
+      <div className="px-2 pt-1 pb-2 space-y-1.5 border-t border-slate-100">
         <p className="text-xs font-semibold text-slate-700 truncate">{color.name}</p>
         <div className="flex items-center gap-1.5">
           <div className="w-4 h-4 rounded-full border border-slate-200 flex-shrink-0" style={{ backgroundColor: color.hexCode }} title={`أساسي: ${color.hexCode}`} />
@@ -609,6 +629,15 @@ function JerseyColorCard({ color, onDelete, onUpdate }: {
             {color.isDefault ? "افتراضي" : "اجعله افتراضي"}
           </button>
         </div>
+        {/* Sold Out toggle */}
+        <button onClick={() => onUpdate({ isSoldOut: !color.isSoldOut })}
+          className={`w-full text-[10px] font-bold px-2 py-1 rounded-lg border transition-all ${
+            color.isSoldOut
+              ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+              : "bg-slate-50 text-slate-400 border-slate-200 hover:border-red-300 hover:text-red-500"
+          }`}>
+          {color.isSoldOut ? "✕ إلغاء Sold Out" : "وضع Sold Out"}
+        </button>
       </div>
     </div>
   );
@@ -884,8 +913,10 @@ function AddTeamForm({ onAdd, onCancel }: { onAdd: (t: Team) => void; onCancel: 
         </div>
         <div>
           <label className="block text-xs text-slate-500 mb-1">الدوري / البطولة</label>
-          <input value={league} onChange={e => setLeague(e.target.value)} placeholder="الدوري الأردني"
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" />
+          <select value={league} onChange={e => setLeague(e.target.value)}
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white">
+            {LEAGUES.map(l => <option key={l} value={l}>{l}</option>)}
+          </select>
         </div>
         <div>
           <label className="block text-xs text-slate-500 mb-1">السعر الأساسي (د.أ)</label>

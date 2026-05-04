@@ -190,6 +190,7 @@ router.patch("/admin/teams/:teamId/colors/:colorId", async (req, res) => {
   if (typeof secondaryHexCode === "string") update.secondaryHexCode = secondaryHexCode;
   if (typeof isDefault === "boolean") update.isDefault = isDefault;
   if (typeof sortOrder === "number") update.sortOrder = sortOrder;
+  if (typeof (req.body as Record<string, unknown>).isSoldOut === "boolean") update.isSoldOut = (req.body as Record<string, unknown>).isSoldOut;
   if (Object.keys(update).length === 0) {
     res.status(400).json({ error: "Nothing to update" }); return;
   }
