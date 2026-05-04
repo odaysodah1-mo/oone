@@ -42,12 +42,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      <footer className="border-t border-border mt-auto bg-card py-12">
-        <div className="container mx-auto px-4 text-center">
-          <span className="text-3xl font-black text-primary opacity-80 block mb-4">بصمة</span>
-          <p className="text-muted-foreground text-sm font-medium">اترك بصمتك. ارتدي هويتك.</p>
-        </div>
-      </footer>
     </div>
   );
 }
