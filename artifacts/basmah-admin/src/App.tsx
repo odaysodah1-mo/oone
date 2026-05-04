@@ -596,7 +596,7 @@ function AddJerseyColorForm({ teamId, colorsCount, onAdd, onCancel }: {
 }
 
 /* ── Team Card ───────────────────────────────────────── */
-function TeamCard({ team, onTeamUpdate }: { team: Team; onTeamUpdate: (t: Team) => void }) {
+function TeamCard({ team, onTeamUpdate, onDelete }: { team: Team; onTeamUpdate: (t: Team) => void; onDelete: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const [colors, setColors]     = useState<JerseyColor[]>([]);
   const [colorsLoaded, setColorsLoaded] = useState(false);
@@ -658,6 +658,11 @@ function TeamCard({ team, onTeamUpdate }: { team: Team; onTeamUpdate: (t: Team) 
           onClick={e => { e.stopPropagation(); patchTeam({ isPopular: !team.isPopular }); }}
           className={`flex-shrink-0 p-1.5 rounded-lg transition-colors ${team.isPopular ? "text-amber-500 bg-amber-50" : "text-slate-300 hover:text-amber-400"}`}>
           <Star size={16} fill={team.isPopular ? "currentColor" : "none"} />
+        </button>
+        <button
+          onClick={e => { e.stopPropagation(); onDelete(); }}
+          className="flex-shrink-0 p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+          <Trash2 size={16} />
         </button>
         <div className={`flex-shrink-0 text-slate-400 transition-transform ${expanded ? "rotate-180" : ""}`}>
           <ChevronDown size={18} />
@@ -729,10 +734,90 @@ function TeamCard({ team, onTeamUpdate }: { team: Team; onTeamUpdate: (t: Team) 
   );
 }
 
+/* ── Add Team Form ─────────────────────────────────── */
+function AddTeamForm({ onAdd, onCancel }: { onAdd: (t: Team) => void; onCancel: () => void }) {
+  const [name, setName]                   = useState("");
+  const [nameEn, setNameEn]               = useState("");
+  const [league, setLeague]               = useState("الدوري الأردني");
+  const [primaryColor, setPrimaryColor]   = useState("#1a1a2e");
+  const [secondaryColor, setSecondaryColor] = useState("#ffffff");
+  const [basePrice, setBasePrice]         = useState(89);
+  const [saving, setSaving]               = useState(false);
+
+  async function handleSave() {
+    if (!name.trim() || !nameEn.trim()) { toast.error("الاسم (عربي وإنجليزي) مطلوب"); return; }
+    setSaving(true);
+    try {
+      const team = await apiFetch("/admin/teams", {
+        method: "POST",
+        body: JSON.stringify({ name, nameEn, league, primaryColor, secondaryColor, basePrice }),
+      });
+      onAdd(team);
+      toast.success("تم إضافة الفريق");
+    } catch { toast.error("فشل إضافة الفريق"); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div className="bg-white border-2 border-dashed border-emerald-200 rounded-2xl p-5 mb-4">
+      <h3 className="font-semibold text-slate-700 mb-4">فريق جديد</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">الاسم بالعربي *</label>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="مثال: الوحدات"
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" />
+        </div>
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">الاسم بالإنجليزي *</label>
+          <input value={nameEn} onChange={e => setNameEn(e.target.value)} placeholder="e.g. Al-Wehdat"
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" dir="ltr" />
+        </div>
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">الدوري / البطولة</label>
+          <input value={league} onChange={e => setLeague(e.target.value)} placeholder="الدوري الأردني"
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" />
+        </div>
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">السعر الأساسي (د.أ)</label>
+          <input type="number" value={basePrice} min={1} onChange={e => setBasePrice(Number(e.target.value))}
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" />
+        </div>
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">اللون الأساسي</label>
+          <div className="flex items-center gap-2">
+            <input type="color" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)}
+              className="w-9 h-8 rounded-lg border border-slate-200 cursor-pointer p-0.5" />
+            <span className="text-xs font-mono text-slate-500">{primaryColor}</span>
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">اللون الثانوي</label>
+          <div className="flex items-center gap-2">
+            <input type="color" value={secondaryColor} onChange={e => setSecondaryColor(e.target.value)}
+              className="w-9 h-8 rounded-lg border border-slate-200 cursor-pointer p-0.5" />
+            <span className="text-xs font-mono text-slate-500">{secondaryColor}</span>
+          </div>
+        </div>
+      </div>
+      <div className="flex gap-2 mt-4">
+        <button onClick={handleSave} disabled={saving}
+          className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+          <Check size={14} />{saving ? "جاري الحفظ..." : "إضافة الفريق"}
+        </button>
+        <button onClick={onCancel}
+          className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg">
+          <X size={14} />إلغاء
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function TeamsSection() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -740,6 +825,15 @@ function TeamsSection() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  async function deleteTeam(id: number, name: string) {
+    if (!confirm(`هل أنت متأكد من حذف فريق "${name}"؟ سيتم حذف جميع جيرسيهاته أيضاً.`)) return;
+    try {
+      await apiFetch(`/admin/teams/${id}`, { method: "DELETE" });
+      setTeams(prev => prev.filter(t => t.id !== id));
+      toast.success("تم حذف الفريق");
+    } catch { toast.error("فشل حذف الفريق"); }
+  }
 
   const filtered = teams.filter(t =>
     !search || t.name.includes(search) || t.nameEn.toLowerCase().includes(search.toLowerCase())
@@ -749,22 +843,37 @@ function TeamsSection() {
 
   return (
     <div dir="rtl">
-      <PageHeader title="الفرق والجيرسيهات" subtitle="اضغط على الفريق لإدارة جيرسيهاته">
+      <PageHeader title="الفرق والجيرسيهات" subtitle={`${teams.length} فريق`}>
         <button onClick={load} className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-1.5">
           <RefreshCw size={14} />تحديث
         </button>
+        <button onClick={() => setShowAdd(true)}
+          className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
+          <Plus size={14} />إضافة فريق
+        </button>
       </PageHeader>
+
+      {showAdd && (
+        <AddTeamForm
+          onAdd={t => { setTeams(prev => [t, ...prev]); setShowAdd(false); }}
+          onCancel={() => setShowAdd(false)}
+        />
+      )}
+
       <div className="mb-4">
         <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث عن فريق..."
           className="w-full max-w-xs border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white" />
       </div>
       <div className="space-y-3">
         {filtered.map(team => (
-          <TeamCard key={team.id} team={team} onTeamUpdate={updated => setTeams(prev => prev.map(t => t.id === updated.id ? updated : t))} />
+          <TeamCard key={team.id} team={team}
+            onTeamUpdate={updated => setTeams(prev => prev.map(t => t.id === updated.id ? updated : t))}
+            onDelete={() => deleteTeam(team.id, team.name)}
+          />
         ))}
         {filtered.length === 0 && (
           <div className="bg-white border border-slate-200 rounded-2xl py-12 text-center text-slate-400 text-sm">
-            لا توجد فرق مطابقة
+            {teams.length === 0 ? "لا توجد فرق بعد — أضف أول فريق!" : "لا توجد فرق مطابقة"}
           </div>
         )}
       </div>

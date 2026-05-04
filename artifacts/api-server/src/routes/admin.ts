@@ -60,6 +60,49 @@ router.get("/admin/teams", async (req, res) => {
   }
 });
 
+router.post("/admin/teams", async (req, res) => {
+  const { name, nameEn, league, country, primaryColor, secondaryColor, basePrice, availableSizes, isPopular } =
+    req.body as Record<string, unknown>;
+  if (!name || typeof name !== "string" || !nameEn || typeof nameEn !== "string") {
+    res.status(400).json({ error: "name and nameEn are required" }); return;
+  }
+  try {
+    const sizes = Array.isArray(availableSizes) ? availableSizes : ["S", "M", "L", "XL", "XXL"];
+    const [team] = await db.insert(teamsTable).values({
+      name: name as string,
+      nameEn: nameEn as string,
+      league: typeof league === "string" && league ? league : "الدوري الأردني",
+      country: typeof country === "string" && country ? country : "الأردن",
+      primaryColor: typeof primaryColor === "string" ? primaryColor : "#1a1a2e",
+      secondaryColor: typeof secondaryColor === "string" ? secondaryColor : "#ffffff",
+      availableColors: JSON.stringify([]),
+      availableSizes: JSON.stringify(sizes),
+      basePrice: typeof basePrice === "number" && basePrice > 0 ? basePrice : 89,
+      isPopular: Boolean(isPopular),
+    }).returning();
+    res.status(201).json({
+      ...team,
+      availableColors: JSON.parse(team.availableColors),
+      availableSizes: JSON.parse(team.availableSizes),
+    });
+  } catch (err) {
+    req.log.error({ err }, "admin: failed to create team");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/admin/teams/:id", async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid team id" }); return; }
+  try {
+    await db.delete(teamsTable).where(eq(teamsTable.id, id));
+    res.status(204).end();
+  } catch (err) {
+    req.log.error({ err }, "admin: failed to delete team");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.patch("/admin/teams/:id", async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid team id" }); return; }
