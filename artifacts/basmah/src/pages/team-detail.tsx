@@ -10,6 +10,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { JerseyPreview3D } from "@/components/jersey-3d";
 import { useOrder } from "@/components/order-context";
 
+// Map of team IDs to their back jersey image URL
+const BACK_JERSEY_URLS: Record<number, string> = {
+  3: "/jerseys/jordan-back.png", // المنتخب الأردني
+};
+
 export default function TeamDetail() {
   const { id } = useParams();
   const [, setLocation] = useLocation();
@@ -102,6 +107,7 @@ export default function TeamDetail() {
                 name={name || "BASMAH"}
                 number={number || "10"}
                 imageUrl={team.logoUrl}
+                backImageUrl={id ? BACK_JERSEY_URLS[Number(id)] : undefined}
               />
             </div>
           </div>
