@@ -5,7 +5,7 @@ import { useGetTeam } from "@workspace/api-client-react";
 import { getGetTeamQueryKey } from "@workspace/api-client-react";
 import { useOrder } from "@/components/order-context";
 import { FONT_STYLES, type JerseyColors } from "@/components/configurator-jersey";
-import { ShirtStickerStage } from "@/components/shirt-sticker-stage";
+import { ShirtStickerStage, type ShirtStickerStageHandle } from "@/components/shirt-sticker-stage";
 import {
   STICKER_LIBRARY,
   getStickerCanvas,
@@ -200,6 +200,9 @@ export default function TeamDetail() {
   const [placedCount, setPlacedCount]       = useState(0);
   const [nahfaText, setNahfaText]           = useState("");
 
+  /* stage ref for snapshot capture */
+  const stageRef = useRef<ShirtStickerStageHandle>(null);
+
   /* mobile */
   const [mobileTab, setMobileTab] = useState<MobileTab>("stickers");
 
@@ -234,8 +237,50 @@ export default function TeamDetail() {
   const setZone = (zone: keyof JerseyColors) => (c: string) =>
     setColors(prev => ({ ...prev, [zone]: c }));
 
-  const handleOrder = () => {
+  const handleOrder = async () => {
     if (!size) { alert("الرجاء اختيار المقاس"); return; }
+
+    let capturedFront: string | undefined = selectedColor?.frontImageUrl ?? undefined;
+    let capturedBack:  string | undefined = selectedColor?.backImageUrl  ?? undefined;
+
+    // If there's a photo jersey, capture the customized design (stickers + overlays)
+    if (stageRef.current && selectedColor?.frontImageUrl) {
+      try {
+        const { front, back } = await stageRef.current.captureSnapshot();
+
+        const uploadDataUrl = async (dataUrl: string, label: string): Promise<string | undefined> => {
+          const blob = await fetch(dataUrl).then(r => r.blob());
+          const file = new File([blob], `design-${label}-${Date.now()}.jpg`, { type: "image/jpeg" });
+
+          // Step 1: Request presigned URL
+          const reqRes = await fetch("/api/storage/uploads/request-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+          });
+          if (!reqRes.ok) return undefined;
+          const { uploadURL, objectPath } = await reqRes.json() as { uploadURL: string; objectPath: string };
+
+          // Step 2: Upload to presigned URL
+          const uploadRes = await fetch(uploadURL, {
+            method: "PUT", body: file,
+            headers: { "Content-Type": file.type },
+          });
+          if (!uploadRes.ok) return undefined;
+          return `/api/storage${objectPath}`;
+        };
+
+        const [uploadedFront, uploadedBack] = await Promise.all([
+          front ? uploadDataUrl(front, "front") : Promise.resolve(undefined),
+          back  ? uploadDataUrl(back,  "back")  : Promise.resolve(undefined),
+        ]);
+        if (uploadedFront) capturedFront = uploadedFront;
+        if (uploadedBack)  capturedBack  = uploadedBack;
+      } catch {
+        // Fallback to raw jersey photos on error
+      }
+    }
+
     updateOrder({
       teamId: team!.id, teamName: team!.name, basePrice: team!.basePrice,
       color: colors.body, size: size as "XS" | "S" | "M" | "L" | "XL" | "XXL",
@@ -243,8 +288,8 @@ export default function TeamDetail() {
       quantity: 1, previewColor: colors.body,
       previewName: name || "BASMAH", previewNumber: number || "10",
       playerName: name || undefined,
-      frontImageUrl: selectedColor?.frontImageUrl ?? undefined,
-      backImageUrl: selectedColor?.backImageUrl ?? undefined,
+      frontImageUrl: capturedFront,
+      backImageUrl:  capturedBack,
       jerseyColorName: selectedColor?.name ?? undefined,
     });
     setLocation("/order");
@@ -389,6 +434,7 @@ export default function TeamDetail() {
         {/* ══ CENTER ══ */}
         <div className="flex-1 relative min-w-0 overflow-hidden">
           <ShirtStickerStage
+            ref={stageRef}
             colors={colors}
             name={name}
             number={number}

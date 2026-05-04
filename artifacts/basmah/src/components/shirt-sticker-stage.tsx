@@ -4,7 +4,7 @@
  * When a photo is used, name + number are overlaid as text on top.
  */
 import {
-  useState, useRef, useCallback, useEffect,
+  useState, useRef, useCallback, useEffect, forwardRef, useImperativeHandle,
   type PointerEvent as RPointerEvent,
   type MouseEvent as RMouseEvent,
 } from "react";
@@ -38,6 +38,11 @@ function StickerImg({ s, className, style }: {
   return <canvas ref={canvasRef} className={className} style={style} />;
 }
 
+export interface ShirtStickerStageHandle {
+  /** Renders front+back to offscreen canvases. Returns data-URL strings (jpeg). */
+  captureSnapshot: () => Promise<{ front: string | null; back: string | null }>;
+}
+
 export interface ShirtStickerStageProps {
   colors: JerseyColors;
   name: string;
@@ -53,14 +58,14 @@ export interface ShirtStickerStageProps {
   onViewChange?: (v: "front" | "back") => void;
 }
 
-export function ShirtStickerStage({
+export const ShirtStickerStage = forwardRef<ShirtStickerStageHandle, ShirtStickerStageProps>(function ShirtStickerStageInner({
   colors, name, number, fontId,
   photoFront, photoBack,
   pendingSticker, onStickerPlaced,
   accentColor,
   view: externalView,
   onViewChange,
-}: ShirtStickerStageProps) {
+}: ShirtStickerStageProps, ref) {
 
   const [internalView, setInternalView] = useState<"front" | "back">("front");
   const view    = externalView ?? internalView;
@@ -90,11 +95,11 @@ export function ShirtStickerStage({
     setFlipping(true);
     setScaleX(0);
     setTimeout(() => {
-      setView(v => v === "front" ? "back" : "front");
+      setView(view === "front" ? "back" : "front");
       setScaleX(1);
       setTimeout(() => setFlipping(false), 300);
     }, 260);
-  }, [flipping]);
+  }, [flipping, view, setView]);
 
   function getJerseyPct(e: PointerEvent | RPointerEvent<HTMLDivElement>): { x: number; y: number } | null {
     if (!jerseyRef.current) return null;
@@ -196,6 +201,75 @@ export function ShirtStickerStage({
   };
   const overlayFont = fontMap[fontId] ?? fontMap.block;
 
+  /* ── captureSnapshot ─────────────────────────────────── */
+  useImperativeHandle(ref, () => ({
+    captureSnapshot: async () => {
+      const el = jerseyRef.current;
+      if (!el) return { front: null, back: null };
+      const { width: w, height: h } = el.getBoundingClientRect();
+
+      const compose = async (
+        photoUrl: string | undefined | null,
+        sideStickers: PlacedSticker[],
+        isBack: boolean,
+      ): Promise<string | null> => {
+        if (!photoUrl) return null;
+        const canvas = document.createElement("canvas");
+        canvas.width  = w * 2;
+        canvas.height = h * 2;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return null;
+        ctx.scale(2, 2);
+
+        // Draw jersey photo
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        await new Promise<void>(resolve => {
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+          img.src = photoUrl;
+        });
+        ctx.drawImage(img, 0, 0, w, h);
+
+        // Draw stickers
+        for (const s of sideStickers) {
+          const sc = getStickerCanvas(s.stickerDef);
+          if (!sc) continue;
+          const sz = s.size;
+          ctx.drawImage(sc, (s.x / 100) * w - sz / 2, (s.y / 100) * h - sz / 2, sz, sz);
+        }
+
+        // Draw name/number text on back view
+        if (isBack) {
+          ctx.textAlign = "center";
+          ctx.shadowColor = "rgba(0,0,0,0.95)";
+          ctx.shadowBlur = 10;
+          if (name) {
+            ctx.font = `900 22px ${overlayFont}`;
+            ctx.fillStyle = colors.trim;
+            ctx.fillText(name.toUpperCase(), w / 2, h * 0.33);
+          }
+          if (number) {
+            ctx.font = `900 80px ${overlayFont}`;
+            ctx.fillStyle = colors.trim;
+            ctx.fillText(number, w / 2, h * 0.58);
+          }
+          ctx.shadowBlur = 0;
+        }
+
+        return canvas.toDataURL("image/jpeg", 0.88);
+      };
+
+      const frontStickers = stickers.filter(s => s.side === "front");
+      const backStickers  = stickers.filter(s => s.side === "back");
+      const [front, back] = await Promise.all([
+        compose(photoFront, frontStickers, false),
+        compose(photoBack ?? photoFront, backStickers, true),
+      ]);
+      return { front, back };
+    },
+  }), [stickers, photoFront, photoBack, name, number, colors.trim, overlayFont]);
+
   return (
     <div
       className="relative w-full h-full flex flex-col items-center justify-center select-none overflow-hidden"
@@ -217,6 +291,7 @@ export function ShirtStickerStage({
           transform: `scaleX(${scaleX})`,
           transition: `transform ${flipping ? "0.26s" : "0s"} cubic-bezier(0.4,0,0.6,1)`,
           filter: "drop-shadow(0 30px 55px rgba(0,0,0,0.86))",
+          touchAction: "none",
         }}
         onPointerDown={onJerseyPointerDown}
         onPointerMove={onJerseyPointerMove}
@@ -369,11 +444,23 @@ export function ShirtStickerStage({
         <span className="text-[10px] text-white/30 font-bold">{isFront ? "الأمام" : "الخلف"}</span>
       </div>
 
-      {stickers.length > 0 && (
+      {/* Flip button — always visible on mobile, subtle on desktop */}
+      {!pendingSticker && (
+        <button
+          onClick={doFlip}
+          className="absolute top-4 right-4 flex items-center gap-1.5 bg-black/60 border border-white/[0.14] hover:border-[#bfff00]/50 hover:text-[#bfff00] text-white/50 text-[10px] font-black px-2.5 py-1.5 rounded-full backdrop-blur-sm transition-all active:scale-95 select-none"
+          style={{ zIndex: 30 }}
+        >
+          <span style={{ display: "inline-block", transform: "scaleX(-1)" }}>↻</span>
+          {isFront ? "الخلف" : "الأمام"}
+        </button>
+      )}
+
+      {stickers.length > 0 && pendingSticker && (
         <div className="absolute top-4 right-4 bg-[#bfff00]/10 border border-[#bfff00]/25 text-[#bfff00] text-[9px] font-black px-2 py-1 rounded-full">
           {stickers.length} ستيكر
         </div>
       )}
     </div>
   );
-}
+});
