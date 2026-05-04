@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { JerseyPreview } from "@/components/jersey-preview";
+import { JerseyPreview3D } from "@/components/jersey-3d";
 import { useOrder } from "@/components/order-context";
 
 export default function TeamDetail() {
@@ -83,32 +83,26 @@ export default function TeamDetail() {
     <div className="container mx-auto px-4 py-8 md:py-16">
       <div className="flex flex-col md:flex-row gap-12 items-start">
         
-        {/* Left Side: Jersey Preview */}
+        {/* Left Side: Jersey 3D Preview */}
         <div className="w-full md:w-1/2 flex flex-col items-center justify-center sticky top-24">
-          <div className="w-full max-w-[500px] aspect-[4/5] bg-card border border-border flex items-center justify-center p-8 relative overflow-hidden group">
-            {/* Background glowing effect */}
-            <motion.div 
-              className="absolute inset-0 opacity-20 blur-3xl transition-colors duration-700"
+          <div className="w-full max-w-[500px] h-[520px] bg-card border border-border relative overflow-hidden">
+            {/* Glow background */}
+            <div
+              className="absolute inset-0 opacity-15 blur-3xl transition-colors duration-700 pointer-events-none"
               style={{ backgroundColor: color || team.primaryColor }}
             />
-            
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={color}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.05 }}
-                transition={{ duration: 0.3 }}
-                className="w-full h-full relative z-10"
-              >
-                <JerseyPreview 
-                  color={color || team.primaryColor} 
-                  name={name || "BASMAH"} 
-                  number={number || "10"}
-                  secondaryColor={team.secondaryColor}
-                />
-              </motion.div>
-            </AnimatePresence>
+            {/* Hint text */}
+            <div className="absolute bottom-3 left-0 right-0 text-center text-xs text-muted-foreground z-10 pointer-events-none select-none">
+              اسحب لتدوير القميص ↔
+            </div>
+            <div className="w-full h-full relative z-10">
+              <JerseyPreview3D
+                color={color || team.primaryColor}
+                secondaryColor={team.secondaryColor}
+                name={name || "BASMAH"}
+                number={number || "10"}
+              />
+            </div>
           </div>
         </div>
 
