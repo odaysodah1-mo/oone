@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from "react";
-import { CreateOrderBody } from "@workspace/api-client-react/src/generated/api.schemas";
+import { CreateOrderBody } from "@workspace/api-client-react";
 
 type PartialOrder = Partial<CreateOrderBody> & {
   teamName?: string;

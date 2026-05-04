@@ -120,7 +120,7 @@ router.patch("/admin/teams/:id", async (req, res) => {
   }
   try {
     const [updated] = await db
-      .update(teamsTable).set(update as Parameters<typeof db.update>[0])
+      .update(teamsTable).set(update as Partial<typeof teamsTable.$inferInsert>)
       .where(eq(teamsTable.id, id)).returning();
     if (!updated) { res.status(404).json({ error: "Team not found" }); return; }
     res.json({
@@ -198,7 +198,7 @@ router.patch("/admin/teams/:teamId/colors/:colorId", async (req, res) => {
   try {
     const [updated] = await db
       .update(jerseyColorsTable)
-      .set(update as Parameters<typeof db.update>[0])
+      .set(update as Partial<typeof jerseyColorsTable.$inferInsert>)
       .where(eq(jerseyColorsTable.id, colorId)).returning();
     if (!updated) { res.status(404).json({ error: "Color not found" }); return; }
     res.json(updated);
@@ -360,7 +360,7 @@ router.put("/admin/stickers/:id", async (req, res) => {
   if (Object.keys(update).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
   try {
     const [updated] = await db.update(stickersTable)
-      .set(update as Parameters<typeof db.update>[0])
+      .set(update as Partial<typeof stickersTable.$inferInsert>)
       .where(eq(stickersTable.id, id)).returning();
     if (!updated) { res.status(404).json({ error: "Not found" }); return; }
     res.json(updated);
