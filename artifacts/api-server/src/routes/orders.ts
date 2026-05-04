@@ -50,6 +50,10 @@ router.post("/orders", async (req, res) => {
         customerPhone: data.customerPhone,
         customerCity: data.customerCity,
         status: "pending",
+        playerName: data.playerName ?? null,
+        frontImageUrl: data.frontImageUrl ?? null,
+        backImageUrl: data.backImageUrl ?? null,
+        jerseyColorName: data.jerseyColorName ?? null,
       })
       .returning();
 

@@ -19,6 +19,10 @@ interface Order {
   jerseyNumber: string; size: string; color: string; quantity: number;
   totalPrice: number; customerPhone: string; customerCity: string;
   status: OrderStatus; createdAt: string;
+  playerName?: string | null;
+  frontImageUrl?: string | null;
+  backImageUrl?: string | null;
+  jerseyColorName?: string | null;
 }
 
 interface Team {
@@ -227,11 +231,98 @@ function StatCard({ label, value, icon, color }: { label: string; value: string 
   );
 }
 
+/* ─── Design Preview Modal ───────────────────────────────── */
+function DesignPreviewModal({ order, onClose }: { order: Order; onClose: () => void }) {
+  const hasPhoto = !!order.frontImageUrl;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <div>
+            <h2 className="font-bold text-slate-800">تصميم الطلب #{order.id}</h2>
+            <p className="text-xs text-slate-500 mt-0.5">{order.customerName} — {order.teamName}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
+        </div>
+
+        {/* Jersey Preview */}
+        <div className="bg-slate-900 flex items-center justify-center py-8 px-6 relative" style={{ minHeight: 280 }}>
+          {hasPhoto ? (
+            <div className="relative" style={{ width: 180, height: 230 }}>
+              <img src={order.frontImageUrl!} alt="front"
+                className="w-full h-full object-contain"
+                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+              {/* Name overlay */}
+              {order.playerName && (
+                <div style={{
+                  position: "absolute", top: "28%", left: "50%", transform: "translateX(-50%)",
+                  fontFamily: "Impact, Arial Black, sans-serif", fontWeight: 900,
+                  fontSize: 14, color: "#fff", textShadow: "0 2px 8px rgba(0,0,0,0.9)",
+                  letterSpacing: 2, whiteSpace: "nowrap", textAlign: "center",
+                }}>
+                  {order.playerName.toUpperCase()}
+                </div>
+              )}
+              {/* Number overlay */}
+              {order.jerseyNumber && (
+                <div style={{
+                  position: "absolute", top: "44%", left: "50%", transform: "translateX(-50%)",
+                  fontFamily: "Impact, Arial Black, sans-serif", fontWeight: 900,
+                  fontSize: 52, color: "#fff", textShadow: "0 4px 16px rgba(0,0,0,0.95)",
+                  letterSpacing: -2, lineHeight: 1, whiteSpace: "nowrap",
+                }}>
+                  {order.jerseyNumber}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-10">
+              <div className="w-20 h-20 rounded-full mx-auto mb-3 flex items-center justify-center"
+                style={{ backgroundColor: order.color || "#1a1a2e" }}>
+                <Shirt size={36} className="text-white" />
+              </div>
+              <p className="text-white/60 text-sm">لا توجد صورة للجيرسيه</p>
+            </div>
+          )}
+
+          {/* Back photo thumbnail */}
+          {order.backImageUrl && (
+            <div className="absolute bottom-3 left-3">
+              <img src={order.backImageUrl} alt="back"
+                className="w-16 h-20 object-contain rounded-lg border border-white/20 bg-white/5"
+                title="الخلف" />
+              <p className="text-white/40 text-[9px] text-center mt-0.5">الخلف</p>
+            </div>
+          )}
+        </div>
+
+        {/* Details */}
+        <div className="px-5 py-4 space-y-2" dir="rtl">
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div><span className="text-slate-400 text-xs block">الاسم على الجيرسيه</span><span className="font-bold text-slate-800">{order.playerName || "—"}</span></div>
+            <div><span className="text-slate-400 text-xs block">الرقم</span><span className="font-bold text-slate-800 text-lg">{order.jerseyNumber}</span></div>
+            <div><span className="text-slate-400 text-xs block">لون الجيرسيه</span><span className="font-medium text-slate-700">{order.jerseyColorName || order.color}</span></div>
+            <div><span className="text-slate-400 text-xs block">المقاس</span><span className="font-bold text-slate-800">{order.size}</span></div>
+            <div><span className="text-slate-400 text-xs block">المدينة</span><span className="font-medium text-slate-700">{order.customerCity}</span></div>
+            <div><span className="text-slate-400 text-xs block">الهاتف</span><span className="font-medium text-slate-700" dir="ltr">{order.customerPhone}</span></div>
+          </div>
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+            <span className="text-xs text-slate-400">{new Date(order.createdAt).toLocaleDateString("ar-JO")}</span>
+            <span className="text-lg font-bold text-emerald-600">{order.totalPrice} د.أ</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Orders ─────────────────────────────────────────────── */
 function OrdersSection() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -254,6 +345,7 @@ function OrdersSection() {
 
   return (
     <div dir="rtl">
+      {previewOrder && <DesignPreviewModal order={previewOrder} onClose={() => setPreviewOrder(null)} />}
       <PageHeader title="إدارة الطلبات" subtitle={`${orders.length} طلب`}>
         <button onClick={load} className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-1.5">
           <RefreshCw size={14} />تحديث
@@ -265,6 +357,7 @@ function OrdersSection() {
             <thead className="bg-slate-50 text-slate-500 text-xs">
               <tr>
                 <th className="text-right px-4 py-3 font-medium">#</th>
+                <th className="text-right px-4 py-3 font-medium">التصميم</th>
                 <th className="text-right px-4 py-3 font-medium">العميل</th>
                 <th className="text-right px-4 py-3 font-medium">الهاتف</th>
                 <th className="text-right px-4 py-3 font-medium">الفريق / الرقم</th>
@@ -278,6 +371,23 @@ function OrdersSection() {
               {orders.map(o => (
                 <tr key={o.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-slate-400 font-mono">#{o.id}</td>
+                  <td className="px-4 py-2">
+                    <button onClick={() => setPreviewOrder(o)}
+                      className="group relative w-12 h-14 flex items-center justify-center rounded-lg overflow-hidden border border-slate-200 hover:border-emerald-400 hover:shadow-md transition-all bg-slate-50">
+                      {o.frontImageUrl ? (
+                        <img src={o.frontImageUrl} alt="jersey"
+                          className="w-full h-full object-contain"
+                          onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: o.color || "#1a1a2e" }}>
+                          <Shirt size={14} className="text-white" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-emerald-500/0 group-hover:bg-emerald-500/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                        <Eye size={14} className="text-emerald-600" />
+                      </div>
+                    </button>
+                  </td>
                   <td className="px-4 py-3 font-medium text-slate-800">{o.customerName}</td>
                   <td className="px-4 py-3 text-slate-600 font-mono" dir="ltr">{o.customerPhone}</td>
                   <td className="px-4 py-3 text-slate-600">{o.teamName} / {o.jerseyNumber}</td>
@@ -290,7 +400,7 @@ function OrdersSection() {
                 </tr>
               ))}
               {orders.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-400">لا توجد طلبات بعد</td></tr>
+                <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-400">لا توجد طلبات بعد</td></tr>
               )}
             </tbody>
           </table>

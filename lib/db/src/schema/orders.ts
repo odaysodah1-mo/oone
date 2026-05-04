@@ -17,6 +17,10 @@ export const ordersTable = pgTable("orders", {
   customerCity: text("customer_city").notNull(),
   status: text("status").notNull().default("pending"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  playerName: text("player_name"),
+  frontImageUrl: text("front_image_url"),
+  backImageUrl: text("back_image_url"),
+  jerseyColorName: text("jersey_color_name"),
 });
 
 export const insertOrderSchema = createInsertSchema(ordersTable).omit({ id: true, createdAt: true });

@@ -234,6 +234,10 @@ export default function TeamDetail() {
       customerName: name || "BASMAH", jerseyNumber: number || "10",
       quantity: 1, previewColor: colors.body,
       previewName: name || "BASMAH", previewNumber: number || "10",
+      playerName: name || undefined,
+      frontImageUrl: selectedColor?.frontImageUrl ?? undefined,
+      backImageUrl: selectedColor?.backImageUrl ?? undefined,
+      jerseyColorName: selectedColor?.name ?? undefined,
     });
     setLocation("/order");
   };

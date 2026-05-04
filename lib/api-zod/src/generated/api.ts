@@ -119,6 +119,13 @@ export const CreateOrderBody = zod.object({
   quantity: zod.number().min(1),
   customerPhone: zod.string(),
   customerCity: zod.string(),
+  playerName: zod.string().optional().describe("Player name text on jersey"),
+  frontImageUrl: zod.string().optional().describe("Front jersey photo URL"),
+  backImageUrl: zod.string().optional().describe("Back jersey photo URL"),
+  jerseyColorName: zod
+    .string()
+    .optional()
+    .describe("Name of the selected jersey color"),
 });
 
 /**

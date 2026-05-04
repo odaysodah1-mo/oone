@@ -61,6 +61,14 @@ export interface CreateOrderBody {
   quantity: number;
   customerPhone: string;
   customerCity: string;
+  /** Player name text on jersey */
+  playerName?: string;
+  /** Front jersey photo URL */
+  frontImageUrl?: string;
+  /** Back jersey photo URL */
+  backImageUrl?: string;
+  /** Name of the selected jersey color */
+  jerseyColorName?: string;
 }
 
 export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];

@@ -227,6 +227,18 @@ components:
           type: string
         customerCity:
           type: string
+        playerName:
+          type: string
+          description: Player name text on jersey
+        frontImageUrl:
+          type: string
+          description: Front jersey photo URL
+        backImageUrl:
+          type: string
+          description: Back jersey photo URL
+        jerseyColorName:
+          type: string
+          description: Name of the selected jersey color
       required:
         - teamId
         - customerName
