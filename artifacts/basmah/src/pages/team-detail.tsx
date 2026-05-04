@@ -101,6 +101,7 @@ export default function TeamDetail() {
                 secondaryColor={team.secondaryColor}
                 name={name || "BASMAH"}
                 number={number || "10"}
+                imageUrl={team.logoUrl}
               />
             </div>
           </div>

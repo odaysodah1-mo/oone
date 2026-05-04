@@ -15,11 +15,7 @@ function JerseySvgFace({
 }) {
   const id = (color + secondaryColor + side).replace(/[^a-z0-9]/gi, "");
   return (
-    <svg
-      viewBox="0 0 400 480"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ width: "100%", height: "100%" }}
-    >
+    <svg viewBox="0 0 400 480" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%" }}>
       <defs>
         <linearGradient id={`g1-${id}`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor={color} stopOpacity="1" />
@@ -46,101 +42,108 @@ function JerseySvgFace({
           <stop offset="100%" stopColor={color} stopOpacity="1" />
         </linearGradient>
       </defs>
-
       <g filter={`url(#shadow-${id})`}>
-        {/* Left sleeve */}
         <path d="M 118 62 L 22 168 L 70 202 L 128 136 Z" fill={`url(#sleeveL-${id})`} />
         <path d="M 118 62 L 22 168 L 36 180 L 128 76 Z" fill={secondaryColor} opacity="0.6" />
-
-        {/* Right sleeve */}
         <path d="M 282 62 L 378 168 L 330 202 L 272 136 Z" fill={`url(#sleeveR-${id})`} />
         <path d="M 282 62 L 378 168 L 364 180 L 272 76 Z" fill={secondaryColor} opacity="0.6" />
-
-        {/* Main body */}
-        <path
-          d="M 118 62 C 158 84 242 84 282 62 L 308 126 L 302 148 L 302 448 C 262 460 138 460 98 448 L 98 148 L 92 126 Z"
-          fill={`url(#g1-${id})`}
-        />
-        {/* Fabric texture */}
-        <path
-          d="M 118 62 C 158 84 242 84 282 62 L 308 126 L 302 148 L 302 448 C 262 460 138 460 98 448 L 98 148 L 92 126 Z"
-          fill={`url(#weave-${id})`}
-        />
-        {/* Shine */}
+        <path d="M 118 62 C 158 84 242 84 282 62 L 308 126 L 302 148 L 302 448 C 262 460 138 460 98 448 L 98 148 L 92 126 Z" fill={`url(#g1-${id})`} />
+        <path d="M 118 62 C 158 84 242 84 282 62 L 308 126 L 302 148 L 302 448 C 262 460 138 460 98 448 L 98 148 L 92 126 Z" fill={`url(#weave-${id})`} />
         <path d="M 142 63 C 172 82 228 82 262 65 L 268 116 L 138 112 Z" fill={`url(#shine-${id})`} />
-
-        {/* Side seams */}
         <path d="M 98 158 L 98 448" stroke={secondaryColor} strokeWidth="1.5" opacity="0.2" />
         <path d="M 302 158 L 302 448" stroke={secondaryColor} strokeWidth="1.5" opacity="0.2" />
-
-        {/* Chest stripe */}
         <rect x="98" y="162" width="204" height="7" fill={secondaryColor} opacity="0.25" rx="1" />
-
-        {/* Collar outer */}
-        <path
-          d="M 156 62 C 174 98 200 110 226 98 C 241 90 250 74 252 62 C 232 52 168 52 156 62 Z"
-          fill={secondaryColor}
-          opacity="0.82"
-        />
-        {/* Collar inner */}
-        <path
-          d="M 168 63 C 182 92 200 102 218 92 C 228 86 234 74 236 64 C 220 56 180 56 168 63 Z"
-          fill={color}
-        />
+        <path d="M 156 62 C 174 98 200 110 226 98 C 241 90 250 74 252 62 C 232 52 168 52 156 62 Z" fill={secondaryColor} opacity="0.82" />
+        <path d="M 168 63 C 182 92 200 102 218 92 C 228 86 234 74 236 64 C 220 56 180 56 168 63 Z" fill={color} />
       </g>
-
       {side === "front" ? (
         <>
-          {/* Player name */}
-          <text
-            x="200"
-            y="228"
-            fontSize="32"
-            fontWeight="900"
-            fill={secondaryColor}
-            textAnchor="middle"
-            letterSpacing="3"
-            fontFamily="system-ui, Arial, sans-serif"
-            style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))" }}
-          >
+          <text x="200" y="228" fontSize="32" fontWeight="900" fill={secondaryColor} textAnchor="middle" letterSpacing="3" fontFamily="system-ui, Arial, sans-serif" style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))" }}>
             {name.toUpperCase()}
           </text>
-          {/* Player number */}
-          <text
-            x="200"
-            y="390"
-            fontSize="155"
-            fontWeight="900"
-            fill={secondaryColor}
-            textAnchor="middle"
-            fontFamily="system-ui, Arial, sans-serif"
-            style={{
-              letterSpacing: "-6px",
-              filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.6))",
-            }}
-          >
+          <text x="200" y="390" fontSize="155" fontWeight="900" fill={secondaryColor} textAnchor="middle" fontFamily="system-ui, Arial, sans-serif" style={{ letterSpacing: "-6px", filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.6))" }}>
             {number}
           </text>
         </>
       ) : (
-        /* Back: number only centered */
-        <text
-          x="200"
-          y="370"
-          fontSize="155"
-          fontWeight="900"
-          fill={secondaryColor}
-          textAnchor="middle"
-          fontFamily="system-ui, Arial, sans-serif"
-          style={{
-            letterSpacing: "-6px",
-            filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.6))",
-          }}
-        >
+        <text x="200" y="370" fontSize="155" fontWeight="900" fill={secondaryColor} textAnchor="middle" fontFamily="system-ui, Arial, sans-serif" style={{ letterSpacing: "-6px", filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.6))" }}>
           {number}
         </text>
       )}
     </svg>
+  );
+}
+
+function PhotoFace({
+  imageUrl,
+  name,
+  number,
+  secondaryColor,
+  side = "front",
+}: {
+  imageUrl: string;
+  name: string;
+  number: string;
+  secondaryColor: string;
+  side?: "front" | "back";
+}) {
+  return (
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <img
+        src={imageUrl}
+        alt="jersey"
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "contain",
+          objectPosition: "center top",
+          filter: "drop-shadow(0 12px 24px rgba(0,0,0,0.6))",
+          transform: side === "back" ? "scaleX(-1)" : undefined,
+        }}
+      />
+      {/* Overlay name + number on top of real photo */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          paddingBottom: "14%",
+          pointerEvents: "none",
+        }}
+      >
+        {side === "front" && (
+          <span
+            style={{
+              color: secondaryColor === "#ffffff" ? "#333" : secondaryColor,
+              fontSize: "clamp(10px, 3.5vw, 22px)",
+              fontWeight: 900,
+              letterSpacing: "3px",
+              textShadow: "0 1px 4px rgba(0,0,0,0.4)",
+              fontFamily: "system-ui, Arial, sans-serif",
+              marginBottom: "4px",
+            }}
+          >
+            {name.toUpperCase()}
+          </span>
+        )}
+        <span
+          style={{
+            color: secondaryColor === "#ffffff" ? "#333" : secondaryColor,
+            fontSize: "clamp(28px, 10vw, 80px)",
+            fontWeight: 900,
+            lineHeight: 1,
+            textShadow: "0 2px 8px rgba(0,0,0,0.4)",
+            fontFamily: "system-ui, Arial, sans-serif",
+            letterSpacing: "-2px",
+          }}
+        >
+          {number}
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -149,25 +152,26 @@ export function JerseyPreview3D({
   secondaryColor = "#ffffff",
   name,
   number,
+  imageUrl,
 }: {
   color: string;
   secondaryColor?: string;
   name: string;
   number: string;
+  imageUrl?: string | null;
 }) {
   const [rotY, setRotY] = useState(0);
   const isDragging = useRef(false);
   const lastX = useRef(0);
   const rafRef = useRef<number>(0);
   const autoRef = useRef(true);
+  const angleRef = useRef(0);
 
-  // Auto-rotate loop
   useEffect(() => {
-    let angle = 0;
     const tick = () => {
       if (autoRef.current) {
-        angle += 0.5;
-        setRotY(angle);
+        angleRef.current += 0.45;
+        setRotY(angleRef.current);
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -186,19 +190,14 @@ export function JerseyPreview3D({
     if (!isDragging.current) return;
     const dx = e.clientX - lastX.current;
     lastX.current = e.clientX;
-    setRotY((prev) => prev + dx * 0.6);
+    angleRef.current += dx * 0.6;
+    setRotY(angleRef.current);
   };
 
   const onPointerUp = () => {
     isDragging.current = false;
-    // Resume auto-rotate after 1.5s idle
-    setTimeout(() => {
-      autoRef.current = true;
-    }, 1500);
+    setTimeout(() => { autoRef.current = true; }, 1500);
   };
-
-  const normalised = ((rotY % 360) + 360) % 360;
-  const showFront = normalised < 90 || normalised >= 270;
 
   return (
     <div
@@ -211,49 +210,29 @@ export function JerseyPreview3D({
     >
       <div
         style={{
-          width: "75%",
-          height: "88%",
+          width: imageUrl ? "70%" : "75%",
+          height: imageUrl ? "92%" : "88%",
           position: "relative",
           transformStyle: "preserve-3d",
           transform: `rotateY(${rotY}deg)`,
-          transition: isDragging.current ? "none" : undefined,
         }}
       >
         {/* Front face */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backfaceVisibility: "hidden",
-            WebkitBackfaceVisibility: "hidden",
-          }}
-        >
-          <JerseySvgFace
-            color={color}
-            secondaryColor={secondaryColor}
-            name={name}
-            number={number}
-            side="front"
-          />
+        <div style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}>
+          {imageUrl ? (
+            <PhotoFace imageUrl={imageUrl} name={name} number={number} secondaryColor={secondaryColor} side="front" />
+          ) : (
+            <JerseySvgFace color={color} secondaryColor={secondaryColor} name={name} number={number} side="front" />
+          )}
         </div>
 
         {/* Back face */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backfaceVisibility: "hidden",
-            WebkitBackfaceVisibility: "hidden",
-            transform: "rotateY(180deg)",
-          }}
-        >
-          <JerseySvgFace
-            color={color}
-            secondaryColor={secondaryColor}
-            name={name}
-            number={number}
-            side="back"
-          />
+        <div style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
+          {imageUrl ? (
+            <PhotoFace imageUrl={imageUrl} name={name} number={number} secondaryColor={secondaryColor} side="back" />
+          ) : (
+            <JerseySvgFace color={color} secondaryColor={secondaryColor} name={name} number={number} side="back" />
+          )}
         </div>
       </div>
     </div>
