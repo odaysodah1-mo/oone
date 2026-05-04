@@ -228,8 +228,8 @@ export function ShirtStickerStage({
               style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center top", userSelect: "none" }}
             />
 
-            {/* Name + Number overlay on photo */}
-            {(name || number) && (
+            {/* Name + Number overlay on photo — back only */}
+            {!isFront && (name || number) && (
               <div className="absolute inset-0 pointer-events-none flex flex-col items-center"
                 style={{ userSelect: "none" }}>
                 {/* Name — positioned at ~45% from top */}
