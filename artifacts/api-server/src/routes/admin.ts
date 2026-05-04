@@ -44,7 +44,7 @@ router.patch("/admin/orders/:id/status", async (req, res) => {
 });
 
 /* ════════════════════════════════════════════════════
-   JERSEY COLORS — per team
+   TEAMS — list + update (price, colors, info)
 ════════════════════════════════════════════════════ */
 router.get("/admin/teams", async (req, res) => {
   try {
@@ -60,6 +60,43 @@ router.get("/admin/teams", async (req, res) => {
   }
 });
 
+router.patch("/admin/teams/:id", async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid team id" }); return; }
+
+  const { basePrice, primaryColor, secondaryColor, name, nameEn, isPopular } = req.body as Record<string, unknown>;
+  const update: Record<string, unknown> = {};
+  if (typeof basePrice === "number" && basePrice > 0) update.basePrice = basePrice;
+  if (typeof primaryColor === "string" && primaryColor) update.primaryColor = primaryColor;
+  if (typeof secondaryColor === "string" && secondaryColor) update.secondaryColor = secondaryColor;
+  if (typeof name === "string" && name) update.name = name;
+  if (typeof nameEn === "string" && nameEn) update.nameEn = nameEn;
+  if (typeof isPopular === "boolean") update.isPopular = isPopular;
+
+  if (Object.keys(update).length === 0) {
+    res.status(400).json({ error: "Nothing to update" }); return;
+  }
+  try {
+    const [updated] = await db
+      .update(teamsTable)
+      .set(update as Parameters<typeof db.update>[0])
+      .where(eq(teamsTable.id, id))
+      .returning();
+    if (!updated) { res.status(404).json({ error: "Team not found" }); return; }
+    res.json({
+      ...updated,
+      availableColors: JSON.parse(updated.availableColors),
+      availableSizes: JSON.parse(updated.availableSizes),
+    });
+  } catch (err) {
+    req.log.error({ err }, "admin: failed to update team");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* ════════════════════════════════════════════════════
+   JERSEY COLORS — per team CRUD
+════════════════════════════════════════════════════ */
 router.get("/admin/teams/:id/colors", async (req, res) => {
   const teamId = parseInt(req.params.id, 10);
   if (isNaN(teamId)) { res.status(400).json({ error: "Invalid team id" }); return; }
@@ -78,7 +115,7 @@ router.get("/admin/teams/:id/colors", async (req, res) => {
 router.post("/admin/teams/:id/colors", async (req, res) => {
   const teamId = parseInt(req.params.id, 10);
   if (isNaN(teamId)) { res.status(400).json({ error: "Invalid team id" }); return; }
-  const { name, imageUrl, hexCode, isDefault, sortOrder } = req.body as Record<string, unknown>;
+  const { name, imageUrl, hexCode, secondaryHexCode, isDefault, sortOrder } = req.body as Record<string, unknown>;
   if (!name || typeof name !== "string" || !imageUrl || typeof imageUrl !== "string") {
     res.status(400).json({ error: "name and imageUrl are required" }); return;
   }
@@ -88,12 +125,41 @@ router.post("/admin/teams/:id/colors", async (req, res) => {
       name,
       imageUrl,
       hexCode: typeof hexCode === "string" ? hexCode : "#ffffff",
+      secondaryHexCode: typeof secondaryHexCode === "string" ? secondaryHexCode : "#000000",
       isDefault: Boolean(isDefault),
       sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
     }).returning();
     res.status(201).json(color);
   } catch (err) {
     req.log.error({ err }, "admin: failed to create jersey color");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/admin/teams/:teamId/colors/:colorId", async (req, res) => {
+  const colorId = parseInt(req.params.colorId, 10);
+  if (isNaN(colorId)) { res.status(400).json({ error: "Invalid color id" }); return; }
+  const { name, imageUrl, hexCode, secondaryHexCode, isDefault, sortOrder } = req.body as Record<string, unknown>;
+  const update: Record<string, unknown> = {};
+  if (typeof name === "string" && name) update.name = name;
+  if (typeof imageUrl === "string" && imageUrl) update.imageUrl = imageUrl;
+  if (typeof hexCode === "string") update.hexCode = hexCode;
+  if (typeof secondaryHexCode === "string") update.secondaryHexCode = secondaryHexCode;
+  if (typeof isDefault === "boolean") update.isDefault = isDefault;
+  if (typeof sortOrder === "number") update.sortOrder = sortOrder;
+  if (Object.keys(update).length === 0) {
+    res.status(400).json({ error: "Nothing to update" }); return;
+  }
+  try {
+    const [updated] = await db
+      .update(jerseyColorsTable)
+      .set(update as Parameters<typeof db.update>[0])
+      .where(eq(jerseyColorsTable.id, colorId))
+      .returning();
+    if (!updated) { res.status(404).json({ error: "Color not found" }); return; }
+    res.json(updated);
+  } catch (err) {
+    req.log.error({ err }, "admin: failed to update jersey color");
     res.status(500).json({ error: "Internal server error" });
   }
 });

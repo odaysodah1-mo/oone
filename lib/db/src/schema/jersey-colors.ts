@@ -9,6 +9,7 @@ export const jerseyColorsTable = pgTable("jersey_colors", {
   name: text("name").notNull(),
   imageUrl: text("image_url").notNull(),
   hexCode: text("hex_code").notNull().default("#ffffff"),
+  secondaryHexCode: text("secondary_hex_code").notNull().default("#000000"),
   isDefault: boolean("is_default").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
 });
