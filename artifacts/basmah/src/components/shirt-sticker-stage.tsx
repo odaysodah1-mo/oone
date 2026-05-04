@@ -1,13 +1,7 @@
 /**
- * ShirtStickerStage — 2D sticker-on-jersey customizer (no WebGL needed)
- * Works perfectly in the Replit preview environment.
- *
- * Features:
- *  • SVG jersey (or photo) displayed with 3D-look gradients
- *  • Click sticker from panel → click on jersey to place it
- *  • Drag placed stickers to reposition
- *  • scaleX flip animation to reveal front / back
- *  • Delete sticker on double-click
+ * ShirtStickerStage — 2D sticker-on-jersey customizer
+ * Supports both SVG jersey and real photo jersey.
+ * When a photo is used, name + number are overlaid as text on top.
  */
 import {
   useState, useRef, useCallback, useEffect,
@@ -18,27 +12,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ConfiguratorJersey, type JerseyColors } from "@/components/configurator-jersey";
 import { getStickerCanvas, type StickerDef } from "@/components/sticker-library";
 
-/* ══════════════════════════════════════════════════════════
-   TYPES
-══════════════════════════════════════════════════════════ */
 interface PlacedSticker {
   uid: string;
   stickerDef: StickerDef;
-  /** % relative to the jersey container (0-100) */
-  x: number;
+  x: number;   // % relative to jersey container
   y: number;
-  /** px size */
   size: number;
   side: "front" | "back";
 }
 
-/* ══════════════════════════════════════════════════════════
-   StickerImg — renders sticker def to a tiny canvas/img
-══════════════════════════════════════════════════════════ */
 function StickerImg({ s, className, style }: {
-  s: StickerDef;
-  className?: string;
-  style?: React.CSSProperties;
+  s: StickerDef; className?: string; style?: React.CSSProperties;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -54,23 +38,19 @@ function StickerImg({ s, className, style }: {
   return <canvas ref={canvasRef} className={className} style={style} />;
 }
 
-/* ══════════════════════════════════════════════════════════
-   Main component
-══════════════════════════════════════════════════════════ */
 export interface ShirtStickerStageProps {
   colors: JerseyColors;
   name: string;
   number: string;
   fontId: string;
-  /** photo jersey: front URL */
   photoFront?: string;
-  /** photo jersey: back URL */
   photoBack?: string;
-  /** selected sticker to place */
   pendingSticker: StickerDef | null;
   onStickerPlaced: () => void;
-  /** accent color for glow */
   accentColor?: string;
+  /* force view from outside (optional) */
+  view?: "front" | "back";
+  onViewChange?: (v: "front" | "back") => void;
 }
 
 export function ShirtStickerStage({
@@ -78,48 +58,44 @@ export function ShirtStickerStage({
   photoFront, photoBack,
   pendingSticker, onStickerPlaced,
   accentColor,
+  view: externalView,
+  onViewChange,
 }: ShirtStickerStageProps) {
 
-  /* ── View state ── */
-  const [view, setView]         = useState<"front" | "back">("front");
+  const [internalView, setInternalView] = useState<"front" | "back">("front");
+  const view    = externalView ?? internalView;
+  const setView = (v: "front" | "back") => {
+    if (onViewChange) onViewChange(v);
+    else setInternalView(v);
+  };
+
   const [flipping, setFlipping] = useState(false);
   const [scaleX, setScaleX]     = useState(1);
-
-  /* ── Placed stickers ── */
   const [stickers, setStickers] = useState<PlacedSticker[]>([]);
-
-  /* ── Cursor preview position (% within jersey) ── */
   const [preview, setPreview]   = useState<{ x: number; y: number } | null>(null);
 
-  /* ── Drag-to-move an existing sticker ── */
   const draggingUid  = useRef<string | null>(null);
   const dragOffset   = useRef({ x: 0, y: 0 });
-
-  /* ── Flip drag ── */
   const flipDrag     = useRef(false);
   const flipLastX    = useRef(0);
   const flipAccum    = useRef(0);
-
   const jerseyRef    = useRef<HTMLDivElement>(null);
 
-  const glow = accentColor ?? colors.body;
+  const glow    = accentColor ?? colors.body;
   const isFront = view === "front";
+  const hasPhoto = !!photoFront;
 
-  /* ── flip helper ── */
   const doFlip = useCallback(() => {
     if (flipping) return;
     setFlipping(true);
     setScaleX(0);
     setTimeout(() => {
-      setView((v) => (v === "front" ? "back" : "front"));
+      setView(v => v === "front" ? "back" : "front");
       setScaleX(1);
       setTimeout(() => setFlipping(false), 300);
     }, 260);
   }, [flipping]);
 
-  /* ─────────────────────────────────────────────────────
-     Get position % within the jersey container from event
-  ───────────────────────────────────────────────────── */
   function getJerseyPct(e: PointerEvent | RPointerEvent<HTMLDivElement>): { x: number; y: number } | null {
     if (!jerseyRef.current) return null;
     const rect = jerseyRef.current.getBoundingClientRect();
@@ -128,31 +104,21 @@ export function ShirtStickerStage({
     return { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) };
   }
 
-  /* ─────────────────────────────────────────────────────
-     Jersey pointer events — place sticker or drag-flip
-  ───────────────────────────────────────────────────── */
   const onJerseyPointerDown = useCallback((e: RPointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
-    if (pendingSticker) return; // handled on pointerup
+    if (pendingSticker) return;
     flipDrag.current  = true;
     flipLastX.current = e.clientX;
     flipAccum.current = 0;
   }, [pendingSticker]);
 
   const onJerseyPointerMove = useCallback((e: RPointerEvent<HTMLDivElement>) => {
-    if (pendingSticker) {
-      const pct = getJerseyPct(e);
-      setPreview(pct);
-      return;
-    }
+    if (pendingSticker) { setPreview(getJerseyPct(e)); return; }
     if (!flipDrag.current) return;
     const dx = e.clientX - flipLastX.current;
     flipLastX.current = e.clientX;
     flipAccum.current += dx;
-    if (Math.abs(flipAccum.current) > 100) {
-      doFlip();
-      flipAccum.current = 0;
-    }
+    if (Math.abs(flipAccum.current) > 100) { doFlip(); flipAccum.current = 0; }
   }, [pendingSticker, doFlip]);
 
   const onJerseyPointerUp = useCallback((e: RPointerEvent<HTMLDivElement>) => {
@@ -160,18 +126,13 @@ export function ShirtStickerStage({
     if (!pendingSticker) return;
     const pct = getJerseyPct(e);
     if (!pct) return;
-    const isText = !!pendingSticker.text;
-    setStickers((prev) => [
-      ...prev,
-      {
-        uid:        `${pendingSticker.id}-${Date.now()}`,
-        stickerDef: pendingSticker,
-        x:          pct.x,
-        y:          pct.y,
-        size:       isText ? 72 : 58,
-        side:       view,
-      },
-    ]);
+    setStickers(prev => [...prev, {
+      uid: `${pendingSticker.id}-${Date.now()}`,
+      stickerDef: pendingSticker,
+      x: pct.x, y: pct.y,
+      size: pendingSticker.text ? 72 : 58,
+      side: view,
+    }]);
     setPreview(null);
     onStickerPlaced();
   }, [pendingSticker, view, onStickerPlaced]);
@@ -181,17 +142,11 @@ export function ShirtStickerStage({
     flipDrag.current = false;
   }, []);
 
-  /* ─────────────────────────────────────────────────────
-     Drag placed stickers to reposition
-  ───────────────────────────────────────────────────── */
-  const onStickerPointerDown = useCallback((
-    uid: string,
-    e: RPointerEvent<HTMLDivElement>,
-  ) => {
+  const onStickerPointerDown = useCallback((uid: string, e: RPointerEvent<HTMLDivElement>) => {
     e.stopPropagation();
     if (pendingSticker) return;
     draggingUid.current = uid;
-    const sticker = stickers.find((s) => s.uid === uid);
+    const sticker = stickers.find(s => s.uid === uid);
     if (!sticker || !jerseyRef.current) return;
     const rect = jerseyRef.current.getBoundingClientRect();
     const curX = (sticker.x / 100) * rect.width  + rect.left;
@@ -206,7 +161,7 @@ export function ShirtStickerStage({
       const rect = jerseyRef.current.getBoundingClientRect();
       const x = ((e.clientX - dragOffset.current.x - rect.left) / rect.width)  * 100;
       const y = ((e.clientY - dragOffset.current.y - rect.top)  / rect.height) * 100;
-      setStickers((prev) => prev.map((s) =>
+      setStickers(prev => prev.map(s =>
         s.uid === draggingUid.current
           ? { ...s, x: Math.max(2, Math.min(98, x)), y: Math.max(2, Math.min(98, y)) }
           : s,
@@ -218,17 +173,22 @@ export function ShirtStickerStage({
     return () => { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); };
   }, []);
 
-  /* ── Double-click removes a sticker ── */
   const removeSticker = useCallback((uid: string, e: RMouseEvent) => {
     e.stopPropagation();
-    setStickers((prev) => prev.filter((s) => s.uid !== uid));
+    setStickers(prev => prev.filter(s => s.uid !== uid));
   }, []);
 
-  /* ─────────────────────────────────────────────────────
-     Render
-  ───────────────────────────────────────────────────── */
-  const visibleStickers = stickers.filter((s) => s.side === view);
-  const hasPhoto = !!photoFront;
+  const visibleStickers = stickers.filter(s => s.side === view);
+  const currentPhoto = isFront ? photoFront : (photoBack ?? photoFront);
+
+  /* font for text overlay on photos */
+  const fontMap: Record<string, string> = {
+    block:   "Impact, Arial Black, sans-serif",
+    sport:   "Arial Black, Helvetica, sans-serif",
+    classic: "Georgia, Times New Roman, serif",
+    slim:    "Trebuchet MS, Verdana, sans-serif",
+  };
+  const overlayFont = fontMap[fontId] ?? fontMap.block;
 
   return (
     <div
@@ -241,7 +201,7 @@ export function ShirtStickerStage({
         transition: "background 0.9s ease",
       }} />
 
-      {/* Jersey + sticker overlay container */}
+      {/* Jersey container */}
       <div
         ref={jerseyRef}
         className="relative z-10"
@@ -259,12 +219,61 @@ export function ShirtStickerStage({
       >
         {/* Jersey visual */}
         {hasPhoto ? (
-          <img
-            src={isFront ? photoFront! : (photoBack ?? photoFront!)}
-            alt={view}
-            draggable={false}
-            style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center top", userSelect: "none" }}
-          />
+          <>
+            {/* Photo */}
+            <img
+              src={currentPhoto}
+              alt={view}
+              draggable={false}
+              style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center top", userSelect: "none" }}
+            />
+
+            {/* Name + Number overlay on photo */}
+            {(name || number) && (
+              <div className="absolute inset-0 pointer-events-none flex flex-col items-center"
+                style={{ userSelect: "none" }}>
+                {/* Name — positioned at ~45% from top */}
+                {name && (
+                  <div style={{
+                    position: "absolute",
+                    top: isFront ? "28%" : "30%",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    fontFamily: overlayFont,
+                    fontWeight: 900,
+                    fontSize: "clamp(14px, 4vw, 26px)",
+                    color: colors.trim,
+                    textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.6)",
+                    letterSpacing: "3px",
+                    whiteSpace: "nowrap",
+                    maxWidth: "70%",
+                    textAlign: "center",
+                  }}>
+                    {name.toUpperCase()}
+                  </div>
+                )}
+                {/* Number — positioned at ~55-70% from top */}
+                {number && (
+                  <div style={{
+                    position: "absolute",
+                    top: isFront ? "44%" : "42%",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    fontFamily: overlayFont,
+                    fontWeight: 900,
+                    fontSize: "clamp(40px, 14vw, 110px)",
+                    color: colors.trim,
+                    textShadow: "0 4px 20px rgba(0,0,0,0.95), 0 0 40px rgba(0,0,0,0.7)",
+                    letterSpacing: "-4px",
+                    lineHeight: 1,
+                    whiteSpace: "nowrap",
+                  }}>
+                    {number}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         ) : (
           <ConfiguratorJersey
             colors={colors}
@@ -276,32 +285,20 @@ export function ShirtStickerStage({
         )}
 
         {/* Placed stickers */}
-        {visibleStickers.map((s) => (
-          <div
-            key={s.uid}
-            className="absolute group"
+        {visibleStickers.map(s => (
+          <div key={s.uid} className="absolute group"
             style={{
-              left:      `${s.x}%`,
-              top:       `${s.y}%`,
+              left: `${s.x}%`, top: `${s.y}%`,
               transform: "translate(-50%, -50%)",
-              cursor:    pendingSticker ? "crosshair" : "move",
-              zIndex:    10,
-              touchAction: "none",
+              cursor: pendingSticker ? "crosshair" : "move",
+              zIndex: 10, touchAction: "none",
             }}
-            onPointerDown={(e) => onStickerPointerDown(s.uid, e)}
-            onDoubleClick={(e) => removeSticker(s.uid, e)}
-          >
-            <StickerImg
-              s={s.stickerDef}
-              style={{
-                width:    s.size,
-                height:   s.size,
-                display:  "block",
-                filter:   "drop-shadow(0 2px 8px rgba(0,0,0,0.7))",
-                objectFit: "contain",
-              }}
-            />
-            {/* delete hint */}
+            onPointerDown={e => onStickerPointerDown(s.uid, e)}
+            onDoubleClick={e => removeSticker(s.uid, e)}>
+            <StickerImg s={s.stickerDef} style={{
+              width: s.size, height: s.size, display: "block",
+              filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.7))", objectFit: "contain",
+            }} />
             <div className="absolute -top-5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100
                             transition-opacity bg-red-600/80 text-white text-[8px] font-bold px-1.5 py-0.5
                             rounded pointer-events-none whitespace-nowrap">
@@ -312,24 +309,12 @@ export function ShirtStickerStage({
 
         {/* Pending sticker cursor preview */}
         {pendingSticker && preview && (
-          <div
-            className="absolute pointer-events-none"
-            style={{
-              left:       `${preview.x}%`,
-              top:        `${preview.y}%`,
-              transform:  "translate(-50%,-50%)",
-              opacity:    0.72,
-              zIndex:     20,
-            }}
-          >
-            <StickerImg
-              s={pendingSticker}
-              style={{
-                width:  pendingSticker.text ? 80 : 56,
-                height: pendingSticker.text ? 40 : 56,
-                filter: "drop-shadow(0 2px 12px rgba(191,255,0,0.5))",
-              }}
-            />
+          <div className="absolute pointer-events-none"
+            style={{ left: `${preview.x}%`, top: `${preview.y}%`, transform: "translate(-50%,-50%)", opacity: 0.72, zIndex: 20 }}>
+            <StickerImg s={pendingSticker} style={{
+              width: pendingSticker.text ? 80 : 56, height: pendingSticker.text ? 40 : 56,
+              filter: "drop-shadow(0 2px 12px rgba(191,255,0,0.5))",
+            }} />
           </div>
         )}
       </div>
@@ -341,14 +326,11 @@ export function ShirtStickerStage({
         flexShrink: 0,
       }} />
 
-      {/* Hint bar */}
+      {/* Hint / pending */}
       <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
         {pendingSticker ? (
-          <motion.div
-            initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-            className="bg-black/70 border border-[#bfff00]/40 text-[#bfff00] text-xs font-black
-                       px-5 py-2 rounded-full backdrop-blur-sm"
-          >
+          <motion.div initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+            className="bg-black/70 border border-[#bfff00]/40 text-[#bfff00] text-xs font-black px-5 py-2 rounded-full backdrop-blur-sm">
             انقر على القميص لوضع الستيكر ✦
           </motion.div>
         ) : (
@@ -359,18 +341,13 @@ export function ShirtStickerStage({
       </div>
 
       {/* View indicator */}
-      <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-white/[0.05] px-2.5 py-1
-                      rounded-full border border-white/[0.08]">
-        <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
-          isFront ? "bg-[#bfff00]" : "bg-white/40"
-        }`} />
+      <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-white/[0.05] px-2.5 py-1 rounded-full border border-white/[0.08]">
+        <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${isFront ? "bg-[#bfff00]" : "bg-white/40"}`} />
         <span className="text-[10px] text-white/30 font-bold">{isFront ? "الأمام" : "الخلف"}</span>
       </div>
 
-      {/* Sticker count */}
       {stickers.length > 0 && (
-        <div className="absolute top-4 right-4 bg-[#bfff00]/10 border border-[#bfff00]/25
-                        text-[#bfff00] text-[9px] font-black px-2 py-1 rounded-full">
+        <div className="absolute top-4 right-4 bg-[#bfff00]/10 border border-[#bfff00]/25 text-[#bfff00] text-[9px] font-black px-2 py-1 rounded-full">
           {stickers.length} ستيكر
         </div>
       )}

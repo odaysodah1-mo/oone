@@ -3,13 +3,12 @@ import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { useUpload } from "@workspace/object-storage-web";
 import {
-  ShoppingBag, Users, Shirt, Type, LogOut, LayoutDashboard,
+  ShoppingBag, Shirt, Type, LogOut, LayoutDashboard,
   ChevronDown, Plus, Trash2, Pencil, Check, X, Upload,
   BarChart3, Package, TrendingUp, RefreshCw, Eye, EyeOff,
-  Star, StarOff, ChevronRight, ChevronDown as Expand,
+  Star, RotateCcw,
 } from "lucide-react";
 
-/* ─── Auth ─────────────────────────────────────────── */
 const ADMIN_PASSWORD = "basmah2025";
 
 /* ─── Types ─────────────────────────────────────────── */
@@ -30,15 +29,17 @@ interface Team {
 }
 
 interface JerseyColor {
-  id: number; teamId: number; name: string; imageUrl: string;
-  hexCode: string; secondaryHexCode: string; isDefault: boolean; sortOrder: number;
+  id: number; teamId: number; name: string;
+  frontImageUrl: string; backImageUrl: string | null;
+  hexCode: string; secondaryHexCode: string;
+  isDefault: boolean; sortOrder: number;
 }
 
 interface NahfatPreset {
   id: number; text: string; category: string; isActive: boolean; sortOrder: number;
 }
 
-/* ─── API helpers ─────────────────────────────────────── */
+/* ─── API ─────────────────────────────────────────────── */
 async function apiFetch(path: string, opts?: RequestInit) {
   const res = await fetch(`/api${path}`, {
     ...opts,
@@ -54,14 +55,14 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   delivered: "تم التسليم", cancelled: "ملغي",
 };
 const STATUS_COLORS: Record<OrderStatus, string> = {
-  pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  pending:   "bg-yellow-100 text-yellow-800 border-yellow-200",
   confirmed: "bg-blue-100 text-blue-800 border-blue-200",
-  shipped: "bg-purple-100 text-purple-800 border-purple-200",
+  shipped:   "bg-purple-100 text-purple-800 border-purple-200",
   delivered: "bg-green-100 text-green-800 border-green-200",
   cancelled: "bg-red-100 text-red-800 border-red-200",
 };
 
-/* ─── Login Screen ────────────────────────────────────── */
+/* ─── Login ─────────────────────────────────────────── */
 function LoginScreen({ onLogin }: { onLogin: () => void }) {
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -110,22 +111,21 @@ type Section = "dashboard" | "orders" | "teams" | "nahfat";
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: "dashboard", label: "لوحة المعلومات", icon: <LayoutDashboard size={18} /> },
-  { id: "orders", label: "الطلبات", icon: <ShoppingBag size={18} /> },
-  { id: "teams", label: "الفرق والجيرسيهات", icon: <Shirt size={18} /> },
-  { id: "nahfat", label: "النهفات", icon: <Type size={18} /> },
+  { id: "orders",    label: "الطلبات",          icon: <ShoppingBag size={18} /> },
+  { id: "teams",     label: "الفرق والجيرسيهات", icon: <Shirt size={18} /> },
+  { id: "nahfat",    label: "النهفات",           icon: <Type size={18} /> },
 ];
 
-function Sidebar({ active, onSelect, onLogout }: { active: Section; onSelect: (s: Section) => void; onLogout: () => void }) {
+function Sidebar({ active, onSelect, onLogout }: {
+  active: Section; onSelect: (s: Section) => void; onLogout: () => void;
+}) {
   return (
     <aside className="w-56 bg-slate-900 border-l border-slate-700 flex flex-col h-screen sticky top-0" dir="rtl">
       <div className="flex items-center gap-3 px-4 py-5 border-b border-slate-700">
         <div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center">
           <Shirt size={20} className="text-white" />
         </div>
-        <div>
-          <p className="font-bold text-white text-sm">بصمة</p>
-          <p className="text-xs text-slate-400">الإدارة</p>
-        </div>
+        <div><p className="font-bold text-white text-sm">بصمة</p><p className="text-xs text-slate-400">الإدارة</p></div>
       </div>
       <nav className="flex-1 py-4 overflow-y-auto">
         {NAV_ITEMS.map(item => (
@@ -150,7 +150,7 @@ function Sidebar({ active, onSelect, onLogout }: { active: Section; onSelect: (s
 
 /* ─── Dashboard ─────────────────────────────────────────── */
 function Dashboard() {
-  const [stats, setStats] = useState<{ totalOrders: number; totalRevenue: number; topTeam: string; popularSize: string } | null>(null);
+  const [stats, setStats] = useState<{ totalOrders: number; totalRevenue: number } | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -163,7 +163,7 @@ function Dashboard() {
 
   if (loading) return <PageLoader />;
 
-  const pending = orders.filter(o => o.status === "pending").length;
+  const pending   = orders.filter(o => o.status === "pending").length;
   const confirmed = orders.filter(o => o.status === "confirmed").length;
 
   return (
@@ -227,7 +227,7 @@ function StatCard({ label, value, icon, color }: { label: string; value: string 
   );
 }
 
-/* ─── Orders ──────────────────────────────────────────── */
+/* ─── Orders ─────────────────────────────────────────────── */
 function OrdersSection() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -254,7 +254,7 @@ function OrdersSection() {
 
   return (
     <div dir="rtl">
-      <PageHeader title="إدارة الطلبات" subtitle={`${orders.length} طلب إجمالاً`}>
+      <PageHeader title="إدارة الطلبات" subtitle={`${orders.length} طلب`}>
         <button onClick={load} className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-1.5">
           <RefreshCw size={14} />تحديث
         </button>
@@ -267,10 +267,8 @@ function OrdersSection() {
                 <th className="text-right px-4 py-3 font-medium">#</th>
                 <th className="text-right px-4 py-3 font-medium">العميل</th>
                 <th className="text-right px-4 py-3 font-medium">الهاتف</th>
-                <th className="text-right px-4 py-3 font-medium">المدينة</th>
                 <th className="text-right px-4 py-3 font-medium">الفريق / الرقم</th>
                 <th className="text-right px-4 py-3 font-medium">المقاس</th>
-                <th className="text-right px-4 py-3 font-medium">الكمية</th>
                 <th className="text-right px-4 py-3 font-medium">المبلغ</th>
                 <th className="text-right px-4 py-3 font-medium">الحالة</th>
                 <th className="text-right px-4 py-3 font-medium">التاريخ</th>
@@ -282,10 +280,8 @@ function OrdersSection() {
                   <td className="px-4 py-3 text-slate-400 font-mono">#{o.id}</td>
                   <td className="px-4 py-3 font-medium text-slate-800">{o.customerName}</td>
                   <td className="px-4 py-3 text-slate-600 font-mono" dir="ltr">{o.customerPhone}</td>
-                  <td className="px-4 py-3 text-slate-600">{o.customerCity}</td>
                   <td className="px-4 py-3 text-slate-600">{o.teamName} / {o.jerseyNumber}</td>
                   <td className="px-4 py-3 text-slate-600">{o.size}</td>
-                  <td className="px-4 py-3 text-slate-600">{o.quantity}</td>
                   <td className="px-4 py-3 font-semibold text-slate-800">{o.totalPrice} د.أ</td>
                   <td className="px-4 py-3">
                     <StatusDropdown status={o.status} disabled={updatingId === o.id} onChange={s => updateStatus(o.id, s)} />
@@ -294,7 +290,7 @@ function OrdersSection() {
                 </tr>
               ))}
               {orders.length === 0 && (
-                <tr><td colSpan={10} className="px-4 py-12 text-center text-slate-400">لا توجد طلبات بعد</td></tr>
+                <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-400">لا توجد طلبات بعد</td></tr>
               )}
             </tbody>
           </table>
@@ -304,20 +300,22 @@ function OrdersSection() {
   );
 }
 
-function StatusDropdown({ status, disabled, onChange }: { status: OrderStatus; disabled: boolean; onChange: (s: OrderStatus) => void }) {
+function StatusDropdown({ status, disabled, onChange }: {
+  status: OrderStatus; disabled: boolean; onChange: (s: OrderStatus) => void;
+}) {
   const [open, setOpen] = useState(false);
   const statuses: OrderStatus[] = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
   return (
     <div className="relative">
       <button disabled={disabled} onClick={() => setOpen(!open)}
-        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLORS[status]} hover:opacity-80`}>
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLORS[status]}`}>
         {STATUS_LABELS[status]}<ChevronDown size={10} />
       </button>
       {open && (
         <div className="absolute top-full mt-1 right-0 z-50 bg-white border border-slate-200 rounded-xl shadow-lg py-1 min-w-28">
           {statuses.map(s => (
             <button key={s} onClick={() => { onChange(s); setOpen(false); }}
-              className={`w-full text-right px-3 py-1.5 text-xs hover:bg-slate-50 flex items-center justify-between gap-2 ${s === status ? "font-semibold" : ""}`}>
+              className="w-full text-right px-3 py-1.5 text-xs hover:bg-slate-50 flex items-center justify-between gap-2">
               {STATUS_LABELS[s]}{s === status && <Check size={10} className="text-emerald-500" />}
             </button>
           ))}
@@ -327,9 +325,8 @@ function StatusDropdown({ status, disabled, onChange }: { status: OrderStatus; d
   );
 }
 
-/* ─── Teams + Jerseys (combined) ─────────────────────── */
+/* ─── Teams + Jerseys ─────────────────────────────────── */
 
-/* Small inline editable field */
 function InlineEdit({ value, onSave, prefix, suffix, type = "text", min }: {
   value: string | number; onSave: (v: string) => Promise<void>;
   prefix?: string; suffix?: string; type?: string; min?: number;
@@ -338,7 +335,6 @@ function InlineEdit({ value, onSave, prefix, suffix, type = "text", min }: {
   const [draft, setDraft] = useState(String(value));
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
   useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
 
   async function save() {
@@ -376,33 +372,86 @@ function InlineEdit({ value, onSave, prefix, suffix, type = "text", min }: {
   );
 }
 
-/* Color picker pill — clickable circle opens native color picker */
-function ColorPill({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function ColorPicker({ value, onSave }: { value: string; onSave: (v: string) => Promise<void> }) {
+  const [current, setCurrent] = useState(value);
+  const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
+  async function handleBlur() {
+    if (current === value) return;
+    setSaving(true);
+    try { await onSave(current); }
+    catch { toast.error("فشل حفظ اللون"); setCurrent(value); }
+    finally { setSaving(false); }
+  }
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-xs text-slate-500">{label}</span>
       <button type="button" onClick={() => ref.current?.click()}
-        className="w-6 h-6 rounded-full border-2 border-white shadow ring-1 ring-slate-200 hover:ring-emerald-400 transition-shadow"
-        style={{ backgroundColor: value }} title={value} />
-      <input ref={ref} type="color" value={value} onChange={e => onChange(e.target.value)} className="sr-only" />
-      <span className="text-xs font-mono text-slate-400">{value}</span>
+        className="w-7 h-7 rounded-lg border-2 border-white shadow ring-1 ring-slate-200 hover:ring-emerald-400 transition-shadow relative"
+        style={{ backgroundColor: current }}>
+        {saving && <RefreshCw size={10} className="animate-spin text-white absolute inset-0 m-auto" />}
+      </button>
+      <input ref={ref} type="color" value={current} onChange={e => setCurrent(e.target.value)}
+        onBlur={handleBlur} className="sr-only" />
+      <span className="text-xs font-mono text-slate-500">{current}</span>
     </div>
   );
 }
 
-/* Jersey color card */
+/* ── Single image upload widget ─────────────────────── */
+function ImageUploadSlot({
+  label, value, onChange,
+}: {
+  label: string;
+  value: string | null;
+  onChange: (url: string | null) => void;
+}) {
+  const { uploadFile, isUploading, progress } = useUpload({
+    onSuccess: r => onChange(`/api/storage/objects${r.objectPath}`),
+    onError: () => toast.error("فشل رفع الصورة"),
+  });
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">{label}</span>
+      {value ? (
+        <div className="relative group">
+          <img src={value} alt={label}
+            className="w-24 h-28 object-contain rounded-xl border border-slate-200 bg-slate-50 shadow-sm" />
+          <button onClick={() => onChange(null)}
+            className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition-opacity">
+            <X size={10} />
+          </button>
+        </div>
+      ) : (
+        <label className="flex flex-col items-center justify-center w-24 h-28 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 transition-colors bg-white">
+          <input type="file" accept="image/*" className="hidden"
+            onChange={async e => { const f = e.target.files?.[0]; if (f) await uploadFile(f); }} />
+          {isUploading
+            ? <div className="text-center"><RefreshCw size={16} className="animate-spin text-emerald-500 mx-auto mb-1" /><p className="text-[10px] text-emerald-600">{progress}%</p></div>
+            : <div className="text-center"><Upload size={16} className="text-slate-400 mx-auto mb-1" /><p className="text-[10px] text-slate-400">رفع صورة</p></div>
+          }
+        </label>
+      )}
+    </div>
+  );
+}
+
+/* ── Jersey Color Card ─────────────────────────────── */
 function JerseyColorCard({ color, onDelete, onUpdate }: {
   color: JerseyColor;
-  onDelete: () => void;
+  onDelete: () => Promise<void>;
   onUpdate: (data: Partial<JerseyColor>) => Promise<void>;
 }) {
+  const [side, setSide] = useState<"front" | "back">("front");
   const [deleting, setDeleting] = useState(false);
+
+  const currentImg = side === "front" ? color.frontImageUrl : (color.backImageUrl ?? color.frontImageUrl);
 
   async function handleDelete() {
     if (!confirm(`حذف "${color.name}"؟`)) return;
     setDeleting(true);
-    try { await onDelete(); } catch { toast.error("فشل الحذف"); setDeleting(false); }
+    try { await onDelete(); }
+    catch { toast.error("فشل الحذف"); setDeleting(false); }
   }
 
   return (
@@ -415,21 +464,38 @@ function JerseyColorCard({ color, onDelete, onUpdate }: {
         <Trash2 size={10} />
       </button>
 
-      {/* Jersey image */}
-      <div className="h-32 flex items-center justify-center p-2 bg-slate-50">
-        <img src={color.imageUrl} alt={color.name}
-          className="max-h-full object-contain"
+      {/* Jersey image with front/back toggle */}
+      <div className="h-32 flex items-center justify-center p-2 bg-slate-50 relative">
+        <img src={currentImg} alt={side}
+          className="max-h-full max-w-full object-contain transition-opacity duration-200"
           onError={e => { (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' fill='%23e2e8f0'%3E%3Crect width='80' height='80'/%3E%3C/svg%3E"; }} />
+
+        {/* front/back toggle button */}
+        {color.backImageUrl && (
+          <button onClick={() => setSide(s => s === "front" ? "back" : "front")}
+            className="absolute bottom-1.5 left-1.5 flex items-center gap-1 bg-slate-800/70 text-white text-[9px] px-2 py-1 rounded-full font-medium hover:bg-slate-800 transition-colors">
+            <RotateCcw size={9} />
+            {side === "front" ? "خلف" : "أمام"}
+          </button>
+        )}
+
+        {!color.backImageUrl && (
+          <div className="absolute bottom-1.5 left-1.5 bg-amber-100 text-amber-700 text-[9px] px-1.5 py-0.5 rounded-full">
+            بدون خلف
+          </div>
+        )}
       </div>
 
-      {/* Info row */}
+      {/* Info */}
       <div className="px-2 pt-1 pb-2 space-y-1 border-t border-slate-100">
         <p className="text-xs font-semibold text-slate-700 truncate">{color.name}</p>
         <div className="flex items-center gap-1.5">
           <div className="w-4 h-4 rounded-full border border-slate-200 flex-shrink-0" style={{ backgroundColor: color.hexCode }} title={`أساسي: ${color.hexCode}`} />
           <div className="w-4 h-4 rounded-full border border-slate-200 flex-shrink-0" style={{ backgroundColor: color.secondaryHexCode }} title={`ثانوي: ${color.secondaryHexCode}`} />
           <button onClick={() => onUpdate({ isDefault: !color.isDefault })}
-            className={`mr-auto text-[10px] px-1.5 py-0.5 rounded-full border transition-colors ${color.isDefault ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-50 text-slate-500 border-slate-200 hover:border-emerald-300"}`}>
+            className={`mr-auto text-[10px] px-1.5 py-0.5 rounded-full border transition-colors ${
+              color.isDefault ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-50 text-slate-500 border-slate-200 hover:border-emerald-300"
+            }`}>
             {color.isDefault ? "افتراضي" : "اجعله افتراضي"}
           </button>
         </div>
@@ -438,7 +504,7 @@ function JerseyColorCard({ color, onDelete, onUpdate }: {
   );
 }
 
-/* Add Jersey Color Form */
+/* ── Add Jersey Color Form ────────────────────────────── */
 function AddJerseyColorForm({ teamId, colorsCount, onAdd, onCancel }: {
   teamId: number; colorsCount: number;
   onAdd: (color: JerseyColor) => void;
@@ -448,89 +514,76 @@ function AddJerseyColorForm({ teamId, colorsCount, onAdd, onCancel }: {
   const [hexCode, setHexCode] = useState("#ffffff");
   const [secondaryHexCode, setSecondaryHexCode] = useState("#000000");
   const [isDefault, setIsDefault] = useState(false);
+  const [frontImageUrl, setFrontImageUrl] = useState<string | null>(null);
+  const [backImageUrl, setBackImageUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [uploadedPath, setUploadedPath] = useState<string | null>(null);
-
-  const { uploadFile, isUploading, progress } = useUpload({
-    onSuccess: r => { setUploadedPath(`/api/storage/objects${r.objectPath}`); toast.success("تم رفع الصورة"); },
-    onError: () => toast.error("فشل رفع الصورة"),
-  });
 
   async function handleSave() {
-    if (!name.trim() || !uploadedPath) { toast.error("الاسم والصورة مطلوبان"); return; }
+    if (!name.trim() || !frontImageUrl) { toast.error("الاسم وصورة الأمام مطلوبان"); return; }
     setSaving(true);
     try {
       const color = await apiFetch(`/admin/teams/${teamId}/colors`, {
         method: "POST",
-        body: JSON.stringify({ name, imageUrl: uploadedPath, hexCode, secondaryHexCode, isDefault, sortOrder: colorsCount }),
+        body: JSON.stringify({
+          name, frontImageUrl, backImageUrl,
+          hexCode, secondaryHexCode, isDefault, sortOrder: colorsCount,
+        }),
       });
       onAdd(color);
-      toast.success("تم إضافة لون الجيرسيه");
+      toast.success("تم إضافة الجيرسيه");
     } catch { toast.error("فشل الحفظ"); }
     finally { setSaving(false); }
   }
 
   return (
-    <div className="border-2 border-dashed border-emerald-200 rounded-xl p-4 bg-emerald-50/40">
-      <p className="text-sm font-semibold text-slate-700 mb-3">إضافة لون جيرسيه</p>
+    <div className="border-2 border-dashed border-emerald-200 rounded-xl p-4 bg-emerald-50/40 col-span-full">
+      <p className="text-sm font-semibold text-slate-700 mb-4">إضافة جيرسيه جديد</p>
 
-      {/* Image upload */}
-      <div className="mb-3">
-        {uploadedPath ? (
-          <div className="relative inline-block">
-            <img src={uploadedPath} alt="preview" className="w-20 h-24 object-contain rounded-lg border border-slate-200 bg-white" />
-            <button onClick={() => setUploadedPath(null)}
-              className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs shadow">
-              <X size={10} />
-            </button>
-          </div>
-        ) : (
-          <label className="flex flex-col items-center justify-center w-24 h-28 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 transition-colors bg-white">
-            <input type="file" accept="image/*" className="hidden"
-              onChange={async e => { const f = e.target.files?.[0]; if (f) await uploadFile(f); }} />
-            {isUploading
-              ? <div className="text-center"><RefreshCw size={18} className="animate-spin text-emerald-500 mx-auto mb-1" /><p className="text-xs text-emerald-600">{progress}%</p></div>
-              : <div className="text-center"><Upload size={18} className="text-slate-400 mx-auto mb-1" /><p className="text-[10px] text-slate-400">صورة الجيرسيه</p></div>
-            }
-          </label>
-        )}
+      {/* Two image slots side-by-side */}
+      <div className="flex gap-6 mb-4 justify-center">
+        <ImageUploadSlot label="الأمام *" value={frontImageUrl} onChange={setFrontImageUrl} />
+        <ImageUploadSlot label="الخلف" value={backImageUrl} onChange={setBackImageUrl} />
       </div>
 
       {/* Name */}
       <div className="mb-3">
-        <label className="block text-xs text-slate-500 mb-1">اسم اللون</label>
-        <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="مثال: أبيض، أحمر، بيت..."
+        <label className="block text-xs text-slate-500 mb-1">اسم الجيرسيه *</label>
+        <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="مثال: أبيض الأساسي، أحمر الاحتياطي..."
           className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white" />
       </div>
 
       {/* Color pickers */}
-      <div className="mb-3 space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500 w-16">لون أساسي</span>
-          <input type="color" value={hexCode} onChange={e => setHexCode(e.target.value)}
-            className="w-8 h-7 rounded-md border border-slate-200 cursor-pointer p-0.5" />
-          <input type="text" value={hexCode} onChange={e => setHexCode(e.target.value)}
-            className="flex-1 border border-slate-200 rounded-md px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-emerald-300 bg-white" />
-          <div className="w-6 h-6 rounded-full border border-slate-200" style={{ backgroundColor: hexCode }} />
+      <div className="mb-3 grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">لون الجسم (الأساسي)</label>
+          <div className="flex items-center gap-2">
+            <input type="color" value={hexCode} onChange={e => setHexCode(e.target.value)}
+              className="w-8 h-7 rounded-md border border-slate-200 cursor-pointer p-0.5" />
+            <input type="text" value={hexCode} onChange={e => setHexCode(e.target.value)}
+              className="flex-1 border border-slate-200 rounded-md px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-emerald-300 bg-white" />
+            <div className="w-6 h-6 rounded-full border border-slate-200 flex-shrink-0" style={{ backgroundColor: hexCode }} />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500 w-16">لون ثانوي</span>
-          <input type="color" value={secondaryHexCode} onChange={e => setSecondaryHexCode(e.target.value)}
-            className="w-8 h-7 rounded-md border border-slate-200 cursor-pointer p-0.5" />
-          <input type="text" value={secondaryHexCode} onChange={e => setSecondaryHexCode(e.target.value)}
-            className="flex-1 border border-slate-200 rounded-md px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-emerald-300 bg-white" />
-          <div className="w-6 h-6 rounded-full border border-slate-200" style={{ backgroundColor: secondaryHexCode }} />
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">لون الحواف (الثانوي)</label>
+          <div className="flex items-center gap-2">
+            <input type="color" value={secondaryHexCode} onChange={e => setSecondaryHexCode(e.target.value)}
+              className="w-8 h-7 rounded-md border border-slate-200 cursor-pointer p-0.5" />
+            <input type="text" value={secondaryHexCode} onChange={e => setSecondaryHexCode(e.target.value)}
+              className="flex-1 border border-slate-200 rounded-md px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-emerald-300 bg-white" />
+            <div className="w-6 h-6 rounded-full border border-slate-200 flex-shrink-0" style={{ backgroundColor: secondaryHexCode }} />
+          </div>
         </div>
       </div>
 
-      {/* Default checkbox */}
+      {/* Default */}
       <div className="flex items-center gap-2 mb-4">
         <input type="checkbox" id={`def-${teamId}`} checked={isDefault} onChange={e => setIsDefault(e.target.checked)} className="rounded" />
-        <label htmlFor={`def-${teamId}`} className="text-xs text-slate-600">اجعله اللون الافتراضي</label>
+        <label htmlFor={`def-${teamId}`} className="text-xs text-slate-600">اجعله الجيرسيه الافتراضي</label>
       </div>
 
       <div className="flex gap-2">
-        <button onClick={handleSave} disabled={saving || isUploading}
+        <button onClick={handleSave} disabled={saving}
           className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
           <Check size={12} />{saving ? "جاري الحفظ..." : "حفظ"}
         </button>
@@ -542,10 +595,10 @@ function AddJerseyColorForm({ teamId, colorsCount, onAdd, onCancel }: {
   );
 }
 
-/* Team card — expandable with jersey management */
+/* ── Team Card ───────────────────────────────────────── */
 function TeamCard({ team, onTeamUpdate }: { team: Team; onTeamUpdate: (t: Team) => void }) {
   const [expanded, setExpanded] = useState(false);
-  const [colors, setColors] = useState<JerseyColor[]>([]);
+  const [colors, setColors]     = useState<JerseyColor[]>([]);
   const [colorsLoaded, setColorsLoaded] = useState(false);
   const [colorsLoading, setColorsLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -557,14 +610,11 @@ function TeamCard({ team, onTeamUpdate }: { team: Team; onTeamUpdate: (t: Team) 
       const c = await apiFetch(`/admin/teams/${team.id}/colors`);
       setColors(c);
       setColorsLoaded(true);
-    } catch { toast.error("فشل تحميل الألوان"); }
+    } catch { toast.error("فشل تحميل الجيرسيهات"); }
     finally { setColorsLoading(false); }
   }
 
-  function handleToggle() {
-    if (!expanded) loadColors();
-    setExpanded(e => !e);
-  }
+  function handleToggle() { if (!expanded) loadColors(); setExpanded(e => !e); }
 
   async function patchTeam(data: Record<string, unknown>) {
     const updated = await apiFetch(`/admin/teams/${team.id}`, { method: "PATCH", body: JSON.stringify(data) });
@@ -586,77 +636,64 @@ function TeamCard({ team, onTeamUpdate }: { team: Team; onTeamUpdate: (t: Team) 
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-      {/* Header row */}
+      {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors" onClick={handleToggle}>
-        {/* Team color indicator */}
         <div className="relative flex-shrink-0">
           <div className="w-10 h-10 rounded-xl border-2 border-white shadow" style={{ backgroundColor: team.primaryColor }} />
           <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white" style={{ backgroundColor: team.secondaryColor }} />
         </div>
-
-        {/* Name */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-bold text-slate-800">{team.name}</span>
             <span className="text-xs text-slate-400">{team.nameEn}</span>
             <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{team.league}</span>
           </div>
-          <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+          <div className="flex items-center gap-3 mt-0.5">
             <span className="text-xs text-slate-500">{team.orderCount} طلب</span>
             <span className="text-xs text-slate-400">·</span>
             <span className="text-xs text-slate-500">السعر: {team.basePrice} د.أ</span>
           </div>
         </div>
-
-        {/* Popular badge */}
         <button
           onClick={e => { e.stopPropagation(); patchTeam({ isPopular: !team.isPopular }); }}
-          className={`flex-shrink-0 p-1.5 rounded-lg transition-colors ${team.isPopular ? "text-amber-500 bg-amber-50" : "text-slate-300 hover:text-amber-400"}`}
-          title={team.isPopular ? "إزالة من المميزين" : "إضافة للمميزين"}>
+          className={`flex-shrink-0 p-1.5 rounded-lg transition-colors ${team.isPopular ? "text-amber-500 bg-amber-50" : "text-slate-300 hover:text-amber-400"}`}>
           <Star size={16} fill={team.isPopular ? "currentColor" : "none"} />
         </button>
-
-        {/* Expand icon */}
         <div className={`flex-shrink-0 text-slate-400 transition-transform ${expanded ? "rotate-180" : ""}`}>
           <ChevronDown size={18} />
         </div>
       </div>
 
-      {/* Expanded content */}
+      {/* Expanded */}
       {expanded && (
         <div className="border-t border-slate-100 px-4 py-4 space-y-4">
-          {/* Team settings row */}
+          {/* Team settings */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3 bg-slate-50 rounded-xl p-3">
-            {/* Price */}
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-500">السعر الأساسي:</span>
               <InlineEdit value={team.basePrice} type="number" min={1} suffix="د.أ"
                 onSave={async v => { await patchTeam({ basePrice: parseFloat(v) }); }} />
             </div>
-
-            {/* Primary color */}
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-500">اللون الأساسي:</span>
-              <ColorPicker value={team.primaryColor}
-                onSave={async v => { await patchTeam({ primaryColor: v }); }} />
+              <ColorPicker value={team.primaryColor} onSave={async v => { await patchTeam({ primaryColor: v }); }} />
             </div>
-
-            {/* Secondary color */}
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-500">اللون الثانوي:</span>
-              <ColorPicker value={team.secondaryColor}
-                onSave={async v => { await patchTeam({ secondaryColor: v }); }} />
+              <ColorPicker value={team.secondaryColor} onSave={async v => { await patchTeam({ secondaryColor: v }); }} />
             </div>
           </div>
 
-          {/* Jersey colors */}
+          {/* Jersey photos */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-semibold text-slate-700">صور الجيرسيهات ({colors.length})</span>
+              <span className="text-sm font-semibold text-slate-700">
+                صور الجيرسيهات ({colors.length})
+              </span>
               {!showAddForm && (
                 <button onClick={() => setShowAddForm(true)}
                   className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
-                  <Plus size={12} />إضافة لون
+                  <Plus size={12} />إضافة جيرسيه
                 </button>
               )}
             </div>
@@ -667,23 +704,20 @@ function TeamCard({ team, onTeamUpdate }: { team: Team; onTeamUpdate: (t: Team) 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
                 {colors.map(c => (
                   <JerseyColorCard key={c.id} color={c}
-                    onDelete={() => deleteColor(c.id)}
+                    onDelete={async () => { await deleteColor(c.id); }}
                     onUpdate={async data => { await updateColor(c.id, data); }} />
                 ))}
 
                 {showAddForm && (
-                  <div className="col-span-full">
-                    <AddJerseyColorForm teamId={team.id} colorsCount={colors.length}
-                      onAdd={c => { setColors(prev => [...prev, c]); setShowAddForm(false); }}
-                      onCancel={() => setShowAddForm(false)} />
-                  </div>
+                  <AddJerseyColorForm teamId={team.id} colorsCount={colors.length}
+                    onAdd={c => { setColors(prev => [...prev, c]); setShowAddForm(false); }}
+                    onCancel={() => setShowAddForm(false)} />
                 )}
 
                 {colors.length === 0 && !showAddForm && (
                   <div className="col-span-full py-6 text-center">
-                    <p className="text-sm text-slate-400 mb-2">لا توجد صور جيرسيهات بعد</p>
-                    <button onClick={() => setShowAddForm(true)}
-                      className="text-emerald-600 text-xs hover:underline">أضف أول لون</button>
+                    <p className="text-sm text-slate-400 mb-2">لا توجد جيرسيهات بعد</p>
+                    <button onClick={() => setShowAddForm(true)} className="text-emerald-600 text-xs hover:underline">أضف أول جيرسيه</button>
                   </div>
                 )}
               </div>
@@ -691,36 +725,6 @@ function TeamCard({ team, onTeamUpdate }: { team: Team; onTeamUpdate: (t: Team) 
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-/* Color picker with save-on-close */
-function ColorPicker({ value, onSave }: { value: string; onSave: (v: string) => Promise<void> }) {
-  const [current, setCurrent] = useState(value);
-  const [saving, setSaving] = useState(false);
-  const ref = useRef<HTMLInputElement>(null);
-
-  async function handleBlur() {
-    if (current === value) return;
-    setSaving(true);
-    try { await onSave(current); }
-    catch { toast.error("فشل حفظ اللون"); setCurrent(value); }
-    finally { setSaving(false); }
-  }
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <button type="button" onClick={() => ref.current?.click()}
-        className="w-7 h-7 rounded-lg border-2 border-white shadow ring-1 ring-slate-200 hover:ring-emerald-400 transition-shadow relative"
-        style={{ backgroundColor: current }}>
-        {saving && <RefreshCw size={10} className="animate-spin text-white absolute inset-0 m-auto" />}
-      </button>
-      <input ref={ref} type="color" value={current}
-        onChange={e => setCurrent(e.target.value)}
-        onBlur={handleBlur}
-        className="sr-only" />
-      <span className="text-xs font-mono text-slate-500">{current}</span>
     </div>
   );
 }
@@ -737,34 +741,26 @@ function TeamsSection() {
 
   useEffect(() => { load(); }, [load]);
 
-  function onTeamUpdate(updated: Team) {
-    setTeams(prev => prev.map(t => t.id === updated.id ? updated : t));
-  }
-
   const filtered = teams.filter(t =>
-    !search || t.name.includes(search) || t.nameEn.toLowerCase().includes(search.toLowerCase()) || t.league.includes(search)
+    !search || t.name.includes(search) || t.nameEn.toLowerCase().includes(search.toLowerCase())
   );
 
   if (loading) return <PageLoader />;
 
   return (
     <div dir="rtl">
-      <PageHeader title="الفرق والجيرسيهات" subtitle={`${teams.length} فريق مسجّل — اضغط على الفريق لتعديله`}>
+      <PageHeader title="الفرق والجيرسيهات" subtitle="اضغط على الفريق لإدارة جيرسيهاته">
         <button onClick={load} className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-1.5">
           <RefreshCw size={14} />تحديث
         </button>
       </PageHeader>
-
-      {/* Search */}
       <div className="mb-4">
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="ابحث عن فريق..."
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث عن فريق..."
           className="w-full max-w-xs border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white" />
       </div>
-
       <div className="space-y-3">
         {filtered.map(team => (
-          <TeamCard key={team.id} team={team} onTeamUpdate={onTeamUpdate} />
+          <TeamCard key={team.id} team={team} onTeamUpdate={updated => setTeams(prev => prev.map(t => t.id === updated.id ? updated : t))} />
         ))}
         {filtered.length === 0 && (
           <div className="bg-white border border-slate-200 rounded-2xl py-12 text-center text-slate-400 text-sm">
@@ -812,8 +808,7 @@ function NahfatSection() {
     try {
       const p = await apiFetch(`/admin/nahfat/${id}`, { method: "PUT", body: JSON.stringify({ text: editText, category: editCat }) });
       setPresets(prev => prev.map(x => x.id === id ? p : x));
-      setEditingId(null);
-      toast.success("تم التحديث");
+      setEditingId(null); toast.success("تم التحديث");
     } catch { toast.error("فشل التحديث"); }
     finally { setSaving(false); }
   }
@@ -838,7 +833,7 @@ function NahfatSection() {
 
   return (
     <div dir="rtl">
-      <PageHeader title="إدارة النهفات" subtitle={`${presets.length} نهفة مسجّلة`}>
+      <PageHeader title="إدارة النهفات" subtitle={`${presets.length} نهفة`}>
         <button onClick={() => setShowAdd(!showAdd)}
           className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium px-3 py-1.5 rounded-lg">
           <Plus size={14} />إضافة نهفة
@@ -851,8 +846,7 @@ function NahfatSection() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
               <label className="block text-sm text-slate-600 mb-1">نص النهفة *</label>
-              <input type="text" value={addText} onChange={e => setAddText(e.target.value)}
-                placeholder="مثال: يا محارب ما بتهاب..."
+              <input type="text" value={addText} onChange={e => setAddText(e.target.value)} placeholder="مثال: يا محارب ما بتهاب..."
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" />
             </div>
             <div>
@@ -892,8 +886,8 @@ function NahfatSection() {
                         className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" />
                       <input type="text" value={editCat} onChange={e => setEditCat(e.target.value)}
                         className="w-24 border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none" />
-                      <button onClick={() => handleEdit(p.id)} disabled={saving} className="text-emerald-600 hover:text-emerald-700"><Check size={16} /></button>
-                      <button onClick={() => setEditingId(null)} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
+                      <button onClick={() => handleEdit(p.id)} disabled={saving} className="text-emerald-600"><Check size={16} /></button>
+                      <button onClick={() => setEditingId(null)} className="text-slate-400"><X size={16} /></button>
                     </>
                   ) : (
                     <>
@@ -916,14 +910,14 @@ function NahfatSection() {
 
       {presets.length === 0 && (
         <div className="bg-white border border-slate-200 rounded-2xl py-12 text-center text-slate-400 text-sm">
-          لا توجد نهفات بعد. أضف أول نهفة!
+          لا توجد نهفات بعد
         </div>
       )}
     </div>
   );
 }
 
-/* ─── Shared ──────────────────────────────────────────── */
+/* ─── Shared ─────────────────────────────────────────── */
 function PageLoader() {
   return <div className="flex items-center justify-center py-16"><RefreshCw size={24} className="animate-spin text-emerald-500" /></div>;
 }
@@ -940,7 +934,7 @@ function PageHeader({ title, subtitle, children }: { title: string; subtitle?: s
   );
 }
 
-/* ─── Main App ──────────────────────────────────────────── */
+/* ─── App ─────────────────────────────────────────────── */
 export default function App() {
   const [authed, setAuthed] = useState(() => sessionStorage.getItem("admin_authed") === "1");
   const [section, setSection] = useState<Section>("dashboard");
