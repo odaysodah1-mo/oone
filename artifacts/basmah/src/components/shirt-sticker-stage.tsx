@@ -178,6 +178,12 @@ export function ShirtStickerStage({
     setStickers(prev => prev.filter(s => s.uid !== uid));
   }, []);
 
+  const resizeSticker = useCallback((uid: string, delta: number) => {
+    setStickers(prev => prev.map(s =>
+      s.uid === uid ? { ...s, size: Math.max(30, Math.min(180, s.size + delta)) } : s
+    ));
+  }, []);
+
   const visibleStickers = stickers.filter(s => s.side === view);
   const currentPhoto = isFront ? photoFront : (photoBack ?? photoFront);
 
@@ -294,15 +300,32 @@ export function ShirtStickerStage({
               zIndex: 10, touchAction: "none",
             }}
             onPointerDown={e => onStickerPointerDown(s.uid, e)}
-            onDoubleClick={e => removeSticker(s.uid, e)}>
+            onWheel={e => { e.stopPropagation(); resizeSticker(s.uid, e.deltaY < 0 ? 10 : -10); }}>
             <StickerImg s={s.stickerDef} style={{
               width: s.size, height: s.size, display: "block",
               filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.7))", objectFit: "contain",
             }} />
-            <div className="absolute -top-5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100
-                            transition-opacity bg-red-600/80 text-white text-[8px] font-bold px-1.5 py-0.5
-                            rounded pointer-events-none whitespace-nowrap">
-              دبل-كليك للحذف
+            {/* Controls: resize + delete */}
+            <div className="absolute left-1/2 -translate-x-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{ top: "calc(100% + 4px)", pointerEvents: "auto" }}>
+              <button
+                onPointerDown={e => e.stopPropagation()}
+                onClick={e => { e.stopPropagation(); resizeSticker(s.uid, -10); }}
+                className="w-6 h-6 rounded-full bg-black/80 border border-white/20 text-white font-black text-sm flex items-center justify-center hover:bg-white/20 transition-colors">
+                −
+              </button>
+              <button
+                onPointerDown={e => e.stopPropagation()}
+                onClick={e => { e.stopPropagation(); resizeSticker(s.uid, 10); }}
+                className="w-6 h-6 rounded-full bg-black/80 border border-white/20 text-white font-black text-sm flex items-center justify-center hover:bg-white/20 transition-colors">
+                +
+              </button>
+              <button
+                onPointerDown={e => e.stopPropagation()}
+                onClick={e => { e.stopPropagation(); removeSticker(s.uid, e); }}
+                className="w-6 h-6 rounded-full bg-red-600/90 border border-red-400/40 text-white text-xs flex items-center justify-center hover:bg-red-500 transition-colors">
+                🗑
+              </button>
             </div>
           </div>
         ))}
