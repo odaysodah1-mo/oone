@@ -8,6 +8,10 @@ import {
   BarChart3, Package, TrendingUp, RefreshCw, Eye, EyeOff,
   Star, RotateCcw,
 } from "lucide-react";
+import {
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+} from "recharts";
 
 const ADMIN_PASSWORD = "basmah2025";
 
@@ -166,14 +170,29 @@ function Sidebar({ active, onSelect, onLogout }: {
 }
 
 /* ─── Dashboard ─────────────────────────────────────────── */
+interface ChartData {
+  dailyOrders: { date: string; orders: number; revenue: number }[];
+  byTeam: { team: string; count: number }[];
+  byStatus: { status: string; label: string; count: number }[];
+  bySizes: { size: string; count: number }[];
+}
+
+const PIE_COLORS = ["#6366f1","#22d3ee","#f59e0b","#10b981","#ef4444","#a78bfa"];
+const AREA_GRAD_ID = "areaGrad";
+
 function Dashboard() {
   const [stats, setStats] = useState<{ totalOrders: number; totalRevenue: number } | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [charts, setCharts] = useState<ChartData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([apiFetch("/orders/stats"), apiFetch("/orders")])
-      .then(([s, o]) => { setStats(s); setOrders(o); })
+    Promise.all([
+      apiFetch("/orders/stats"),
+      apiFetch("/orders"),
+      apiFetch("/admin/stats/charts"),
+    ])
+      .then(([s, o, c]) => { setStats(s); setOrders(o); setCharts(c); })
       .catch(() => toast.error("فشل تحميل الإحصائيات"))
       .finally(() => setLoading(false));
   }, []);
@@ -186,46 +205,157 @@ function Dashboard() {
   return (
     <div dir="rtl">
       <PageHeader title="لوحة المعلومات" subtitle="نظرة عامة على أداء المنصة" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="إجمالي الطلبات" value={stats?.totalOrders ?? 0} icon={<Package size={20} />} color="bg-blue-500" />
-        <StatCard label="إجمالي الإيرادات" value={`${(stats?.totalRevenue ?? 0).toFixed(0)} د.أ`} icon={<BarChart3 size={20} />} color="bg-emerald-500" />
-        <StatCard label="طلبات معلّقة" value={pending} icon={<RefreshCw size={20} />} color="bg-yellow-500" />
-        <StatCard label="طلبات مؤكّدة" value={confirmed} icon={<TrendingUp size={20} />} color="bg-purple-500" />
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard label="إجمالي الطلبات"   value={stats?.totalOrders ?? 0}                         icon={<Package size={20} />}   color="bg-blue-500" />
+        <StatCard label="إجمالي الإيرادات" value={`${(stats?.totalRevenue ?? 0).toFixed(0)} د.أ`} icon={<BarChart3 size={20} />}  color="bg-emerald-500" />
+        <StatCard label="طلبات معلّقة"     value={pending}                                          icon={<RefreshCw size={20} />} color="bg-yellow-500" />
+        <StatCard label="طلبات مؤكّدة"     value={confirmed}                                        icon={<TrendingUp size={20} />} color="bg-purple-500" />
       </div>
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-800">آخر الطلبات</h2>
+
+      {/* Charts row */}
+      {charts && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+
+          {/* Area chart — daily revenue */}
+          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-5">
+            <h3 className="font-bold text-slate-700 text-sm mb-4">الإيرادات اليومية — آخر 7 أيام</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={charts.dailyOrders} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id={AREA_GRAD_ID} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, fontSize: 12 }}
+                  formatter={(v: number) => [`${v} د.أ`, "الإيرادات"]}
+                  labelStyle={{ color: "#475569", fontWeight: 700 }}
+                />
+                <Area type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2.5}
+                  fill={`url(#${AREA_GRAD_ID})`} dot={{ r: 3, fill: "#6366f1" }} activeDot={{ r: 5 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+            {/* Orders bar under area */}
+            <div className="mt-4 border-t border-slate-100 pt-3">
+              <p className="text-xs text-slate-400 font-medium mb-2">عدد الطلبات</p>
+              <ResponsiveContainer width="100%" height={60}>
+                <BarChart data={charts.dailyOrders} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barCategoryGap="30%">
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#cbd5e1" }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, fontSize: 11 }}
+                    formatter={(v: number) => [v, "طلبات"]}
+                  />
+                  <Bar dataKey="orders" fill="#22d3ee" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Pie chart — by status */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col">
+            <h3 className="font-bold text-slate-700 text-sm mb-4">توزيع حالات الطلبات</h3>
+            {charts.byStatus.length > 0 ? (
+              <>
+                <ResponsiveContainer width="100%" height={160}>
+                  <PieChart>
+                    <Pie data={charts.byStatus} dataKey="count" nameKey="label" cx="50%" cy="50%"
+                      innerRadius={45} outerRadius={72} paddingAngle={3} strokeWidth={0}>
+                      {charts.byStatus.map((_, i) => (
+                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, fontSize: 11 }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="space-y-1.5 mt-1 flex-1">
+                  {charts.byStatus.map((s, i) => (
+                    <div key={s.status} className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                        <span className="text-slate-600">{s.label}</span>
+                      </span>
+                      <span className="font-bold text-slate-800">{s.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-slate-300 text-sm">لا توجد طلبات بعد</div>
+            )}
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-500 text-xs">
-              <tr>
-                <th className="text-right px-4 py-3 font-medium">العميل</th>
-                <th className="text-right px-4 py-3 font-medium">الفريق</th>
-                <th className="text-right px-4 py-3 font-medium">المبلغ</th>
-                <th className="text-right px-4 py-3 font-medium">الحالة</th>
-                <th className="text-right px-4 py-3 font-medium">التاريخ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {orders.slice(0, 8).map(o => (
-                <tr key={o.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-800">{o.customerName}</td>
-                  <td className="px-4 py-3 text-slate-600">{o.teamName}</td>
-                  <td className="px-4 py-3 text-slate-700">{o.totalPrice} د.أ</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLORS[o.status]}`}>
-                      {STATUS_LABELS[o.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-slate-500">{new Date(o.createdAt).toLocaleDateString("ar-JO")}</td>
+      )}
+
+      {/* Bar chart — by team + recent orders */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-6">
+        {charts && charts.byTeam.length > 0 && (
+          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-5">
+            <h3 className="font-bold text-slate-700 text-sm mb-4">الطلبات حسب الفريق</h3>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={charts.byTeam} layout="vertical" margin={{ top: 0, right: 0, left: 10, bottom: 0 }}
+                barCategoryGap="25%">
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                <XAxis type="number" tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="team" width={90} tick={{ fontSize: 10, fill: "#64748b" }}
+                  axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, fontSize: 11 }}
+                  formatter={(v: number) => [v, "طلبات"]}
+                />
+                <Bar dataKey="count" radius={[0, 6, 6, 0]}>
+                  {charts.byTeam.map((_, i) => (
+                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Recent orders table */}
+        <div className={`bg-white border border-slate-200 rounded-2xl overflow-hidden ${charts && charts.byTeam.length > 0 ? "lg:col-span-3" : "lg:col-span-5"}`}>
+          <div className="px-5 py-4 border-b border-slate-100">
+            <h2 className="font-semibold text-slate-800 text-sm">آخر الطلبات</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-500 text-xs">
+                <tr>
+                  <th className="text-right px-4 py-3 font-medium">العميل</th>
+                  <th className="text-right px-4 py-3 font-medium">الفريق</th>
+                  <th className="text-right px-4 py-3 font-medium">المبلغ</th>
+                  <th className="text-right px-4 py-3 font-medium">الحالة</th>
+                  <th className="text-right px-4 py-3 font-medium">التاريخ</th>
                 </tr>
-              ))}
-              {orders.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">لا توجد طلبات بعد</td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {orders.slice(0, 8).map(o => (
+                  <tr key={o.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 font-medium text-slate-800">{o.customerName}</td>
+                    <td className="px-4 py-3 text-slate-600">{o.teamName}</td>
+                    <td className="px-4 py-3 text-slate-700">{o.totalPrice} د.أ</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLORS[o.status]}`}>
+                        {STATUS_LABELS[o.status]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-500">{new Date(o.createdAt).toLocaleDateString("ar-JO")}</td>
+                  </tr>
+                ))}
+                {orders.length === 0 && (
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">لا توجد طلبات بعد</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

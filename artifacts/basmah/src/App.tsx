@@ -12,6 +12,7 @@ import Order from "@/pages/order";
 import Orders from "@/pages/orders";
 import Stats from "@/pages/stats";
 import Admin from "@/pages/admin";
+import Track from "@/pages/track";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -32,6 +33,7 @@ function Router() {
       <Route path="/order" component={Order} />
       <Route path="/orders" component={Orders} />
       <Route path="/stats" component={Stats} />
+      <Route path="/track" component={Track} />
       <Route component={NotFound} />
     </Switch>
   );

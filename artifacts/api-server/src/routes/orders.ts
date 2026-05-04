@@ -69,6 +69,22 @@ router.post("/orders", async (req, res) => {
   }
 });
 
+/* Track orders by phone number */
+router.get("/orders/by-phone", async (req, res) => {
+  const phone = typeof req.query.phone === "string" ? req.query.phone.trim() : null;
+  if (!phone) { res.status(400).json({ error: "phone required" }); return; }
+  try {
+    const orders = await db
+      .select().from(ordersTable)
+      .where(eq(ordersTable.customerPhone, phone))
+      .orderBy(desc(ordersTable.createdAt));
+    res.json(orders);
+  } catch (err) {
+    req.log.error({ err }, "Failed to track orders by phone");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/orders/stats", async (req, res) => {
   try {
     const [{ total }] = await db

@@ -17,6 +17,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <nav className="hidden md:flex items-center gap-8">
             <Link href="/teams" className="text-sm font-semibold hover:text-primary transition-colors">الفِرَق</Link>
             <Link href="/orders" className="text-sm font-semibold hover:text-primary transition-colors">الطلبات</Link>
+            <Link href="/track" className="text-sm font-semibold hover:text-primary transition-colors">📦 تتبع طلبي</Link>
             <Link href="/stats" className="text-sm font-semibold hover:text-primary transition-colors">الإحصائيات</Link>
           </nav>
           
@@ -34,6 +35,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="md:hidden fixed inset-0 z-40 bg-background pt-16 border-b border-border px-4 flex flex-col gap-6 font-semibold text-lg">
           <Link href="/teams" onClick={() => setIsMenuOpen(false)} className="block py-2">الفِرَق</Link>
           <Link href="/orders" onClick={() => setIsMenuOpen(false)} className="block py-2">الطلبات</Link>
+          <Link href="/track" onClick={() => setIsMenuOpen(false)} className="block py-2">📦 تتبع طلبي</Link>
           <Link href="/stats" onClick={() => setIsMenuOpen(false)} className="block py-2">الإحصائيات</Link>
         </div>
       )}

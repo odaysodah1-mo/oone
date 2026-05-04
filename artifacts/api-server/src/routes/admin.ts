@@ -314,4 +314,56 @@ router.get("/nahfat", async (req, res) => {
   }
 });
 
+/* ════════════════════════════════════════════════════
+   CHARTS / ANALYTICS
+════════════════════════════════════════════════════ */
+router.get("/admin/stats/charts", async (req, res) => {
+  try {
+    const all = await db.select().from(ordersTable).orderBy(desc(ordersTable.createdAt));
+
+    /* daily orders + revenue — last 7 days */
+    const now = new Date();
+    const dailyOrders = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(now);
+      d.setDate(d.getDate() - (6 - i));
+      const y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
+      const dayOrders = all.filter(o => {
+        const od = new Date(o.createdAt);
+        return od.getFullYear() === y && od.getMonth() === m && od.getDate() === day;
+      });
+      const label = `${d.getDate()}/${d.getMonth() + 1}`;
+      return { date: label, orders: dayOrders.length, revenue: Math.round(dayOrders.reduce((s, o) => s + o.totalPrice, 0)) };
+    });
+
+    /* orders by team — top 6 */
+    const teamMap: Record<string, number> = {};
+    all.forEach(o => { teamMap[o.teamName] = (teamMap[o.teamName] || 0) + 1; });
+    const byTeam = Object.entries(teamMap)
+      .sort((a, b) => b[1] - a[1]).slice(0, 6)
+      .map(([team, count]) => ({ team: team.length > 12 ? team.slice(0, 12) + "…" : team, count }));
+
+    /* by status */
+    const statusLabels: Record<string, string> = {
+      pending: "معلّق", confirmed: "مؤكّد", shipped: "شُحن",
+      delivered: "مُسلَّم", cancelled: "ملغي",
+    };
+    const statusMap: Record<string, number> = {};
+    all.forEach(o => { statusMap[o.status] = (statusMap[o.status] || 0) + 1; });
+    const byStatus = Object.entries(statusMap)
+      .map(([status, count]) => ({ status, label: statusLabels[status] || status, count }));
+
+    /* by size */
+    const sizeMap: Record<string, number> = {};
+    all.forEach(o => { sizeMap[o.size] = (sizeMap[o.size] || 0) + 1; });
+    const bySizes = Object.entries(sizeMap)
+      .map(([size, count]) => ({ size, count }))
+      .sort((a, b) => b.count - a.count);
+
+    res.json({ dailyOrders, byTeam, byStatus, bySizes });
+  } catch (err) {
+    req.log.error({ err }, "admin: failed to get chart stats");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
