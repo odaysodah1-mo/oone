@@ -406,7 +406,7 @@ function ImageUploadSlot({
   onChange: (url: string | null) => void;
 }) {
   const { uploadFile, isUploading, progress } = useUpload({
-    onSuccess: r => onChange(`/api/storage/objects${r.objectPath}`),
+    onSuccess: r => onChange(`/api/storage${r.objectPath}`),
     onError: () => toast.error("فشل رفع الصورة"),
   });
 
