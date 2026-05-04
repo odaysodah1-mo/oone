@@ -112,7 +112,7 @@ type Section = "dashboard" | "orders" | "teams" | "nahfat";
 const NAV_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: "dashboard", label: "لوحة المعلومات", icon: <LayoutDashboard size={18} /> },
   { id: "orders",    label: "الطلبات",          icon: <ShoppingBag size={18} /> },
-  { id: "teams",     label: "الفرق والجيرسيهات", icon: <Shirt size={18} /> },
+  { id: "teams",     label: "الفرق", icon: <Shirt size={18} /> },
   { id: "nahfat",    label: "النهفات",           icon: <Type size={18} /> },
 ];
 
