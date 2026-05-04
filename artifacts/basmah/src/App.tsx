@@ -11,6 +11,7 @@ import TeamDetail from "@/pages/team-detail";
 import Order from "@/pages/order";
 import Orders from "@/pages/orders";
 import Stats from "@/pages/stats";
+import Admin from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -42,9 +43,16 @@ function App() {
       <TooltipProvider>
         <OrderProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Layout>
-              <Router />
-            </Layout>
+            <Switch>
+              {/* Admin — standalone, no shared layout */}
+              <Route path="/admin" component={Admin} />
+              {/* All other pages use the shared Layout */}
+              <Route>
+                <Layout>
+                  <Router />
+                </Layout>
+              </Route>
+            </Switch>
           </WouterRouter>
         </OrderProvider>
         <Toaster />
