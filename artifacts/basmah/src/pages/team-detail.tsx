@@ -112,14 +112,13 @@ function JerseyColorPicker({ colors, selected, onSelect, view, onToggleView }: {
     <div className="flex flex-col gap-2">
       {/* View toggle */}
       <div className="flex items-center justify-between">
-        <span className="text-xs font-black text-white/50 uppercase tracking-widest">الجيرسيه</span>
+        <span className="text-xs font-black text-white/50 uppercase tracking-widest">الكلر</span>
         <button onClick={onToggleView}
           className="flex items-center gap-1.5 bg-white/[0.07] border border-white/[0.10] text-white/60 hover:text-[#bfff00] hover:border-[#bfff00]/40 text-[10px] font-black px-2.5 py-1.5 rounded-lg transition-all">
           <span>↔</span>
           {view === "front" ? "رؤية الخلف" : "رؤية الأمام"}
         </button>
       </div>
-
       {/* Color cards */}
       <div className="flex flex-wrap gap-2">
         {colors.map(c => (
@@ -155,7 +154,6 @@ function JerseyColorPicker({ colors, selected, onSelect, view, onToggleView }: {
           </button>
         ))}
       </div>
-
       {selected && (
         <div className="flex items-center gap-2 mt-1">
           <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: selected.hexCode }} />
@@ -344,7 +342,6 @@ export default function TeamDetail() {
   /* ── Render ───────────────────────────────────────────── */
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-black" dir="rtl">
-
       {/* ══ TOP BAR ══ */}
       <div className="flex items-center justify-between px-4 md:px-6 py-3 shrink-0 z-20
                       border-b border-white/[0.06] bg-black/80 backdrop-blur-sm">
@@ -368,7 +365,6 @@ export default function TeamDetail() {
           </div>
         </div>
       </div>
-
       {/* ══ MAIN ══ */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
@@ -582,7 +578,6 @@ export default function TeamDetail() {
           </div>
         </motion.div>
       </div>
-
       {/* ══ MOBILE BOTTOM BAR ══ */}
       <div className="md:hidden border-t border-white/[0.06] bg-[#080808] shrink-0 z-20">
         <div className="flex border-b border-white/[0.06]">
