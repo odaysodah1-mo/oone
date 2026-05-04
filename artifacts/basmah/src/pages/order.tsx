@@ -42,7 +42,11 @@ export default function Order() {
         color: order.color!,
         quantity: 1,
         customerPhone: phone,
-        customerCity: city
+        customerCity: city,
+        playerName: order.playerName || undefined,
+        frontImageUrl: order.frontImageUrl || undefined,
+        backImageUrl: order.backImageUrl || undefined,
+        jerseyColorName: order.jerseyColorName || undefined,
       }
     }, {
       onSuccess: () => {
