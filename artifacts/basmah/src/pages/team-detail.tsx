@@ -349,7 +349,7 @@ export default function TeamDetail() {
             </div>
           </div>
           <div className="p-2.5 border-t border-white/[0.06] space-y-2">
-            <p className="text-[10px] font-black text-[#bfff00]/60 uppercase tracking-widest">نهفة ✍️</p>
+            <p className="text-[10px] font-black text-[#bfff00]/60 uppercase tracking-widest">بصمتك ✍️</p>
             <textarea value={nahfaText} onChange={e => setNahfaText(e.target.value)}
               placeholder="اكتب نصك…" maxLength={20} rows={2} dir="auto"
               className="w-full px-2 py-1.5 bg-white/[0.04] border border-white/[0.08] text-white text-xs font-bold resize-none focus:outline-none focus:border-[#bfff00]/40 placeholder:text-white/20" />
