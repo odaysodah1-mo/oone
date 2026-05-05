@@ -2191,6 +2191,17 @@ function BranchesSection() {
     finally { setSaving(false); }
   }
 
+  async function handleToggleActive(b: Branch) {
+    try {
+      await apiFetch(`/admin/branches/${b.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ active: !b.active }),
+      });
+      toast.success(b.active ? "تم تعطيل الفرع" : "تم تفعيل الفرع");
+      load();
+    } catch { toast.error("تعذّر تغيير حالة الفرع"); }
+  }
+
   async function handleDelete(id: number) {
     if (!confirm("هل تريد حذف هذا الفرع؟")) return;
     try {
@@ -2340,9 +2351,17 @@ function BranchesSection() {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                              b.active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
-                            }`}>{b.active ? "نشط" : "معطّل"}</span>
+                            <button
+                              onClick={() => handleToggleActive(b)}
+                              title={b.active ? "اضغط لتعطيل الفرع" : "اضغط لتفعيل الفرع"}
+                              className={`text-xs font-medium px-2.5 py-1 rounded-full transition-all hover:scale-105 active:scale-95 ${
+                                b.active
+                                  ? "bg-emerald-100 text-emerald-700 hover:bg-red-100 hover:text-red-600"
+                                  : "bg-slate-100 text-slate-500 hover:bg-emerald-100 hover:text-emerald-700"
+                              }`}
+                            >
+                              {b.active ? "نشط" : "معطّل"}
+                            </button>
                           </td>
                           <td className="px-4 py-3 text-slate-700">{b.totalOrders}</td>
                           <td className="px-4 py-3 text-slate-700">{b.revenue.toLocaleString()} د.أ</td>
