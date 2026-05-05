@@ -78,17 +78,15 @@ export function JerseyPhotoViewer({
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="absolute inset-0">
-            <WebGLBoundary onFail={handleWebGLFail}>
-              <ShirtViewer3D
-                frontImageUrl={frontImageUrl}
-                backImageUrl={backImageUrl}
-                name={name}
-                number={number}
-                fontId={fontId}
-                colors={colors}
-                withCustomization={withCustomization}
-              />
-            </WebGLBoundary>
+            <ShirtViewer3D
+              frontImageUrl={frontImageUrl}
+              backImageUrl={backImageUrl}
+              name={name}
+              number={number}
+              fontId={fontId}
+              colors={colors}
+              withCustomization={withCustomization}
+            />
           </motion.div>
         )}
 
