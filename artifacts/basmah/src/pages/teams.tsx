@@ -8,6 +8,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "react-i18next";
 
+const LEAGUE_KEYS: Record<string, string> = {
+  "منتخبات عالمية - كأس العالم": "league_world_wc",
+  "منتخبات عربية - كأس العالم":  "league_arab_wc",
+  "دوري المحترفين الأردني":       "league_jordan_pro",
+  "المنتخبات الوطنية":            "league_national",
+  "الدوري الفرنسي":               "league_french",
+  "الدوري الإسباني":              "league_spanish",
+  "الدوري الإنجليزي":             "league_english",
+};
+
 export default function Teams() {
   const { data: teams, isLoading } = useListTeams();
   const [search, setSearch] = useState("");
@@ -55,7 +65,7 @@ export default function Teams() {
                 className={`cursor-pointer px-4 py-2 text-sm ${filter === league ? "bg-primary text-black hover:bg-primary/90" : "hover:border-primary/50"}`}
                 onClick={() => setFilter(league)}
               >
-                {league}
+                {t(LEAGUE_KEYS[league] ?? league, { defaultValue: league })}
               </Badge>
             ))}
           </div>
