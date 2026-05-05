@@ -5,8 +5,7 @@ import { useGetTeam } from "@workspace/api-client-react";
 import { getGetTeamQueryKey } from "@workspace/api-client-react";
 import { useOrder } from "@/components/order-context";
 import { FONT_STYLES, type JerseyColors } from "@/components/configurator-jersey";
-import { ShirtStickerStage, type ShirtStickerStageHandle } from "@/components/shirt-sticker-stage";
-import { VirtualTryOn3D } from "@/components/virtual-tryon";
+import { ShirtViewer3D } from "@/components/virtual-tryon";
 import {
   getStickerCanvas,
   type StickerDef,
@@ -188,12 +187,6 @@ export default function TeamDetail() {
     }
   })();
 
-  /* stage ref for snapshot capture */
-  const stageRef = useRef<ShirtStickerStageHandle>(null);
-
-  /* 3D virtual try-on overlay */
-  const [showTryOn, setShowTryOn] = useState(false);
-
   /* mobile */
   const [mobileTab, setMobileTab] = useState<MobileTab>("stickers");
 
@@ -246,46 +239,9 @@ export default function TeamDetail() {
   const handleOrder = async () => {
     if (!size) { alert(t("td_select_size_alert")); return; }
 
-    let capturedFront: string | undefined = selectedColor?.frontImageUrl ?? undefined;
-    let capturedBack:  string | undefined = selectedColor?.backImageUrl  ?? undefined;
-
-    // If there's a photo jersey, capture the customized design (stickers + overlays)
-    if (stageRef.current && selectedColor?.frontImageUrl) {
-      try {
-        const { front, back } = await stageRef.current.captureSnapshot();
-
-        const uploadDataUrl = async (dataUrl: string, label: string): Promise<string | undefined> => {
-          const blob = await fetch(dataUrl).then(r => r.blob());
-          const file = new File([blob], `design-${label}-${Date.now()}.jpg`, { type: "image/jpeg" });
-
-          // Step 1: Request presigned URL
-          const reqRes = await fetch("/api/storage/uploads/request-url", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
-          });
-          if (!reqRes.ok) return undefined;
-          const { uploadURL, objectPath } = await reqRes.json() as { uploadURL: string; objectPath: string };
-
-          // Step 2: Upload to presigned URL
-          const uploadRes = await fetch(uploadURL, {
-            method: "PUT", body: file,
-            headers: { "Content-Type": file.type },
-          });
-          if (!uploadRes.ok) return undefined;
-          return `/api/storage${objectPath}`;
-        };
-
-        const [uploadedFront, uploadedBack] = await Promise.all([
-          front ? uploadDataUrl(front, "front") : Promise.resolve(undefined),
-          back  ? uploadDataUrl(back,  "back")  : Promise.resolve(undefined),
-        ]);
-        if (uploadedFront) capturedFront = uploadedFront;
-        if (uploadedBack)  capturedBack  = uploadedBack;
-      } catch {
-        // Fallback to raw jersey photos on error
-      }
-    }
+    /* Use the admin-uploaded jersey images directly */
+    const capturedFront: string | undefined = selectedColor?.frontImageUrl ?? undefined;
+    const capturedBack:  string | undefined = selectedColor?.backImageUrl  ?? undefined;
 
     updateOrder({
       teamId: team!.id, teamName: team!.name, basePrice: effectivePrice,
@@ -320,10 +276,6 @@ export default function TeamDetail() {
 
   const stickerCats = Array.from(new Set(apiStickers.map(s => s.category)));
   const filteredStickers = apiStickers.filter(s => s.category === stickerCat);
-
-  const hasPhoto  = !!selectedColor?.frontImageUrl;
-  const photoFront = selectedColor?.frontImageUrl;
-  const photoBack  = selectedColor?.backImageUrl ?? undefined;
 
   const { t } = useTranslation();
 
@@ -451,34 +403,13 @@ export default function TeamDetail() {
           )}
         </motion.div>
 
-        {/* ══ CENTER ══ */}
-        <div className="flex-1 relative min-w-0 overflow-hidden">
-          <ShirtStickerStage
-            ref={stageRef}
-            colors={colors}
-            name={name}
-            number={number}
-            fontId={fontId}
-            photoFront={hasPhoto ? photoFront : undefined}
-            photoBack={photoBack}
-            pendingSticker={pendingSticker}
-            onStickerPlaced={() => { setPendingSticker(null); setPlacedCount(n => n + 1); }}
-            accentColor={colors.body}
-            view={view}
-            onViewChange={setView}
+        {/* ══ CENTER — 3D Shirt Viewer ══ */}
+        <div className="flex-1 relative min-w-0 overflow-hidden bg-[#080808]">
+          <ShirtViewer3D
+            frontImageUrl={selectedColor?.frontImageUrl ?? null}
+            backImageUrl={selectedColor?.backImageUrl  ?? null}
           />
-
-          {/* 3D Try-On button — bottom center of the stage */}
-          <button
-            onClick={() => setShowTryOn(true)}
-            className="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/70 border border-white/20 hover:border-[#bfff00]/60 hover:text-[#bfff00] text-white/60 text-[11px] font-black px-4 py-2 rounded-full backdrop-blur-sm transition-all active:scale-95 select-none z-20"
-          >
-            <span>👕</span> تجربة ثلاثية الأبعاد
-          </button>
         </div>
-
-        {/* ══ 3D TRY-ON OVERLAY ══ */}
-        {showTryOn && <VirtualTryOn3D onClose={() => setShowTryOn(false)} />}
 
         {/* ══ CUSTOMIZATION PANEL ══ */}
         <motion.div
