@@ -1,9 +1,9 @@
 /**
- * ShirtViewer3D — Legendary GLB-based 3D jersey viewer.
+ * ShirtViewer3D — GLB-based 3D jersey viewer.
  *
- * Uses the real tshirt.glb mesh with Decal-projection for front/back
- * jersey photos. Features environment IBL, fabric sheen material,
- * contact shadows, and cinematic lighting.
+ * Applies the actual jersey photo directly as the mesh's diffuse texture
+ * (front image when facing camera, back image when rotated away).
+ * Fabric sheen material, IBL, contact shadows, ACES tonemapping.
  */
 
 import {
@@ -11,8 +11,7 @@ import {
 } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
-  useGLTF, Decal, Environment, ContactShadows,
-  OrbitControls, useTexture,
+  useGLTF, Environment, ContactShadows, OrbitControls,
 } from "@react-three/drei";
 import * as THREE from "three";
 import { FONT_STYLES } from "./configurator-jersey";
@@ -49,6 +48,10 @@ function buildTexture(opts: TextureOptions): Promise<THREE.Texture> {
       canvas.width = canvas.height = SIZE;
       const ctx = canvas.getContext("2d")!;
 
+      /* fill with white to avoid transparent edges on the mesh */
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, SIZE, SIZE);
+
       const aspect = img.width / img.height;
       let dw = SIZE, dh = SIZE, ox = 0, oy = 0;
       if (aspect > 1) { dh = SIZE / aspect; oy = (SIZE - dh) / 2; }
@@ -84,6 +87,7 @@ function buildTexture(opts: TextureOptions): Promise<THREE.Texture> {
 
       const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace  = THREE.SRGBColorSpace;
+      tex.flipY       = true;
       tex.needsUpdate = true;
       resolve(tex);
     };
@@ -121,137 +125,90 @@ function buildFallbackTexture(
   }
 
   const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace; tex.needsUpdate = true;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.flipY      = true;
+  tex.needsUpdate = true;
   return tex;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   GLB SHIRT MESH with decal overlays
+   GLB SHIRT MESH — texture applied directly to the mesh surface
 ═══════════════════════════════════════════════════════════════════ */
 
 interface ShirtMeshProps {
-  frontTex: THREE.Texture;
-  backTex:  THREE.Texture;
-  bodyColor: string;
+  frontTex:   THREE.Texture;
+  backTex:    THREE.Texture;
   autoRotate: boolean;
   onOrbitChange: (front: boolean) => void;
 }
 
 useGLTF.preload("/tshirt.glb");
 
-function ShirtMesh({ frontTex, backTex, bodyColor, autoRotate, onOrbitChange }: ShirtMeshProps) {
+function ShirtMesh({ frontTex, backTex, autoRotate, onOrbitChange }: ShirtMeshProps) {
   const groupRef   = useRef<THREE.Group>(null);
   const { camera } = useThree();
   const { scene }  = useGLTF("/tshirt.glb");
 
-  /* ── clone scene so multiple instances don't fight ── */
+  /* clone scene so multiple instances don't share materials */
   const clonedScene = useMemo(() => scene.clone(true), [scene]);
 
-  /* ── fabric-like material ── */
-  const shirtMaterial = useMemo(() => new THREE.MeshPhysicalMaterial({
-    color:     new THREE.Color(bodyColor).convertSRGBToLinear(),
-    roughness: 0.85,
-    metalness: 0.0,
-    sheen:     0.6,
-    sheenRoughness: 0.7,
-    sheenColor: new THREE.Color(bodyColor).convertSRGBToLinear(),
-    envMapIntensity: 0.4,
-  }), [bodyColor]);
+  /* build the fabric material — front texture starts by default */
+  const material = useMemo(() => new THREE.MeshPhysicalMaterial({
+    map:            frontTex,
+    roughness:      0.82,
+    metalness:      0.0,
+    sheen:          0.55,
+    sheenRoughness: 0.65,
+    envMapIntensity: 0.45,
+    side: THREE.FrontSide,
+  }), []); // eslint-disable-line
 
-  /* ── apply material to all meshes ── */
+  /* keep the map in sync when textures change externally */
+  useEffect(() => {
+    material.map = frontTex;
+    material.needsUpdate = true;
+  }, [frontTex, material]);
+
+  /* apply material to every mesh in the GLB */
   useEffect(() => {
     clonedScene.traverse(node => {
-      if ((node as THREE.Mesh).isMesh) {
-        (node as THREE.Mesh).material = shirtMaterial;
-        (node as THREE.Mesh).castShadow    = true;
-        (node as THREE.Mesh).receiveShadow = true;
+      const mesh = node as THREE.Mesh;
+      if (mesh.isMesh) {
+        mesh.material    = material;
+        mesh.castShadow    = true;
+        mesh.receiveShadow = true;
       }
     });
-  }, [clonedScene, shirtMaterial]);
+  }, [clonedScene, material]);
 
-  /* ── camera setup ── */
+  /* camera default position */
   useEffect(() => {
-    camera.position.set(0, 0.15, 3.5);
+    camera.position.set(0, 0.1, 3.2);
     camera.lookAt(0, 0, 0);
   }, [camera]);
 
-  /* ── auto-rotate & front/back detection ── */
+  /* auto-rotate + swap texture front/back */
   const lastFrontRef = useRef(true);
+
   useFrame((_, delta) => {
     if (!groupRef.current) return;
-    if (autoRotate) groupRef.current.rotation.y += delta * 0.38;
+    if (autoRotate) groupRef.current.rotation.y += delta * 0.35;
 
-    /* decide front vs back from group rotation */
     const y = ((groupRef.current.rotation.y % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     const isFront = y < Math.PI * 0.5 || y > Math.PI * 1.5;
-    if (isFront !== lastFrontRef.current) { lastFrontRef.current = isFront; onOrbitChange(isFront); }
+
+    /* swap texture when side changes */
+    if (isFront !== lastFrontRef.current) {
+      lastFrontRef.current = isFront;
+      material.map = isFront ? frontTex : backTex;
+      material.needsUpdate = true;
+      onOrbitChange(isFront);
+    }
   });
-
-  /* ── decal scale / position – tuned for standard tshirt.glb scale ── */
-  const FRONT_POS  = new THREE.Vector3(0,  0.08,  0.38);
-  const FRONT_ROT  = new THREE.Euler(0, 0, 0);
-  const BACK_POS   = new THREE.Vector3(0,  0.08, -0.38);
-  const BACK_ROT   = new THREE.Euler(0, Math.PI, 0);
-  const DECAL_SCALE: [number, number, number] = [0.82, 1.05, 0.82];
-
-  /* track target mesh via state so Decals only mount after mesh is ready */
-  const targetRef                   = useRef<THREE.Mesh>(null!);
-  const [meshReady, setMeshReady]   = useState(false);
-
-  useEffect(() => {
-    clonedScene.traverse(n => {
-      if ((n as THREE.Mesh).isMesh && !targetRef.current) {
-        targetRef.current = n as THREE.Mesh;
-      }
-    });
-    if (targetRef.current) setMeshReady(true);
-  }, [clonedScene]);
 
   return (
     <group ref={groupRef}>
       <primitive object={clonedScene} />
-
-      {meshReady && (
-        <>
-          {/* FRONT decal */}
-          <Decal
-            mesh={targetRef}
-            position={FRONT_POS}
-            rotation={FRONT_ROT}
-            scale={DECAL_SCALE}
-          >
-            <meshPhysicalMaterial
-              map={frontTex}
-              transparent
-              depthTest
-              depthWrite={false}
-              polygonOffset
-              polygonOffsetFactor={-4}
-              roughness={0.9}
-              metalness={0}
-            />
-          </Decal>
-
-          {/* BACK decal */}
-          <Decal
-            mesh={targetRef}
-            position={BACK_POS}
-            rotation={BACK_ROT}
-            scale={DECAL_SCALE}
-          >
-            <meshPhysicalMaterial
-              map={backTex}
-              transparent
-              depthTest
-              depthWrite={false}
-              polygonOffset
-              polygonOffsetFactor={-4}
-              roughness={0.9}
-              metalness={0}
-            />
-          </Decal>
-        </>
-      )}
     </group>
   );
 }
@@ -270,7 +227,7 @@ function ShirtLoader() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   FRONT / BACK BADGE  (HUD overlay over the canvas)
+   FRONT / BACK BADGE
 ═══════════════════════════════════════════════════════════════════ */
 
 function ViewBadge({ isFront }: { isFront: boolean }) {
@@ -352,39 +309,42 @@ export function ShirtViewer3D({
 
   return (
     <div className="relative w-full h-full">
-      {/* ambient glow behind shirt */}
+      {/* ambient glow */}
       <div className="absolute inset-0 pointer-events-none" style={{
         background: `radial-gradient(ellipse 60% 55% at 50% 44%, ${colors.body}22 0%, transparent 68%)`,
       }} />
 
       <Canvas
-        camera={{ position: [0, 0.15, 3.5], fov: 40 }}
+        camera={{ position: [0, 0.1, 3.2], fov: 38 }}
         style={{ background: "transparent" }}
-        gl={{ alpha: true, antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.15 }}
+        gl={{
+          alpha: true, antialias: true,
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.1,
+        }}
         shadows
       >
-        {/* ── Environment IBL (no background, just reflections) ── */}
-        <Environment preset="studio" background={false} environmentIntensity={0.55} />
+        {/* Environment IBL */}
+        <Environment preset="studio" background={false} environmentIntensity={0.6} />
 
-        {/* ── Key light (warm front) ── */}
-        <directionalLight position={[1.5, 3.5, 4]} intensity={1.8} color="#fff8ee" castShadow
+        {/* Key light */}
+        <directionalLight position={[1.5, 3.5, 4]} intensity={1.6} color="#fff8ee" castShadow
           shadow-mapSize={[1024, 1024]} shadow-bias={-0.0005} />
 
-        {/* ── Rim lights ── */}
-        <directionalLight position={[-3.5, 2, -3]} intensity={0.9} color="#4488ff" />
-        <directionalLight position={[3, -1.5, -2]} intensity={0.5} color="#bfff00" />
+        {/* Rim lights */}
+        <directionalLight position={[-3.5, 2, -3]}  intensity={0.8}  color="#4488ff" />
+        <directionalLight position={[3,   -1.5, -2]} intensity={0.45} color="#bfff00" />
 
-        {/* ── Ambient fill ── */}
-        <ambientLight intensity={0.35} />
+        {/* Ambient fill */}
+        <ambientLight intensity={0.4} />
 
-        {/* ── Contact shadow on floor ── */}
-        <ContactShadows position={[0, -1.62, 0]} opacity={0.55} scale={4} blur={2.5} far={2} />
+        {/* Contact shadow */}
+        <ContactShadows position={[0, -1.62, 0]} opacity={0.5} scale={4} blur={2.5} far={2} />
 
         <Suspense fallback={null}>
           <ShirtMesh
             frontTex={frontTex}
             backTex={backTex}
-            bodyColor={colors.body}
             autoRotate={autoRotate}
             onOrbitChange={setIsFront}
           />
@@ -393,8 +353,8 @@ export function ShirtViewer3D({
         <OrbitControls
           enablePan={false}
           enableZoom={true}
-          minDistance={1.8}
-          maxDistance={6.5}
+          minDistance={1.6}
+          maxDistance={6}
           minPolarAngle={Math.PI * 0.18}
           maxPolarAngle={Math.PI * 0.82}
           onStart={() => setAutoRotate(false)}
