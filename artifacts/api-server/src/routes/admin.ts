@@ -6,8 +6,9 @@ import {
   nahfatPresetsTable,
   teamsTable,
   stickersTable,
+  visitorsTable,
 } from "@workspace/db";
-import { eq, desc, inArray } from "drizzle-orm";
+import { eq, desc, inArray, sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -477,4 +478,58 @@ router.get("/admin/stats/charts", async (req, res) => {
   }
 });
 
+/* ════════════════════════════════════════════════════
+   VISITOR TRACKING
+════════════════════════════════════════════════════ */
+
+/* Public — called by customer app on each new session */
+router.post("/track-visit", async (req, res) => {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  try {
+    await db
+      .insert(visitorsTable)
+      .values({ date: today, count: 1 })
+      .onConflictDoUpdate({
+        target: visitorsTable.date,
+        set: { count: sql`${visitorsTable.count} + 1` },
+      });
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err }, "track-visit failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* Admin — returns today + last 7 days */
+router.get("/admin/stats/visitors", async (req, res) => {
+  try {
+    const rows = await db
+      .select()
+      .from(visitorsTable)
+      .orderBy(desc(visitorsTable.date))
+      .limit(30);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const todayRow  = rows.find(r => r.date === today);
+    const todayCount = todayRow?.count ?? 0;
+    const totalCount = rows.reduce((s, r) => s + r.count, 0);
+
+    /* last 7 days for sparkline */
+    const last7: { date: string; count: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const row = rows.find(r => r.date === key);
+      last7.push({ date: key.slice(5), count: row?.count ?? 0 });
+    }
+
+    res.json({ today: todayCount, total: totalCount, last7 });
+  } catch (err) {
+    req.log.error({ err }, "admin: visitors stats failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
+

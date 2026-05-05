@@ -239,6 +239,12 @@ interface ChartData {
   bySizes: { size: string; count: number }[];
 }
 
+interface VisitorStats {
+  today: number;
+  total: number;
+  last7: { date: string; count: number }[];
+}
+
 const PIE_COLORS = ["#6366f1","#22d3ee","#f59e0b","#10b981","#ef4444","#a78bfa"];
 const AREA_GRAD_ID = "areaGrad";
 
@@ -246,6 +252,7 @@ function Dashboard() {
   const [stats, setStats] = useState<{ totalOrders: number; totalRevenue: number } | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [charts, setCharts] = useState<ChartData | null>(null);
+  const [visitors, setVisitors] = useState<VisitorStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -253,8 +260,9 @@ function Dashboard() {
       apiFetch("/orders/stats"),
       apiFetch("/orders"),
       apiFetch("/admin/stats/charts"),
+      apiFetch("/admin/stats/visitors"),
     ])
-      .then(([s, o, c]) => { setStats(s); setOrders(o); setCharts(c); })
+      .then(([s, o, c, v]) => { setStats(s); setOrders(o); setCharts(c); setVisitors(v); })
       .catch(() => toast.error("فشل تحميل الإحصائيات"))
       .finally(() => setLoading(false));
   }, []);
@@ -268,13 +276,71 @@ function Dashboard() {
     <div dir="rtl">
       <PageHeader title="لوحة المعلومات" subtitle="نظرة عامة على أداء المنصة" />
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      {/* KPI cards — row 1: orders + revenue */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <StatCard label="إجمالي الطلبات"   value={stats?.totalOrders ?? 0}                         icon={<Package size={20} />}   color="bg-blue-500" />
         <StatCard label="إجمالي الإيرادات" value={`${(stats?.totalRevenue ?? 0).toFixed(0)} د.أ`} icon={<BarChart3 size={20} />}  color="bg-emerald-500" />
         <StatCard label="طلبات معلّقة"     value={pending}                                          icon={<RefreshCw size={20} />} color="bg-yellow-500" />
         <StatCard label="طلبات مؤكّدة"     value={confirmed}                                        icon={<TrendingUp size={20} />} color="bg-purple-500" />
       </div>
+
+      {/* Visitor counter card */}
+      {visitors && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+          <div className="lg:col-span-1 bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-pink-500 flex items-center justify-center text-white">
+                  <Eye size={16} />
+                </div>
+                <span className="text-sm font-bold text-slate-700">زوار الموقع</span>
+              </div>
+              <span className="text-[10px] text-slate-400 bg-slate-50 border border-slate-100 rounded-full px-2 py-0.5">اليوم / الإجمالي</span>
+            </div>
+            <div className="flex items-end gap-3">
+              <div>
+                <div className="text-3xl font-black text-slate-800">{visitors.today.toLocaleString()}</div>
+                <div className="text-xs text-slate-400 mt-0.5">اليوم</div>
+              </div>
+              <div className="mb-1 text-slate-300 text-xl font-light">/</div>
+              <div>
+                <div className="text-xl font-black text-slate-500">{visitors.total.toLocaleString()}</div>
+                <div className="text-xs text-slate-400 mt-0.5">إجمالي</div>
+              </div>
+            </div>
+            {/* Sparkline */}
+            <ResponsiveContainer width="100%" height={50}>
+              <BarChart data={visitors.last7} margin={{ top: 0, right: 0, left: 0, bottom: 0 }} barCategoryGap="20%">
+                <Tooltip
+                  contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 10 }}
+                  formatter={(v: number) => [v, "زائر"]}
+                />
+                <Bar dataKey="count" fill="#ec4899" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="text-[10px] text-slate-300 text-center -mt-1">آخر 7 أيام</div>
+          </div>
+
+          <div className="lg:col-span-2 flex flex-col justify-center gap-3 bg-slate-50 border border-slate-100 rounded-2xl p-5">
+            <p className="text-xs font-bold text-slate-500 mb-1">تفاصيل الزيارات — آخر 7 أيام</p>
+            <div className="grid grid-cols-7 gap-1">
+              {visitors.last7.map(d => (
+                <div key={d.date} className="flex flex-col items-center gap-1">
+                  <div className="text-xs font-black text-slate-700">{d.count}</div>
+                  <div
+                    className="w-full rounded-md bg-pink-400"
+                    style={{
+                      height: Math.max(4, Math.round((d.count / Math.max(1, Math.max(...visitors.last7.map(x => x.count)))) * 48)),
+                      opacity: d.count === 0 ? 0.15 : 0.85,
+                    }}
+                  />
+                  <div className="text-[9px] text-slate-400 text-center leading-tight">{d.date}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Charts row */}
       {charts && (
