@@ -1,58 +1,122 @@
 /**
- * ShirtViewer3D — Inline 3D t-shirt viewer.
+ * ShirtViewer3D — Inline 3D t-shirt viewer with proper name/number compositing.
  *
- * Loads tshirt.glb and auto-applies admin-uploaded front / back
- * jersey photos as textures. Images are pre-processed onto a square
- * 1024×1024 canvas (contain + centre) to prevent UV distortion.
+ * International jersey standards applied to the texture canvas:
+ *   BACK  — name  : centered, ~18% from top of jersey UV
+ *           number: centered, ~38% from top, large
+ *   FRONT — number: centered, ~42% from top, medium
  *
  * Public API:
- *   <ShirtViewer3D frontImageUrl={url} backImageUrl={url} />
+ *   <ShirtViewer3D frontImageUrl={url} backImageUrl={url}
+ *                  name="SALEH" number="10" fontId="block"
+ *                  colors={...} withCustomization />
  */
 
 import { Suspense, useRef, useState, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, useGLTF, Environment } from "@react-three/drei";
 import * as THREE from "three";
+import { FONT_STYLES } from "./configurator-jersey";
 
 /* ═══════════════════════════════════════════════════════════════════
-   TEXTURE UTILITIES
+   TYPES
+═══════════════════════════════════════════════════════════════════ */
+
+interface JerseyColors {
+  body: string; sleeves: string; collar: string; trim: string;
+}
+
+interface TextureOptions {
+  url:       string;
+  side:      "front" | "back";
+  name:      string;
+  number:    string;
+  fontId:    string;
+  trimColor: string;
+  withCustomization: boolean;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   TEXTURE BUILDER — jersey photo + name/number at standard positions
 ═══════════════════════════════════════════════════════════════════ */
 
 /**
- * createTextureFromUrl
+ * Draws the jersey photo + text overlay onto a 1024×1024 UV canvas.
  *
- * Draws the jersey photo onto a 1024×1024 square canvas (object-contain,
- * centred) so the texture fills the UV space without distortion.
- * Uses crossOrigin so CDN-hosted images work correctly.
+ * International standard positions (% of canvas height):
+ *   back  — name  : y ≈ 24%   (just below collar)
+ *           number: y ≈ 52%   (center of back panel)
+ *   front — number: y ≈ 50%   (chest center)
  */
-function createTextureFromUrl(url: string): Promise<THREE.Texture> {
+function buildTexture(opts: TextureOptions): Promise<THREE.Texture> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
 
     img.onload = () => {
-      const SIZE   = 1024;
+      const SIZE = 1024;
       const canvas = document.createElement("canvas");
       canvas.width = canvas.height = SIZE;
-      const ctx    = canvas.getContext("2d")!;
+      const ctx = canvas.getContext("2d")!;
 
-      /* "contain" layout — centre the photo inside the square UV space */
+      /* ── Draw jersey photo, object-contain centered ── */
       const aspect = img.width / img.height;
       let dw = SIZE, dh = SIZE, ox = 0, oy = 0;
       if (aspect > 1) { dh = SIZE / aspect; oy = (SIZE - dh) / 2; }
       else            { dw = SIZE * aspect;  ox = (SIZE - dw) / 2; }
       ctx.drawImage(img, ox, oy, dw, dh);
 
-      const tex         = new THREE.CanvasTexture(canvas);
-      tex.colorSpace    = THREE.SRGBColorSpace;
-      tex.wrapS         = THREE.ClampToEdgeWrapping;
-      tex.wrapT         = THREE.ClampToEdgeWrapping;
-      tex.needsUpdate   = true;
+      /* ── Text overlay (only when customization is on) ── */
+      if (opts.withCustomization && (opts.name || opts.number)) {
+        const font   = FONT_STYLES.find(f => f.id === opts.fontId) ?? FONT_STYLES[0];
+        const fStyle = font.style as Record<string, string>;
+        const color  = opts.trimColor;
+
+        ctx.textAlign    = "center";
+        ctx.textBaseline = "middle";
+
+        /* Helper: draw text with shadow */
+        const drawText = (text: string, x: number, y: number, size: number, ls: number) => {
+          if (!text) return;
+          ctx.save();
+          ctx.font = `900 ${size}px "${font.family}", "Impact", sans-serif`;
+          if (fStyle.fontStyle === "italic") ctx.font = `italic ${ctx.font}`;
+          /* Shadow pass */
+          ctx.shadowColor   = "rgba(0,0,0,0.95)";
+          ctx.shadowBlur    = size * 0.25;
+          ctx.shadowOffsetY = size * 0.05;
+          ctx.letterSpacing = `${ls}px`;
+          ctx.fillStyle = color;
+          ctx.fillText(text, x, y, SIZE * 0.85);
+          /* Crisp pass */
+          ctx.shadowColor = "transparent";
+          ctx.fillText(text, x, y, SIZE * 0.85);
+          ctx.restore();
+        };
+
+        if (opts.side === "back") {
+          /* ── BACK: name near collar, number large below ── */
+          /* Name — ~24% from top */
+          drawText(opts.name.toUpperCase(), SIZE / 2, SIZE * 0.24, 58, 4);
+          /* Number — ~52% from top, very large */
+          drawText(opts.number, SIZE / 2, SIZE * 0.52, 260, -8);
+
+        } else {
+          /* ── FRONT: number on chest center, no name ── */
+          drawText(opts.number, SIZE / 2, SIZE * 0.50, 180, -6);
+        }
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.colorSpace  = THREE.SRGBColorSpace;
+      tex.wrapS       = THREE.ClampToEdgeWrapping;
+      tex.wrapT       = THREE.ClampToEdgeWrapping;
+      tex.needsUpdate = true;
       resolve(tex);
     };
 
-    img.onerror = () => reject(new Error(`ShirtViewer3D: failed to load ${url}`));
-    img.src     = url;
+    img.onerror = () => reject(new Error(`ShirtViewer3D: failed to load ${opts.url}`));
+    img.src = opts.url;
   });
 }
 
@@ -60,14 +124,6 @@ function createTextureFromUrl(url: string): Promise<THREE.Texture> {
    MESH CLASSIFICATION
 ═══════════════════════════════════════════════════════════════════ */
 
-/**
- * classifyMesh — maps a mesh to front / back / all.
- *
- * Naming conventions checked (case-insensitive):
- *   front / f_ / _f  →  "front"
- *   back  / b_ / _b  →  "back"
- * Generic names: index 0 → front, index 1 → back, else → all.
- */
 function classifyMesh(name: string, index: number): "front" | "back" | "all" {
   const n = name.toLowerCase();
   if (n.includes("front") || n.startsWith("f_") || n.endsWith("_f")) return "front";
@@ -91,7 +147,6 @@ function ShirtModel({ frontTexture, backTexture, autoRotate }: ShirtModelProps) 
   const gltf     = useGLTF("/jerseys/tshirt.glb");
   const groupRef = useRef<THREE.Group>(null);
 
-  /* Normalise model size and centre it in the scene */
   useEffect(() => {
     const g = groupRef.current;
     if (!g) return;
@@ -103,38 +158,30 @@ function ShirtModel({ frontTexture, backTexture, autoRotate }: ShirtModelProps) 
     g.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
   }, [gltf.scene]);
 
-  /* Apply / remove textures when props change */
   useEffect(() => {
     let idx = 0;
-
     gltf.scene.traverse((node) => {
       if (!(node instanceof THREE.Mesh)) return;
-
       const section = classifyMesh(node.name, idx++);
       const mats    = Array.isArray(node.material) ? node.material : [node.material];
-
       mats.forEach((mat) => {
         if (!(mat instanceof THREE.MeshStandardMaterial)) return;
-
-        /* Pick the right texture for this mesh section */
         const tex =
           section === "front" ? frontTexture :
           section === "back"  ? backTexture  :
-          frontTexture ?? backTexture;        /* single-mesh fallback */
-
+          frontTexture ?? backTexture;
         if (tex) {
           mat.map   = tex;
-          mat.color.set(0xffffff);   /* clear tint so photo colours show correctly */
+          mat.color.set(0xffffff);
         } else {
           mat.map   = null;
-          mat.color.set(0xcccccc);   /* neutral grey while no image is loaded */
+          mat.color.set(0xcccccc);
         }
         mat.needsUpdate = true;
       });
     });
   }, [gltf.scene, frontTexture, backTexture]);
 
-  /* Gentle idle rotation — pauses when user grabs the model */
   useFrame((_, delta) => {
     if (autoRotate && groupRef.current)
       groupRef.current.rotation.y += delta * 0.25;
@@ -143,11 +190,10 @@ function ShirtModel({ frontTexture, backTexture, autoRotate }: ShirtModelProps) 
   return <primitive object={gltf.scene} ref={groupRef} />;
 }
 
-/* Kick off GLB download as soon as the module is imported */
 useGLTF.preload("/jerseys/tshirt.glb");
 
 /* ═══════════════════════════════════════════════════════════════════
-   LOADING SPINNER  (shown while GLB downloads)
+   LOADING SPINNER
 ═══════════════════════════════════════════════════════════════════ */
 
 function ShirtLoader() {
@@ -160,48 +206,63 @@ function ShirtLoader() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   MAIN COMPONENT
+   MAIN EXPORT
 ═══════════════════════════════════════════════════════════════════ */
 
 export interface ShirtViewer3DProps {
-  /** URL of the jersey front photo (from admin panel) */
-  frontImageUrl?: string | null;
-  /** URL of the jersey back photo (from admin panel) */
-  backImageUrl?:  string | null;
+  frontImageUrl?:    string | null;
+  backImageUrl?:     string | null;
+  name?:             string;
+  number?:           string;
+  fontId?:           string;
+  colors?:           JerseyColors;
+  withCustomization?: boolean;
 }
 
-export function ShirtViewer3D({ frontImageUrl, backImageUrl }: ShirtViewer3DProps) {
+export function ShirtViewer3D({
+  frontImageUrl, backImageUrl,
+  name = "", number = "", fontId = "block",
+  colors = { body: "#cc0000", sleeves: "#ffffff", collar: "#cc0000", trim: "#ffffff" },
+  withCustomization = true,
+}: ShirtViewer3DProps) {
   const [frontTexture, setFrontTexture] = useState<THREE.Texture | null>(null);
   const [backTexture,  setBackTexture]  = useState<THREE.Texture | null>(null);
   const [autoRotate,   setAutoRotate]   = useState(true);
 
-  /* Reload front texture whenever the URL changes */
+  const trimColor = colors.trim;
+
+  /* Rebuild front texture whenever photo URL or text changes */
   useEffect(() => {
     if (!frontImageUrl) {
       setFrontTexture(old => { old?.dispose(); return null; });
       return;
     }
     let cancelled = false;
-    createTextureFromUrl(frontImageUrl)
+    buildTexture({
+      url: frontImageUrl, side: "front",
+      name, number, fontId, trimColor, withCustomization,
+    })
       .then(tex => { if (!cancelled) setFrontTexture(old => { old?.dispose(); return tex; }); })
       .catch(err => console.error("[ShirtViewer3D] front:", err));
     return () => { cancelled = true; };
-  }, [frontImageUrl]);
+  }, [frontImageUrl, name, number, fontId, trimColor, withCustomization]);
 
-  /* Reload back texture whenever the URL changes */
+  /* Rebuild back texture whenever photo URL or text changes */
   useEffect(() => {
     if (!backImageUrl) {
       setBackTexture(old => { old?.dispose(); return null; });
       return;
     }
     let cancelled = false;
-    createTextureFromUrl(backImageUrl)
+    buildTexture({
+      url: backImageUrl, side: "back",
+      name, number, fontId, trimColor, withCustomization,
+    })
       .then(tex => { if (!cancelled) setBackTexture(old => { old?.dispose(); return tex; }); })
       .catch(err => console.error("[ShirtViewer3D] back:", err));
     return () => { cancelled = true; };
-  }, [backImageUrl]);
+  }, [backImageUrl, name, number, fontId, trimColor, withCustomization]);
 
-  /* Dispose GPU textures on unmount */
   useEffect(() => () => { frontTexture?.dispose(); backTexture?.dispose(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
@@ -213,7 +274,6 @@ export function ShirtViewer3D({ frontImageUrl, backImageUrl }: ShirtViewer3DProp
         style={{ background: "transparent" }}
         shadows
       >
-        {/* Lighting rig */}
         <ambientLight intensity={0.8} />
         <directionalLight position={[4,  8,  4]} intensity={1.4} castShadow />
         <directionalLight position={[-4, 3, -2]} intensity={0.5} color="#b0ccff" />
