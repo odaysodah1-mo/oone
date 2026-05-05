@@ -11,6 +11,7 @@ import {
   getStickerCanvas,
   type StickerDef,
 } from "@/components/sticker-library";
+import { useTranslation } from "react-i18next";
 
 /* ─── Types ──────────────────────────────────────────────── */
 interface JerseyColor {
@@ -331,10 +332,17 @@ export default function TeamDetail() {
   const photoFront = selectedColor?.frontImageUrl;
   const photoBack  = selectedColor?.backImageUrl ?? undefined;
 
+  const { t } = useTranslation();
+
+  const SIZE_INFO_T: Record<string, string> = {
+    XS: t("td_size_xs"), S: t("td_size_s"), M: t("td_size_m"),
+    L: t("td_size_l"), XL: t("td_size_xl"), XXL: t("td_size_xxl"),
+  };
+
   const customTabs: { id: CustomTab; icon: string; label: string }[] = [
-    { id: "colors", icon: "🎨", label: "الألوان" },
-    { id: "name",   icon: "✏️",  label: "الاسم"  },
-    { id: "size",   icon: "📐",  label: "المقاس" },
+    { id: "colors", icon: "🎨", label: t("td_tab_colors") },
+    { id: "name",   icon: "✏️",  label: t("td_tab_name")   },
+    { id: "size",   icon: "📐",  label: t("td_tab_size")   },
   ];
 
   /* ── Loading / 404 ──────────────────────────────────────── */
@@ -342,7 +350,7 @@ export default function TeamDetail() {
     <div className="fixed inset-0 bg-black flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <div className="w-16 h-16 border-4 border-[#bfff00] border-t-transparent rounded-full animate-spin" />
-        <p className="text-white/50 font-bold">جاري التحميل…</p>
+        <p className="text-white/50 font-bold">…</p>
       </div>
     </div>
   );
@@ -350,8 +358,8 @@ export default function TeamDetail() {
   if (!team) return (
     <div className="fixed inset-0 bg-black flex items-center justify-center">
       <div className="text-center space-y-4">
-        <h2 className="text-3xl font-black text-white">الفريق غير موجود</h2>
-        <button onClick={() => setLocation("/teams")} className="px-6 py-3 bg-[#bfff00] text-black font-black">العودة</button>
+        <h2 className="text-3xl font-black text-white">404</h2>
+        <button onClick={() => setLocation("/teams")} className="px-6 py-3 bg-[#bfff00] text-black font-black">{t("nav_teams")}</button>
       </div>
     </div>
   );
@@ -364,7 +372,7 @@ export default function TeamDetail() {
                       border-b border-white/[0.06] bg-black/80 backdrop-blur-sm">
         <button onClick={() => setLocation("/teams")}
           className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white transition-colors font-bold">
-          <span className="text-base">→</span> الفرق
+          <span className="text-base">→</span> {t("nav_teams")}
         </button>
         <div className="text-center">
           <div className="flex items-center justify-center gap-2 text-xs text-white/40 mb-0.5">
@@ -376,9 +384,9 @@ export default function TeamDetail() {
           <h1 className="text-sm md:text-lg font-black text-white leading-tight">{team.name}</h1>
         </div>
         <div className="text-left">
-          <div className="text-[10px] text-white/30">{withCustomization ? "مع طباعة" : "بدون طباعة"}</div>
+          <div className="text-[10px] text-white/30">{withCustomization ? t("td_price_label_with") : t("td_price_label_without")}</div>
           <div className="text-xl font-black text-[#bfff00]">
-            {effectivePrice}<span className="text-xs text-white/50 ml-1">د.أ</span>
+            {effectivePrice}<span className="text-xs text-white/50 ml-1">{t("td_currency")}</span>
           </div>
         </div>
       </div>
@@ -489,7 +497,7 @@ export default function TeamDetail() {
                   background: withCustomization ? "#bfff00" : "transparent",
                   color:      withCustomization ? "#000"    : "rgba(255,255,255,0.35)",
                 }}>
-                ✏️ مع طباعة
+                ✏️ {t("td_with_print")}
               </button>
               <button onClick={() => setWithCustomization(false)}
                 className="flex-1 py-2.5 text-xs font-black transition-all"
@@ -497,7 +505,7 @@ export default function TeamDetail() {
                   background: !withCustomization ? "#bfff00" : "transparent",
                   color:      !withCustomization ? "#000"    : "rgba(255,255,255,0.35)",
                 }}>
-                👕 بدون طباعة
+                👕 {t("td_without_print")}
               </button>
             </div>
 
@@ -523,17 +531,17 @@ export default function TeamDetail() {
                   {/* If no photo, show color pickers */}
                   {!hasPhoto ? (
                     <>
-                      <ZonePicker label="لون الجسم"    value={colors.body}    onChange={setZone("body")}    palette={PALETTE} />
+                      <ZonePicker label={t("td_body_color")}          value={colors.body}    onChange={setZone("body")}    palette={PALETTE} />
                       <div className="h-px bg-white/[0.06]" />
-                      <ZonePicker label="لون الأكمام"  value={colors.sleeves} onChange={setZone("sleeves")} palette={PALETTE} />
+                      <ZonePicker label={t("td_sleeves_color")}       value={colors.sleeves} onChange={setZone("sleeves")} palette={PALETTE} />
                       <div className="h-px bg-white/[0.06]" />
-                      <ZonePicker label="لون الطوق"    value={colors.collar}  onChange={setZone("collar")}  palette={PALETTE} />
+                      <ZonePicker label={t("td_collar_color")}        value={colors.collar}  onChange={setZone("collar")}  palette={PALETTE} />
                       <div className="h-px bg-white/[0.06]" />
-                      <ZonePicker label="الاسم والرقم" value={colors.trim}    onChange={setZone("trim")}    palette={PALETTE} />
+                      <ZonePicker label={t("td_name_number_color")}   value={colors.trim}    onChange={setZone("trim")}    palette={PALETTE} />
                     </>
                   ) : (
                     <>
-                      <ZonePicker label="لون الاسم والرقم" value={colors.trim} onChange={setZone("trim")} palette={PALETTE} />
+                      <ZonePicker label={t("td_name_number_color2")} value={colors.trim} onChange={setZone("trim")} palette={PALETTE} />
                     </>
                   )}
                 </motion.div>
@@ -543,24 +551,24 @@ export default function TeamDetail() {
                 <motion.div key="n" initial={{ opacity:0,y:8 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0,y:-8 }} className="space-y-6">
                   <div className="space-y-2">
                     <label className="text-xs font-black text-white/50 uppercase tracking-widest block">
-                      {hasPhoto ? "الاسم (على القميص)" : "الاسم (على ظهر القميص)"}
+                      {t("td_name_label")}
                     </label>
                     <input value={name} onChange={e => setName(e.target.value.toUpperCase())}
-                      placeholder="AHMED" maxLength={12}
+                      placeholder={t("td_name_placeholder")} maxLength={12}
                       className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.10] text-white placeholder:text-white/20 font-black text-lg focus:outline-none focus:border-[#bfff00]/50 transition-colors" />
                     <div className="flex justify-between text-[10px] text-white/25">
-                      <span>باللغة الإنجليزية</span><span>{name.length}/12</span>
+                      <span></span><span>{name.length}/12</span>
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-white/50 uppercase tracking-widest block">الرقم</label>
+                    <label className="text-xs font-black text-white/50 uppercase tracking-widest block">{t("td_number_label")}</label>
                     <input value={number}
                       onChange={e => setNumber(e.target.value.replace(/[^0-9]/g,"").slice(0,2))}
-                      placeholder="10" maxLength={2}
+                      placeholder={t("td_number_placeholder")} maxLength={2}
                       className="w-full px-4 py-4 bg-white/[0.04] border border-white/[0.10] text-white placeholder:text-white/20 font-black text-5xl text-center focus:outline-none focus:border-[#bfff00]/50 transition-colors" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-white/50 uppercase tracking-widest block">نمط الخط</label>
+                    <label className="text-xs font-black text-white/50 uppercase tracking-widest block">{t("td_font_style")}</label>
                     <div className="grid grid-cols-2 gap-2">
                       {FONT_STYLES.map(f => (
                         <button key={f.id} onClick={() => setFontId(f.id)}
@@ -583,7 +591,7 @@ export default function TeamDetail() {
 
               {tab === "size" && (
                 <motion.div key="s" initial={{ opacity:0,y:8 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0,y:-8 }} className="space-y-2">
-                  <p className="text-xs text-white/30 mb-4">اختر المقاس المناسب لطولك</p>
+                  <p className="text-xs text-white/30 mb-4">{t("td_select_size")}</p>
                   {team.availableSizes.map(s => (
                     <button key={s} onClick={() => setSize(s)}
                       className="w-full flex items-center justify-between px-4 py-3.5 border transition-all duration-200 group"
@@ -592,7 +600,7 @@ export default function TeamDetail() {
                         background:  size === s ? "rgba(191,255,0,0.08)" : "rgba(255,255,255,0.02)",
                       }}>
                       <span className={`text-2xl font-black transition-colors ${size === s ? "text-[#bfff00]" : "text-white/50 group-hover:text-white/80"}`}>{s}</span>
-                      <span className="text-xs text-white/30">{SIZE_INFO[s] ?? ""}</span>
+                      <span className="text-xs text-white/30">{SIZE_INFO_T[s] ?? ""}</span>
                       {size === s && <span className="text-[#bfff00] text-lg font-black">✓</span>}
                     </button>
                   ))}
@@ -603,7 +611,7 @@ export default function TeamDetail() {
 
           {/* CTA */}
           <div className="p-4 border-t border-white/[0.06] shrink-0 bg-black/60">
-            {!size && <p className="text-[10px] text-center text-amber-400/70 mb-2">⚠ اختر المقاس من تبويب 📐</p>}
+            {!size && <p className="text-[10px] text-center text-amber-400/70 mb-2">{t("td_select_size_hint")}</p>}
             <button onClick={handleOrder} disabled={!size}
               className="w-full py-4 text-lg font-black transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
               style={{
@@ -611,7 +619,7 @@ export default function TeamDetail() {
                 color:      size ? "#000" : "#444",
                 boxShadow:  size ? "0 0 30px rgba(191,255,0,0.30), 0 4px 16px rgba(0,0,0,0.5)" : "none",
               }}>
-              {size ? "🛒 إتمام الطلب" : "اختر المقاس أولاً"}
+              {size ? t("td_order_btn") : t("td_select_size_first")}
             </button>
           </div>
         </motion.div>
@@ -620,10 +628,10 @@ export default function TeamDetail() {
       <div className="md:hidden border-t border-white/[0.06] bg-[#080808] shrink-0 z-20">
         <div className="flex border-b border-white/[0.06]">
           {[
-            { id: "stickers" as MobileTab, icon: "🎯", label: "ستيكرات" },
-            { id: "colors"   as MobileTab, icon: "🎨", label: "جيرسيه"  },
-            { id: "name"     as MobileTab, icon: "✏️",  label: "اسم"    },
-            { id: "size"     as MobileTab, icon: "📐",  label: "مقاس"   },
+            { id: "stickers" as MobileTab, icon: "🎯", label: t("td_tab_stickers") },
+            { id: "colors"   as MobileTab, icon: "🎨", label: t("td_tab_colors")   },
+            { id: "name"     as MobileTab, icon: "✏️",  label: t("td_tab_name")    },
+            { id: "size"     as MobileTab, icon: "📐",  label: t("td_tab_size")    },
           ].map(t => (
             <button key={t.id} onClick={() => setMobileTab(t.id)}
               className={`flex-1 flex flex-col items-center py-2.5 gap-0.5 text-[10px] font-black transition-all ${
@@ -657,12 +665,12 @@ export default function TeamDetail() {
               </div>
               <div className="flex gap-2">
                 <textarea value={nahfaText} onChange={e => setNahfaText(e.target.value)}
-                  placeholder="نهفة…" maxLength={20} rows={1} dir="auto"
+                  placeholder={t("td_nahfa_placeholder")} maxLength={20} rows={1} dir="auto"
                   className="flex-1 px-3 py-1.5 bg-white/[0.04] border border-white/[0.08] text-white text-xs font-bold resize-none focus:outline-none focus:border-[#bfff00]/40" />
                 <button onClick={addNahfa} disabled={!nahfaText.trim()}
                   className="px-3 py-1.5 text-xs font-black disabled:opacity-30"
                   style={{ background: nahfaText.trim() ? "#bfff00" : "#1a1a1a", color: nahfaText.trim() ? "#000" : "#444" }}>
-                  إضافة
+                  {t("td_nahfa_add")}
                 </button>
               </div>
             </div>
@@ -678,12 +686,12 @@ export default function TeamDetail() {
                 />
               ) : (
                 <>
-                  <ZonePicker label="الجسم"  value={colors.body}    onChange={setZone("body")}    palette={PALETTE} />
-                  <ZonePicker label="الأكمام" value={colors.sleeves} onChange={setZone("sleeves")} palette={PALETTE} />
-                  <ZonePicker label="الطوق"   value={colors.collar}  onChange={setZone("collar")}  palette={PALETTE} />
+                  <ZonePicker label={t("td_body_color")}    value={colors.body}    onChange={setZone("body")}    palette={PALETTE} />
+                  <ZonePicker label={t("td_sleeves_color")} value={colors.sleeves} onChange={setZone("sleeves")} palette={PALETTE} />
+                  <ZonePicker label={t("td_collar_color")}  value={colors.collar}  onChange={setZone("collar")}  palette={PALETTE} />
                 </>
               )}
-              <ZonePicker label="لون الاسم والرقم" value={colors.trim} onChange={setZone("trim")} palette={PALETTE} />
+              <ZonePicker label={t("td_name_number_color")} value={colors.trim} onChange={setZone("trim")} palette={PALETTE} />
             </div>
           )}
 
@@ -738,7 +746,7 @@ export default function TeamDetail() {
                 background: withCustomization ? "#bfff00" : "transparent",
                 color:      withCustomization ? "#000"    : "rgba(255,255,255,0.35)",
               }}>
-              ✏️ مع طباعة
+              ✏️ {t("td_with_print")}
             </button>
             <button onClick={() => setWithCustomization(false)}
               className="flex-1 py-2 text-[11px] font-black transition-all"
@@ -746,7 +754,7 @@ export default function TeamDetail() {
                 background: !withCustomization ? "#bfff00" : "transparent",
                 color:      !withCustomization ? "#000"    : "rgba(255,255,255,0.35)",
               }}>
-              👕 بدون طباعة
+              👕 {t("td_without_print")}
             </button>
           </div>
           <button onClick={handleOrder} disabled={!size}
@@ -755,7 +763,7 @@ export default function TeamDetail() {
               background: size ? "linear-gradient(135deg,#bfff00 0%,#7ecf00 100%)" : "#1a1a1a",
               color:      size ? "#000" : "#444",
             }}>
-            {size ? `🛒 إتمام الطلب — ${effectivePrice} د.أ` : "اختر المقاس أولاً"}
+            {size ? t("td_order_price", { price: effectivePrice }) : t("td_select_size_first")}
           </button>
         </div>
       </div>
