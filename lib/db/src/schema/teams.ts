@@ -16,6 +16,7 @@ export const teamsTable = pgTable("teams", {
   logoUrl: text("logo_url"),
   orderCount: integer("order_count").notNull().default(0),
   isPopular: boolean("is_popular").notNull().default(false),
+  discountPercent: integer("discount_percent").notNull().default(0),
 });
 
 export const insertTeamSchema = createInsertSchema(teamsTable).omit({ id: true });

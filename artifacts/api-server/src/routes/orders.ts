@@ -68,7 +68,12 @@ router.post("/orders", async (req, res) => {
       }
     }
 
-    const totalPrice = unitPrice * data.quantity;
+    /* Apply team-level discount */
+    const discount = team.discountPercent ?? 0;
+    const discountedUnitPrice = discount > 0
+      ? Math.round(unitPrice * (1 - discount / 100))
+      : unitPrice;
+    const totalPrice = discountedUnitPrice * data.quantity;
 
     const [order] = await db
       .insert(ordersTable)

@@ -127,7 +127,7 @@ router.delete("/admin/teams/:id", async (req, res) => {
 router.patch("/admin/teams/:id", async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid team id" }); return; }
-  const { basePrice, primaryColor, secondaryColor, name, nameEn, isPopular, logoUrl } = req.body as Record<string, unknown>;
+  const { basePrice, primaryColor, secondaryColor, name, nameEn, isPopular, logoUrl, discountPercent } = req.body as Record<string, unknown>;
   const update: Record<string, unknown> = {};
   if (typeof basePrice === "number" && basePrice > 0) update.basePrice = basePrice;
   if (typeof primaryColor === "string") update.primaryColor = primaryColor;
@@ -136,6 +136,8 @@ router.patch("/admin/teams/:id", async (req, res) => {
   if (typeof nameEn === "string" && nameEn) update.nameEn = nameEn;
   if (typeof isPopular === "boolean") update.isPopular = isPopular;
   if (logoUrl === null || typeof logoUrl === "string") update.logoUrl = logoUrl || null;
+  if (typeof discountPercent === "number" && discountPercent >= 0 && discountPercent <= 100)
+    update.discountPercent = Math.round(discountPercent);
   if (Object.keys(update).length === 0) {
     res.status(400).json({ error: "Nothing to update" }); return;
   }

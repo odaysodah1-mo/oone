@@ -178,7 +178,7 @@ export default function TeamDetail() {
   const [withCustomization, setWithCustomization] = useState(true);
 
   /* effective price based on mode and selected color */
-  const effectivePrice = (() => {
+  const baseEffectivePrice = (() => {
     if (!team) return 0;
     if (withCustomization) {
       return selectedColor?.priceWithCustomization ?? team.basePrice;
@@ -186,6 +186,11 @@ export default function TeamDetail() {
       return selectedColor?.priceWithoutCustomization ?? team.basePrice;
     }
   })();
+
+  const discountPercent = (team as (typeof team & { discountPercent?: number }))?.discountPercent ?? 0;
+  const effectivePrice = discountPercent > 0
+    ? Math.round(baseEffectivePrice * (1 - discountPercent / 100))
+    : baseEffectivePrice;
 
   /* mobile */
   const [mobileTab, setMobileTab] = useState<MobileTab>("stickers");
@@ -331,6 +336,16 @@ export default function TeamDetail() {
         </div>
         <div className="text-left">
           <div className="text-[10px] text-white/30">{withCustomization ? t("td_price_label_with") : t("td_price_label_without")}</div>
+          {discountPercent > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-white/35 line-through font-bold">
+                {baseEffectivePrice}
+              </span>
+              <span className="text-[9px] font-black bg-red-500 text-white rounded px-1 py-0.5 leading-none">
+                -{discountPercent}%
+              </span>
+            </div>
+          )}
           <div className="text-xl font-black text-[#bfff00]">
             {effectivePrice}<span className="text-xs text-white/50 ml-1">{t("td_currency")}</span>
           </div>

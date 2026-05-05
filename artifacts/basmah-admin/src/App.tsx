@@ -35,6 +35,7 @@ interface Team {
   availableColors: string[]; availableSizes: string[];
   orderCount: number; isPopular: boolean;
   logoUrl?: string | null; country?: string;
+  discountPercent: number;
 }
 
 interface JerseyColor {
@@ -1321,6 +1322,19 @@ function TeamCard({ team, onTeamUpdate, onDelete }: { team: Team; onTeamUpdate: 
                 <span className="text-xs text-slate-500">السعر الأساسي:</span>
                 <InlineEdit value={team.basePrice} type="number" min={1} suffix="د.أ"
                   onSave={async v => { await patchTeam({ basePrice: parseFloat(v) }); }} />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">🏷️ خصم:</span>
+                <InlineEdit value={team.discountPercent ?? 0} type="number" min={0} suffix="%"
+                  onSave={async v => {
+                    const n = Math.max(0, Math.min(100, Math.round(parseFloat(v) || 0)));
+                    await patchTeam({ discountPercent: n });
+                  }} />
+                {(team.discountPercent ?? 0) > 0 && (
+                  <span className="text-[10px] bg-red-50 text-red-600 border border-red-200 rounded-full px-2 py-0.5 font-bold">
+                    نشط — {team.discountPercent}%
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-500">اللون الأساسي:</span>

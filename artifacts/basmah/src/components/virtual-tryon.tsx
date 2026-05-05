@@ -194,59 +194,64 @@ function ShirtMesh({ frontTex, backTex, bodyColor, autoRotate, onOrbitChange }: 
   const BACK_ROT   = new THREE.Euler(0, Math.PI, 0);
   const DECAL_SCALE: [number, number, number] = [0.82, 1.05, 0.82];
 
-  /* ref for decal target mesh */
-  const targetRef = useRef<THREE.Mesh>(null!);
+  /* track target mesh via state so Decals only mount after mesh is ready */
+  const targetRef                   = useRef<THREE.Mesh>(null!);
+  const [meshReady, setMeshReady]   = useState(false);
 
-  /* attach ref to first mesh after clone is ready */
   useEffect(() => {
     clonedScene.traverse(n => {
       if ((n as THREE.Mesh).isMesh && !targetRef.current) {
         targetRef.current = n as THREE.Mesh;
       }
     });
+    if (targetRef.current) setMeshReady(true);
   }, [clonedScene]);
 
   return (
     <group ref={groupRef}>
       <primitive object={clonedScene} />
 
-      {/* FRONT decal */}
-      <Decal
-        mesh={targetRef}
-        position={FRONT_POS}
-        rotation={FRONT_ROT}
-        scale={DECAL_SCALE}
-      >
-        <meshPhysicalMaterial
-          map={frontTex}
-          transparent
-          depthTest
-          depthWrite={false}
-          polygonOffset
-          polygonOffsetFactor={-4}
-          roughness={0.9}
-          metalness={0}
-        />
-      </Decal>
+      {meshReady && (
+        <>
+          {/* FRONT decal */}
+          <Decal
+            mesh={targetRef}
+            position={FRONT_POS}
+            rotation={FRONT_ROT}
+            scale={DECAL_SCALE}
+          >
+            <meshPhysicalMaterial
+              map={frontTex}
+              transparent
+              depthTest
+              depthWrite={false}
+              polygonOffset
+              polygonOffsetFactor={-4}
+              roughness={0.9}
+              metalness={0}
+            />
+          </Decal>
 
-      {/* BACK decal */}
-      <Decal
-        mesh={targetRef}
-        position={BACK_POS}
-        rotation={BACK_ROT}
-        scale={DECAL_SCALE}
-      >
-        <meshPhysicalMaterial
-          map={backTex}
-          transparent
-          depthTest
-          depthWrite={false}
-          polygonOffset
-          polygonOffsetFactor={-4}
-          roughness={0.9}
-          metalness={0}
-        />
-      </Decal>
+          {/* BACK decal */}
+          <Decal
+            mesh={targetRef}
+            position={BACK_POS}
+            rotation={BACK_ROT}
+            scale={DECAL_SCALE}
+          >
+            <meshPhysicalMaterial
+              map={backTex}
+              transparent
+              depthTest
+              depthWrite={false}
+              polygonOffset
+              polygonOffsetFactor={-4}
+              roughness={0.9}
+              metalness={0}
+            />
+          </Decal>
+        </>
+      )}
     </group>
   );
 }
