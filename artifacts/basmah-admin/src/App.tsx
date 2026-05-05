@@ -34,6 +34,7 @@ interface Team {
   basePrice: number; primaryColor: string; secondaryColor: string;
   availableColors: string[]; availableSizes: string[];
   orderCount: number; isPopular: boolean;
+  logoUrl?: string | null; country?: string;
 }
 
 interface JerseyColor {
@@ -742,6 +743,72 @@ function ColorPicker({ value, onSave }: { value: string; onSave: (v: string) => 
   );
 }
 
+/* ── Logo upload row for a team ─────────────────────── */
+function LogoUploadRow({ team, onSave }: { team: Team; onSave: (url: string | null) => Promise<void> }) {
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const { uploadFile, isUploading, progress } = useUpload({
+    onSuccess: async r => {
+      const url = `/api/storage${r.objectPath}`;
+      setSaving(true);
+      try { await onSave(url); toast.success("تم رفع الشعار"); }
+      catch { toast.error("فشل حفظ الشعار"); }
+      finally { setSaving(false); }
+    },
+    onError: () => toast.error("فشل رفع الصورة"),
+  });
+
+  async function handleRemove() {
+    if (!confirm("هل تريد إزالة شعار الفريق؟")) return;
+    setSaving(true);
+    try { await onSave(null); toast.success("تم حذف الشعار"); }
+    catch { toast.error("فشل حذف الشعار"); }
+    finally { setSaving(false); }
+  }
+
+  const busy = isUploading || saving;
+
+  return (
+    <div className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5">
+      <span className="text-xs text-slate-500 shrink-0">شعار النادي:</span>
+
+      {team.logoUrl ? (
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <img src={team.logoUrl} alt="logo" className="w-8 h-8 object-contain rounded border border-slate-200 bg-white p-0.5" />
+          <span className="text-[10px] text-slate-400 truncate flex-1">{team.logoUrl.split("/").pop()}</span>
+          <button onClick={() => inputRef.current?.click()} disabled={busy}
+            className="flex items-center gap-1 text-[10px] text-emerald-600 hover:text-emerald-700 font-medium shrink-0">
+            <Upload size={11} />تغيير
+          </button>
+          <button onClick={handleRemove} disabled={busy}
+            className="flex items-center gap-1 text-[10px] text-red-400 hover:text-red-600 font-medium shrink-0">
+            <Trash2 size={11} />حذف
+          </button>
+        </div>
+      ) : (
+        <button onClick={() => inputRef.current?.click()} disabled={busy}
+          className="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-medium border border-dashed border-emerald-300 px-3 py-1.5 rounded-lg hover:bg-emerald-50 transition-colors">
+          <Upload size={12} />
+          {isUploading ? `${progress}%` : "رفع شعار"}
+        </button>
+      )}
+
+      {isUploading && (
+        <div className="flex items-center gap-1.5">
+          <div className="w-20 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+            <div className="h-full bg-emerald-500 transition-all" style={{ width: `${progress}%` }} />
+          </div>
+          <span className="text-[10px] text-slate-400">{progress}%</span>
+        </div>
+      )}
+
+      <input ref={inputRef} type="file" accept="image/*" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
+    </div>
+  );
+}
+
 /* ── Single image upload widget ─────────────────────── */
 function ImageUploadSlot({
   label, value, onChange,
@@ -1089,20 +1156,25 @@ function TeamCard({ team, onTeamUpdate, onDelete }: { team: Team; onTeamUpdate: 
       {expanded && (
         <div className="border-t border-slate-100 px-4 py-4 space-y-4">
           {/* Team settings */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 bg-slate-50 rounded-xl p-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500">السعر الأساسي:</span>
-              <InlineEdit value={team.basePrice} type="number" min={1} suffix="د.أ"
-                onSave={async v => { await patchTeam({ basePrice: parseFloat(v) }); }} />
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 bg-slate-50 rounded-xl p-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">السعر الأساسي:</span>
+                <InlineEdit value={team.basePrice} type="number" min={1} suffix="د.أ"
+                  onSave={async v => { await patchTeam({ basePrice: parseFloat(v) }); }} />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">اللون الأساسي:</span>
+                <ColorPicker value={team.primaryColor} onSave={async v => { await patchTeam({ primaryColor: v }); }} />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">اللون الثانوي:</span>
+                <ColorPicker value={team.secondaryColor} onSave={async v => { await patchTeam({ secondaryColor: v }); }} />
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500">اللون الأساسي:</span>
-              <ColorPicker value={team.primaryColor} onSave={async v => { await patchTeam({ primaryColor: v }); }} />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500">اللون الثانوي:</span>
-              <ColorPicker value={team.secondaryColor} onSave={async v => { await patchTeam({ secondaryColor: v }); }} />
-            </div>
+
+            {/* Logo upload */}
+            <LogoUploadRow team={team} onSave={async url => { await patchTeam({ logoUrl: url }); }} />
           </div>
 
           {/* Jersey photos */}
