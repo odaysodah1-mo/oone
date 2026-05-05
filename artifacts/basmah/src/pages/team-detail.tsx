@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGetTeam } from "@workspace/api-client-react";
 import { getGetTeamQueryKey } from "@workspace/api-client-react";
 import { useOrder } from "@/components/order-context";
-import { FONT_STYLES, type JerseyColors } from "@/components/configurator-jersey";
+import { type JerseyColors } from "@/components/configurator-jersey";
 import { JerseyPhotoViewer, TEAM_FONT_STYLE } from "@/components/jersey-photo-viewer";
 import {
   getStickerCanvas,
@@ -558,48 +558,6 @@ export default function TeamDetail() {
                       placeholder={t("td_number_placeholder")} maxLength={2}
                       className="w-full px-4 py-4 bg-white/[0.04] border border-white/[0.10] text-white placeholder:text-white/20 font-black text-5xl text-center focus:outline-none focus:border-[#bfff00]/50 transition-colors" />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-white/50 uppercase tracking-widest block">{t("td_font_style")}</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {FONT_STYLES.map(f => {
-                        const isOfficial = team ? TEAM_FONT_STYLE[team.id]?.fontId === f.id : false;
-                        const isActive   = fontId === f.id;
-                        return (
-                          <button key={f.id} onClick={() => setFontId(f.id)}
-                            className="relative px-3 py-3 border text-sm font-bold transition-all duration-200"
-                            style={{
-                              fontFamily:    f.family,
-                              fontStyle:     (f.style as Record<string,string>).fontStyle ?? "normal",
-                              letterSpacing: (f.style as Record<string,string>).letterSpacing ?? "normal",
-                              borderColor:   isActive ? "#bfff00" : isOfficial ? "rgba(191,255,0,0.30)" : "rgba(255,255,255,0.08)",
-                              background:    isActive ? "rgba(191,255,0,0.10)" : isOfficial ? "rgba(191,255,0,0.04)" : "rgba(255,255,255,0.02)",
-                              color:         isActive ? "#bfff00" : isOfficial ? "rgba(191,255,0,0.65)" : "rgba(255,255,255,0.35)",
-                            }}>
-                            {f.label}
-                            {isOfficial && (
-                              <span style={{
-                                position:     "absolute",
-                                top:          -7,
-                                right:        4,
-                                fontSize:     7,
-                                fontFamily:   "sans-serif",
-                                fontStyle:    "normal",
-                                letterSpacing:"0.5px",
-                                fontWeight:   900,
-                                color:        "#bfff00",
-                                background:   "rgba(10,10,10,0.9)",
-                                padding:      "1px 4px",
-                                borderRadius: 3,
-                                border:       "1px solid rgba(191,255,0,0.3)",
-                              }}>
-                                OFFICIAL
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
                 </motion.div>
               )}
 
@@ -749,34 +707,6 @@ export default function TeamDetail() {
                 className="w-full px-4 py-2 bg-white/[0.04] border border-white/[0.10] text-white placeholder:text-white/20 font-black text-sm focus:outline-none focus:border-[#bfff00]/50 tracking-widest" />
               <input value={number} onChange={e => setNumber(e.target.value.replace(/[^0-9]/g,"").slice(0,2))} placeholder="10" maxLength={2}
                 className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.10] text-white placeholder:text-white/20 font-black text-3xl text-center focus:outline-none focus:border-[#bfff00]/50" />
-              <div className="grid grid-cols-2 gap-2">
-                {FONT_STYLES.map(f => {
-                  const isOfficial = team ? TEAM_FONT_STYLE[team.id]?.fontId === f.id : false;
-                  const isActive   = fontId === f.id;
-                  return (
-                    <button key={f.id} onClick={() => setFontId(f.id)}
-                      className="relative px-2 py-2 border text-xs font-bold transition-all"
-                      style={{
-                        fontFamily:  f.family,
-                        fontStyle:   (f.style as Record<string,string>).fontStyle ?? "normal",
-                        borderColor: isActive ? "#bfff00" : isOfficial ? "rgba(191,255,0,0.30)" : "rgba(255,255,255,0.08)",
-                        background:  isActive ? "rgba(191,255,0,0.10)" : isOfficial ? "rgba(191,255,0,0.04)" : "rgba(255,255,255,0.02)",
-                        color:       isActive ? "#bfff00" : isOfficial ? "rgba(191,255,0,0.65)" : "rgba(255,255,255,0.35)",
-                      }}>
-                      {f.label}
-                      {isOfficial && (
-                        <span style={{
-                          position: "absolute", top: -6, right: 3,
-                          fontSize: 6, fontFamily: "sans-serif", fontStyle: "normal",
-                          letterSpacing: "0.5px", fontWeight: 900, color: "#bfff00",
-                          background: "rgba(10,10,10,0.9)", padding: "1px 3px",
-                          borderRadius: 2, border: "1px solid rgba(191,255,0,0.3)",
-                        }}>OFFICIAL</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
             </div>
           )}
 
