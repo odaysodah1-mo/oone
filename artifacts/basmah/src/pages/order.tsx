@@ -152,6 +152,12 @@ export default function Order() {
   const [phone, setPhone] = useState("");
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [city, setCity] = useState("");
+  const [governorate, setGovernorate] = useState("");
+
+  const GOVERNORATES = [
+    "عمان", "إربد", "الزرقاء", "البلقاء", "الكرك", "مادبا",
+    "جرش", "عجلون", "المفرق", "الطفيلة", "معان", "العقبة",
+  ] as const;
 
   const isValidPhone = /^07\d{8}$/.test(phone);
   const showPhoneError = phoneTouched && phone.length > 0 && !isValidPhone;
@@ -198,7 +204,7 @@ export default function Order() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValidPhone || !city) return;
+    if (!isValidPhone || !city || !governorate) return;
     createOrder.mutate({
       data: {
         teamId: order.teamId!,
@@ -209,11 +215,12 @@ export default function Order() {
         quantity: 1,
         customerPhone: phone,
         customerCity: city,
+        governorate: governorate as string,
         playerName: order.playerName || undefined,
         frontImageUrl: order.frontImageUrl || undefined,
         backImageUrl: order.backImageUrl || undefined,
         jerseyColorName: order.jerseyColorName || undefined,
-      }
+      } as Parameters<typeof createOrder.mutate>[0]["data"]
     }, {
       onSuccess: (data: { id: number; totalPrice: number }) => {
         queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
@@ -377,9 +384,25 @@ export default function Order() {
             />
           </div>
 
+          <div className="space-y-1.5">
+            <label className="text-white/50 text-xs font-bold">المحافظة</label>
+            <select
+              required
+              value={governorate}
+              onChange={e => setGovernorate(e.target.value)}
+              className="w-full px-4 py-3.5 bg-white/[0.04] border border-white/[0.10] text-white font-bold focus:outline-none focus:border-[#bfff00]/50 transition-colors rounded-xl appearance-none"
+              style={{ colorScheme: "dark" }}
+            >
+              <option value="" disabled className="bg-[#111]">اختر محافظتك</option>
+              {GOVERNORATES.map(g => (
+                <option key={g} value={g} className="bg-[#111]">{g}</option>
+              ))}
+            </select>
+          </div>
+
           <button
             type="submit"
-            disabled={createOrder.isPending || !isValidPhone || !city}
+            disabled={createOrder.isPending || !isValidPhone || !city || !governorate}
             className="w-full py-4 font-black text-xl rounded-xl transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
               background: (!isValidPhone || !city) ? "#1a1a1a" : "linear-gradient(135deg,#bfff00 0%,#7ecf00 100%)",

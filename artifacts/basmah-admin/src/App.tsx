@@ -6,7 +6,7 @@ import {
   ShoppingBag, Shirt, Type, LogOut, LayoutDashboard,
   ChevronDown, Plus, Trash2, Pencil, Check, X, Upload,
   BarChart3, Package, TrendingUp, RefreshCw, Eye, EyeOff,
-  Star, RotateCcw, Sticker, Link as LinkIcon,
+  Star, RotateCcw, Sticker, Link as LinkIcon, MapPin,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -131,12 +131,13 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
 }
 
 /* ─── Sidebar ─────────────────────────────────────────── */
-type Section = "dashboard" | "orders" | "teams" | "nahfat" | "stickers";
+type Section = "dashboard" | "orders" | "teams" | "nahfat" | "stickers" | "branches";
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: "dashboard", label: "لوحة المعلومات", icon: <LayoutDashboard size={18} /> },
   { id: "orders",    label: "الطلبات",          icon: <ShoppingBag size={18} /> },
   { id: "teams",     label: "الفرق",             icon: <Shirt size={18} /> },
+  { id: "branches",  label: "الفروع",            icon: <MapPin size={18} /> },
   { id: "nahfat",    label: "النهفات",           icon: <Type size={18} /> },
   { id: "stickers",  label: "الملصقات",          icon: <Sticker size={18} /> },
 ];
@@ -1771,6 +1772,257 @@ function NahfatSection() {
   );
 }
 
+/* ─── Branches ─────────────────────────────────────────── */
+const JORDAN_GOVERNORATES = [
+  "عمان", "إربد", "الزرقاء", "البلقاء", "الكرك", "مادبا",
+  "جرش", "عجلون", "المفرق", "الطفيلة", "معان", "العقبة",
+];
+
+interface Branch {
+  id: number; username: string; governorate: string;
+  commissionRate: number; active: boolean; createdAt: string;
+  totalOrders: number; revenue: number; commission: number;
+}
+
+function BranchesSection() {
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ username: "", password: "", governorate: JORDAN_GOVERNORATES[0], commissionRate: "10" });
+  const [editForm, setEditForm] = useState({ password: "", commissionRate: "", governorate: "", active: true });
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setBranches(await apiFetch("/admin/branches")); }
+    catch { toast.error("تعذّر تحميل الفروع"); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await apiFetch("/admin/branches", { method: "POST", body: JSON.stringify({
+        username: form.username, password: form.password,
+        governorate: form.governorate, commissionRate: parseFloat(form.commissionRate) / 100,
+      })});
+      toast.success("تم إضافة الفرع");
+      setShowAdd(false);
+      setForm({ username: "", password: "", governorate: JORDAN_GOVERNORATES[0], commissionRate: "10" });
+      load();
+    } catch (err: unknown) {
+      toast.error((err as Error).message.includes("409") ? "اسم المستخدم موجود مسبقاً" : "تعذّر إضافة الفرع");
+    } finally { setSaving(false); }
+  }
+
+  function startEdit(b: Branch) {
+    setEditingId(b.id);
+    setEditForm({ password: "", commissionRate: String(Math.round(b.commissionRate * 100)), governorate: b.governorate, active: b.active });
+  }
+
+  async function handleEdit(id: number) {
+    setSaving(true);
+    try {
+      const body: Record<string, unknown> = {
+        commissionRate: parseFloat(editForm.commissionRate) / 100,
+        governorate: editForm.governorate,
+        active: editForm.active,
+      };
+      if (editForm.password) body.password = editForm.password;
+      await apiFetch(`/admin/branches/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+      toast.success("تم تحديث الفرع");
+      setEditingId(null);
+      load();
+    } catch { toast.error("تعذّر تحديث الفرع"); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm("هل تريد حذف هذا الفرع؟")) return;
+    try {
+      await apiFetch(`/admin/branches/${id}`, { method: "DELETE" });
+      toast.success("تم حذف الفرع");
+      load();
+    } catch { toast.error("تعذّر حذف الفرع"); }
+  }
+
+  const totalRevenue = branches.reduce((s, b) => s + b.revenue, 0);
+  const totalCommission = branches.reduce((s, b) => s + b.commission, 0);
+
+  return (
+    <div dir="rtl">
+      <PageHeader title="الفروع" subtitle="إدارة فروع بصمة في محافظات الأردن">
+        <button onClick={() => setShowAdd(!showAdd)}
+          className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors">
+          <Plus size={16} /> فرع جديد
+        </button>
+      </PageHeader>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+        {[
+          { label: "إجمالي الفروع", value: branches.length, color: "text-slate-800" },
+          { label: "الفروع النشطة", value: branches.filter(b => b.active).length, color: "text-emerald-600" },
+          { label: "إجمالي الإيراد", value: `${totalRevenue.toLocaleString()} د.أ`, color: "text-blue-600" },
+          { label: "إجمالي العمولة", value: `${totalCommission.toLocaleString()} د.أ`, color: "text-purple-600" },
+        ].map(s => (
+          <div key={s.label} className="bg-white border border-slate-200 rounded-2xl p-4">
+            <p className="text-xs text-slate-500 mb-1">{s.label}</p>
+            <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Add form */}
+      {showAdd && (
+        <form onSubmit={handleAdd} className="bg-white border border-emerald-200 rounded-2xl p-5 mb-5 shadow-sm">
+          <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2"><Plus size={16} />إضافة فرع جديد</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">اسم المستخدم</label>
+              <input type="text" required value={form.username} onChange={e => setForm({ ...form, username: e.target.value })}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" placeholder="branch_amman" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">كلمة المرور</label>
+              <input type="text" required value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" placeholder="••••••••" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">المحافظة</label>
+              <select value={form.governorate} onChange={e => setForm({ ...form, governorate: e.target.value })}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300">
+                {JORDAN_GOVERNORATES.map(g => <option key={g}>{g}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">نسبة العمولة %</label>
+              <input type="number" required min="0" max="100" step="0.5" value={form.commissionRate}
+                onChange={e => setForm({ ...form, commissionRate: e.target.value })}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <button type="submit" disabled={saving}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium px-5 py-2 rounded-xl transition-colors disabled:opacity-60">
+              {saving ? "جاري الحفظ..." : "حفظ"}
+            </button>
+            <button type="button" onClick={() => setShowAdd(false)}
+              className="text-slate-600 hover:text-slate-900 text-sm px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
+              إلغاء
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Table */}
+      {loading ? <PageLoader /> : (
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          {branches.length === 0 ? (
+            <div className="py-16 text-center text-slate-400 text-sm">لا توجد فروع بعد — أضف أول فرع</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    {["اسم المستخدم","المحافظة","الحالة","الطلبات","الإيراد","العمولة","عمولة%","إجراءات"].map(h => (
+                      <th key={h} className="text-right px-4 py-3 text-xs font-semibold text-slate-500">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {branches.map(b => (
+                    <tr key={b.id} className="hover:bg-slate-50 transition-colors">
+                      {editingId === b.id ? (
+                        <td colSpan={8} className="px-4 py-3">
+                          <div className="flex flex-wrap gap-3 items-end">
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-1">كلمة مرور جديدة (اختياري)</label>
+                              <input type="text" value={editForm.password}
+                                onChange={e => setEditForm({ ...editForm, password: e.target.value })}
+                                className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm w-40 focus:outline-none" placeholder="اتركه فارغاً" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-1">المحافظة</label>
+                              <select value={editForm.governorate} onChange={e => setEditForm({ ...editForm, governorate: e.target.value })}
+                                className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none">
+                                {JORDAN_GOVERNORATES.map(g => <option key={g}>{g}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-1">عمولة %</label>
+                              <input type="number" min="0" max="100" step="0.5" value={editForm.commissionRate}
+                                onChange={e => setEditForm({ ...editForm, commissionRate: e.target.value })}
+                                className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm w-20 focus:outline-none" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-1">الحالة</label>
+                              <select value={editForm.active ? "active" : "inactive"}
+                                onChange={e => setEditForm({ ...editForm, active: e.target.value === "active" })}
+                                className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none">
+                                <option value="active">نشط</option>
+                                <option value="inactive">معطّل</option>
+                              </select>
+                            </div>
+                            <div className="flex gap-2">
+                              <button onClick={() => handleEdit(b.id)} disabled={saving}
+                                className="bg-emerald-500 text-white rounded-lg px-3 py-1.5 text-sm hover:bg-emerald-600 disabled:opacity-60">
+                                <Check size={14} />
+                              </button>
+                              <button onClick={() => setEditingId(null)}
+                                className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-50">
+                                <X size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      ) : (
+                        <>
+                          <td className="px-4 py-3 font-mono text-slate-800 font-medium">{b.username}</td>
+                          <td className="px-4 py-3">
+                            <span className="flex items-center gap-1.5">
+                              <MapPin size={13} className="text-slate-400" />{b.governorate}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                              b.active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                            }`}>{b.active ? "نشط" : "معطّل"}</span>
+                          </td>
+                          <td className="px-4 py-3 text-slate-700">{b.totalOrders}</td>
+                          <td className="px-4 py-3 text-slate-700">{b.revenue.toLocaleString()} د.أ</td>
+                          <td className="px-4 py-3 text-purple-700 font-medium">{b.commission.toLocaleString()} د.أ</td>
+                          <td className="px-4 py-3 text-slate-500">{Math.round(b.commissionRate * 100)}%</td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-1.5">
+                              <button onClick={() => startEdit(b)}
+                                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                                <Pencil size={14} />
+                              </button>
+                              <button onClick={() => handleDelete(b.id)}
+                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Shared ─────────────────────────────────────────── */
 function PageLoader() {
   return <div className="flex items-center justify-center py-16"><RefreshCw size={24} className="animate-spin text-emerald-500" /></div>;
@@ -1813,6 +2065,7 @@ export default function App() {
         {section === "teams" && <TeamsSection />}
         {section === "nahfat" && <NahfatSection />}
         {section === "stickers" && <StickersSection />}
+        {section === "branches" && <BranchesSection />}
       </main>
       <MobileNav active={section} onSelect={setSection} onLogout={handleLogout} />
       <Toaster position="top-center" richColors />

@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/basmah-branch/"
+title = "بصمة — لوحة الفرع"
+version = "1.0.0"
+id = "artifacts/basmah-branch"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = []
+localPort = 6800
+
+[services.development]
+run = "node serve-static.mjs"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/basmah-branch", "run", "build" ]
+publicDir = "artifacts/basmah-branch/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "6800"
+BASE_PATH = "/basmah-branch/"

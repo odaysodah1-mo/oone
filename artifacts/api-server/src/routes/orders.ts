@@ -50,6 +50,7 @@ router.post("/orders", async (req, res) => {
         customerPhone: data.customerPhone,
         customerCity: data.customerCity,
         status: "pending",
+        governorate: (data as Record<string, unknown>).governorate as string ?? null,
         playerName: data.playerName ?? null,
         frontImageUrl: data.frontImageUrl ?? null,
         backImageUrl: data.backImageUrl ?? null,

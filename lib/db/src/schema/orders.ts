@@ -15,6 +15,7 @@ export const ordersTable = pgTable("orders", {
   totalPrice: real("total_price").notNull(),
   customerPhone: text("customer_phone").notNull(),
   customerCity: text("customer_city").notNull(),
+  governorate: text("governorate").notNull().default("عمان"),
   status: text("status").notNull().default("pending"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   playerName: text("player_name"),
