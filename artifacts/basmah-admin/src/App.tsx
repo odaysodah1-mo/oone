@@ -1995,6 +1995,7 @@ function BranchesSection() {
               <label className="block text-xs font-medium text-slate-500 mb-1">المحافظة</label>
               <select value={form.governorate} onChange={e => setForm({ ...form, governorate: e.target.value })}
                 className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300">
+                <option value="">الكل</option>
                 {JORDAN_GOVERNORATES.map(g => <option key={g}>{g}</option>)}
               </select>
             </div>
