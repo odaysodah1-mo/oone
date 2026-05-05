@@ -76,46 +76,50 @@ function FifaOverlay({ view, name, number, fontId, trimColor }: OverlayProps) {
         {/* Player name — FIFA min 5 cm → 6.5% of image width */}
         {name && (
           <div style={{
-            position:    "absolute",
-            top:         "32%",
-            left:        "50%",
-            transform:   "translateX(-50%)",
-            fontFamily:  `"${font.family}", Impact, Arial Black, sans-serif`,
-            fontStyle:   isItalic ? "italic" : "normal",
-            fontWeight:  900,
-            /* 5 cm on a jersey ≈ 6.5% of image width */
-            fontSize:    "6.5cqw",
-            color:       trimColor,
-            textShadow:  shadow(32),
-            letterSpacing: "0.18em",
-            whiteSpace:  "nowrap",
+            position:      "absolute",
+            top:           "33%",
+            left:          "50%",
+            transform:     "translateX(-50%)",
+            fontFamily:    font.family,
+            fontStyle:     isItalic ? "italic" : "normal",
+            fontWeight:    900,
+            fontSize:      "7cqw",
+            color:         trimColor,
+            textShadow:    shadow(36),
+            letterSpacing: "0.22em",
+            whiteSpace:    "nowrap",
             textTransform: "uppercase",
-            lineHeight:  1,
+            lineHeight:    1,
             pointerEvents: "none",
-            userSelect:  "none",
+            userSelect:    "none",
+            /* crisp rendering */
+            WebkitFontSmoothing: "antialiased",
+            MozOsxFontSmoothing: "grayscale",
+            paintOrder:    "stroke fill",
           }}>
             {name.toUpperCase()}
           </div>
         )}
 
-        {/* Squad number — FIFA min 20 cm → 24% of image width */}
+        {/* Squad number — FIFA min 20 cm → 26% of image width */}
         {number && (
           <div style={{
-            position:    "absolute",
-            top:         "42%",
-            left:        "50%",
-            transform:   "translateX(-50%)",
-            fontFamily:  `"${font.family}", Impact, Arial Black, sans-serif`,
-            fontStyle:   isItalic ? "italic" : "normal",
-            fontWeight:  900,
-            /* 20 cm on a jersey ≈ 24% of image width */
-            fontSize:    "24cqw",
-            color:       trimColor,
-            textShadow:  shadow(120),
-            letterSpacing: "-0.04em",
-            lineHeight:  1,
+            position:      "absolute",
+            top:           name ? "43%" : "38%",
+            left:          "50%",
+            transform:     "translateX(-50%)",
+            fontFamily:    font.family,
+            fontStyle:     isItalic ? "italic" : "normal",
+            fontWeight:    900,
+            fontSize:      "26cqw",
+            color:         trimColor,
+            textShadow:    shadow(130),
+            letterSpacing: "-0.02em",
+            lineHeight:    1,
             pointerEvents: "none",
-            userSelect:  "none",
+            userSelect:    "none",
+            WebkitFontSmoothing: "antialiased",
+            MozOsxFontSmoothing: "grayscale",
           }}>
             {number}
           </div>

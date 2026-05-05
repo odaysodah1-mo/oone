@@ -6,10 +6,10 @@ interface JerseyColors {
 }
 
 const FONT_STYLES = [
-  { id: "block",   label: "BLOCK",   family: "Impact, Arial Black, sans-serif",    style: {} },
-  { id: "sport",   label: "SPORT",   family: "Arial Black, Helvetica, sans-serif", style: { fontStyle: "italic" } },
-  { id: "classic", label: "Classic", family: "Georgia, Times New Roman, serif",    style: {} },
-  { id: "slim",    label: "SLIM",    family: "Trebuchet MS, Verdana, sans-serif",  style: { letterSpacing: "5px" } },
+  { id: "block",   label: "BEBAS",   family: "'Bebas Neue', Impact, sans-serif",            style: {} },
+  { id: "sport",   label: "SPORT",   family: "'Barlow Condensed', Arial Black, sans-serif", style: { fontStyle: "italic" } },
+  { id: "classic", label: "OSWALD",  family: "'Oswald', Arial Black, sans-serif",           style: {} },
+  { id: "slim",    label: "ANTON",   family: "'Anton', Impact, sans-serif",                  style: { letterSpacing: "3px" } },
 ];
 
 export { FONT_STYLES };
@@ -270,42 +270,29 @@ export function ConfiguratorJersey({
       </g>
 
       {/* ═══════════════════════════════════════════════════════
-          NAME & NUMBER
+          NAME & NUMBER — back only (FIFA standard)
       ═══════════════════════════════════════════════════════ */}
-      {view === "front" ? (
+      {view === "back" && (
         <>
-          <text x="250" y="285" textAnchor="middle"
-            fontSize="31" fontWeight="900" fill={colors.trim}
-            fontFamily={font.family}
-            fontStyle={(font.style as Record<string,string>).fontStyle ?? "normal"}
-            letterSpacing={(font.style as Record<string,string>).letterSpacing ?? "2"}
-            style={{ filter: "drop-shadow(0 2px 10px rgba(0,0,0,0.88))" }}>
-            {name.toUpperCase()}
-          </text>
-          <text x="250" y="480" textAnchor="middle"
-            fontSize="195" fontWeight="900" fill={colors.trim}
-            fontFamily={font.family}
-            fontStyle={(font.style as Record<string,string>).fontStyle ?? "normal"}
-            style={{ letterSpacing: "-10px", filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.92))" }}>
-            {number}
-          </text>
-        </>
-      ) : (
-        <>
-          <text x="250" y="285" textAnchor="middle"
-            fontSize="31" fontWeight="900" fill={colors.trim}
-            fontFamily={font.family}
-            fontStyle={(font.style as Record<string,string>).fontStyle ?? "normal"}
-            letterSpacing={(font.style as Record<string,string>).letterSpacing ?? "2"}
-            style={{ filter: "drop-shadow(0 2px 10px rgba(0,0,0,0.88))" }}>
-            {name.toUpperCase()}
-          </text>
-          <text x="250" y="468" textAnchor="middle"
-            fontSize="195" fontWeight="900" fill={colors.trim}
-            fontFamily={font.family}
-            style={{ letterSpacing: "-10px", filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.92))" }}>
-            {number}
-          </text>
+          {name && (
+            <text x="250" y="278" textAnchor="middle"
+              fontSize="34" fontWeight="900" fill={colors.trim}
+              fontFamily={font.family}
+              fontStyle={(font.style as Record<string,string>).fontStyle ?? "normal"}
+              letterSpacing="5"
+              style={{ filter: "drop-shadow(0 2px 12px rgba(0,0,0,0.95))" }}>
+              {name.toUpperCase()}
+            </text>
+          )}
+          {number && (
+            <text x="250" y="480" textAnchor="middle"
+              fontSize="195" fontWeight="900" fill={colors.trim}
+              fontFamily={font.family}
+              fontStyle={(font.style as Record<string,string>).fontStyle ?? "normal"}
+              style={{ letterSpacing: "-8px", filter: "drop-shadow(0 8px 28px rgba(0,0,0,0.95))" }}>
+              {number}
+            </text>
+          )}
         </>
       )}
     </svg>
