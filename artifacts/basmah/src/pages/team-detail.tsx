@@ -544,7 +544,7 @@ export default function TeamDetail() {
                       {t("td_name_label")}
                     </label>
                     <input value={name}
-                      onChange={e => setName(e.target.value.replace(/[^A-Za-z\s]/g, "").toUpperCase())}
+                      onChange={e => setName(e.target.value.replace(/[^A-Za-z\s.]/g, "").toUpperCase())}
                       placeholder="AHMED" maxLength={12} dir="ltr" lang="en"
                       className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.10] text-white placeholder:text-white/20 font-black text-lg focus:outline-none focus:border-[#bfff00]/50 transition-colors tracking-widest" />
                     <div className="flex justify-between text-[10px] text-white/25">
@@ -702,7 +702,7 @@ export default function TeamDetail() {
           {mobileTab === "name" && (
             <div className="p-3 space-y-3">
               <input value={name}
-                onChange={e => setName(e.target.value.replace(/[^A-Za-z\s]/g, "").toUpperCase())}
+                onChange={e => setName(e.target.value.replace(/[^A-Za-z\s.]/g, "").toUpperCase())}
                 placeholder="AHMED" maxLength={12} dir="ltr" lang="en"
                 className="w-full px-4 py-2 bg-white/[0.04] border border-white/[0.10] text-white placeholder:text-white/20 font-black text-sm focus:outline-none focus:border-[#bfff00]/50 tracking-widest" />
               <input value={number} onChange={e => setNumber(e.target.value.replace(/[^0-9]/g,"").slice(0,2))} placeholder="10" maxLength={2}
