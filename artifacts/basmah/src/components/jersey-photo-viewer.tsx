@@ -76,7 +76,7 @@ function FifaOverlay({ view, name, number, fontId, trimColor }: OverlayProps) {
         {name && (
           <div style={{
             position:      "absolute",
-            top:           "33%",
+            top:           "27%",
             left:          0,
             right:         0,
             textAlign:     "center",
