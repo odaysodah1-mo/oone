@@ -17,6 +17,7 @@ interface Order {
   governorate: string; status: OrderStatus; createdAt: string;
   playerName?: string | null;
   frontImageUrl?: string | null;
+  backImageUrl?: string | null;
   jerseyColorName?: string | null;
 }
 
@@ -151,11 +152,106 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
   );
 }
 
+/* ─── Design Preview Modal ───────────────────────────── */
+function DesignPreviewModal({ order, onClose }: { order: Order; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm"
+      onClick={onClose}>
+      <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 320, damping: 28 }}
+        className="w-full sm:max-w-sm bg-[#111] border border-white/[0.08] rounded-t-3xl sm:rounded-2xl overflow-hidden"
+        onClick={e => e.stopPropagation()}>
+
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="w-10 h-1 rounded-full bg-white/20" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+          <div>
+            <p className="font-black text-white text-sm">تصميم الطلب #{order.id}</p>
+            <p className="text-white/35 text-[11px] mt-0.5">{order.playerName || order.customerName} — {order.teamName}</p>
+          </div>
+          <button onClick={onClose}
+            className="w-7 h-7 rounded-full bg-white/[0.06] flex items-center justify-center text-white/40 hover:text-white/80 transition-colors">
+            <XCircle size={15} />
+          </button>
+        </div>
+
+        {/* Jersey Preview */}
+        <div className="relative flex items-center justify-center py-8 px-6"
+          style={{ background: "radial-gradient(ellipse 80% 60% at 50% 50%, rgba(191,255,0,0.04) 0%, transparent 70%)", minHeight: 260 }}>
+          {order.frontImageUrl ? (
+            <div className="relative" style={{ width: 160, height: 200 }}>
+              <img src={order.frontImageUrl} alt="front"
+                className="w-full h-full object-contain drop-shadow-2xl"
+                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+              {order.playerName && (
+                <div style={{
+                  position: "absolute", top: "28%", left: "50%", transform: "translateX(-50%)",
+                  fontFamily: "Impact, Arial Black, sans-serif", fontWeight: 900,
+                  fontSize: 13, color: "#fff", textShadow: "0 2px 8px rgba(0,0,0,0.9)",
+                  letterSpacing: 2, whiteSpace: "nowrap",
+                }}>
+                  {order.playerName.toUpperCase()}
+                </div>
+              )}
+              {order.jerseyNumber && order.jerseyNumber !== "—" && (
+                <div style={{
+                  position: "absolute", top: "42%", left: "50%", transform: "translateX(-50%)",
+                  fontFamily: "Impact, Arial Black, sans-serif", fontWeight: 900,
+                  fontSize: 48, color: "#fff", textShadow: "0 4px 16px rgba(0,0,0,0.95)",
+                  letterSpacing: -2, lineHeight: 1,
+                }}>
+                  {order.jerseyNumber}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-20 h-20 rounded-full mx-auto mb-3 flex items-center justify-center"
+                style={{ backgroundColor: order.color || "#1a1a2e" }}>
+                <Shirt size={36} className="text-white" />
+              </div>
+              <p className="text-white/30 text-sm">لا توجد صورة للتيشيرت</p>
+            </div>
+          )}
+
+          {order.backImageUrl && (
+            <div className="absolute bottom-3 left-3">
+              <img src={order.backImageUrl} alt="back"
+                className="w-14 h-18 object-contain rounded-lg border border-white/10 bg-white/5" />
+              <p className="text-white/30 text-[9px] text-center mt-0.5">الخلف</p>
+            </div>
+          )}
+        </div>
+
+        {/* Details strip */}
+        <div className="px-5 py-4 border-t border-white/[0.06] grid grid-cols-2 gap-3">
+          {[
+            { label: "الفريق", value: order.teamName },
+            { label: "المقاس", value: order.size },
+            { label: "الرقم", value: order.jerseyNumber },
+            { label: "المبلغ", value: `${order.totalPrice} د.أ` },
+          ].map(({ label, value }) => (
+            <div key={label}>
+              <p className="text-white/30 text-[10px] mb-0.5">{label}</p>
+              <p className="text-white font-bold text-sm">{value}</p>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 /* ─── Order Card ─────────────────────────────────────── */
 function OrderCard({ order, token, onStatusUpdate }: {
   order: Order; token: string; onStatusUpdate: (id: number, status: OrderStatus) => void;
 }) {
   const [updating, setUpdating] = useState(false);
+  const [showDesign, setShowDesign] = useState(false);
   const meta = STATUS_META[order.status] ?? STATUS_META.pending;
   const next = NEXT_STATUS[order.status];
   const date = new Date(order.createdAt).toLocaleDateString("ar-JO", { day: "numeric", month: "short", year: "numeric" });
@@ -173,67 +269,90 @@ function OrderCard({ order, token, onStatusUpdate }: {
   }
 
   return (
-    <motion.div layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-      className="border rounded-2xl p-4 space-y-3"
-      style={{ background: meta.bg, borderColor: meta.border }}>
-      {/* Header */}
-      <div className="flex items-start justify-between gap-2">
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1 rounded-full"
-          style={{ background: "rgba(0,0,0,0.3)", color: meta.color, border: `1px solid ${meta.border}` }}>
-          {meta.icon}{meta.label}
-        </span>
-        <div className="flex items-center gap-2">
-          <span className="text-white/20 text-[10px] font-mono">{date}</span>
-          <span className="text-white/30 text-xs font-mono">#{order.id}</span>
-        </div>
-      </div>
+    <>
+      {showDesign && <DesignPreviewModal order={order} onClose={() => setShowDesign(false)} />}
 
-      {/* Details */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="flex items-center gap-1.5">
-          <User size={11} className="shrink-0" style={{ color: meta.color }} />
-          <span className="text-white/75 font-bold text-xs truncate">{order.playerName || order.customerName}</span>
+      <motion.div layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+        className="border rounded-2xl p-4 space-y-3"
+        style={{ background: meta.bg, borderColor: meta.border }}>
+        {/* Header */}
+        <div className="flex items-start justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1 rounded-full"
+            style={{ background: "rgba(0,0,0,0.3)", color: meta.color, border: `1px solid ${meta.border}` }}>
+            {meta.icon}{meta.label}
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-white/20 text-[10px] font-mono">{date}</span>
+            <span className="text-white/30 text-xs font-mono">#{order.id}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <Phone size={11} className="shrink-0" style={{ color: meta.color }} />
-          <span className="text-white/60 font-mono text-xs" dir="ltr">{order.customerPhone}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Shirt size={11} className="shrink-0" style={{ color: meta.color }} />
-          <span className="text-white/70 text-xs truncate">{order.teamName}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Hash size={11} className="shrink-0" style={{ color: meta.color }} />
-          <span className="font-black text-xs" style={{ color: meta.color }}>{order.jerseyNumber}</span>
-          <span className="text-white/35 text-[10px]">· {order.size}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <MapPin size={11} className="shrink-0" style={{ color: meta.color }} />
-          <span className="text-white/55 text-xs">{order.customerCity}</span>
-        </div>
-        <div className="text-left">
-          <span className="font-black text-sm" style={{ color: "#bfff00" }}>{order.totalPrice} د.أ</span>
-        </div>
-      </div>
 
-      {order.jerseyColorName && (
-        <div className="text-[10px] text-white/25 border-t border-white/[0.06] pt-2 flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-full inline-block border border-white/20" style={{ backgroundColor: order.color }} />
-          {order.jerseyColorName}
-        </div>
-      )}
+        {/* Jersey thumbnail + details */}
+        <div className="flex items-start gap-3">
+          {/* Thumbnail */}
+          <button onClick={() => setShowDesign(true)}
+            className="flex-shrink-0 w-14 h-[72px] rounded-xl flex items-center justify-center overflow-hidden border transition-all active:scale-95"
+            style={{ background: "rgba(0,0,0,0.3)", borderColor: meta.border }}>
+            {order.frontImageUrl ? (
+              <img src={order.frontImageUrl} alt="jersey"
+                className="w-full h-full object-contain"
+                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+            ) : (
+              <div className="w-8 h-8 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: order.color || "#1a1a2e" }}>
+                <Shirt size={14} className="text-white" />
+              </div>
+            )}
+          </button>
 
-      {/* Action button */}
-      {next && NEXT_LABEL[order.status] && (
-        <button onClick={advance} disabled={updating}
-          className="w-full py-2.5 text-xs font-black rounded-xl transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-          style={{ background: "linear-gradient(135deg,#bfff00 0%,#7ecf00 100%)", color: "#000" }}>
-          {updating
-            ? <RefreshCw size={13} className="animate-spin" />
-            : <>{NEXT_LABEL[order.status]} <ArrowRight size={13} /></>}
-        </button>
-      )}
-    </motion.div>
+          {/* Details grid */}
+          <div className="flex-1 min-w-0 grid grid-cols-2 gap-x-2 gap-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <User size={11} className="shrink-0" style={{ color: meta.color }} />
+              <span className="text-white/75 font-bold text-xs truncate">{order.playerName || order.customerName}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Phone size={11} className="shrink-0" style={{ color: meta.color }} />
+              <span className="text-white/60 font-mono text-xs" dir="ltr">{order.customerPhone}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Shirt size={11} className="shrink-0" style={{ color: meta.color }} />
+              <span className="text-white/70 text-xs truncate">{order.teamName}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Hash size={11} className="shrink-0" style={{ color: meta.color }} />
+              <span className="font-black text-xs" style={{ color: meta.color }}>{order.jerseyNumber}</span>
+              <span className="text-white/35 text-[10px]">· {order.size}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <MapPin size={11} className="shrink-0" style={{ color: meta.color }} />
+              <span className="text-white/55 text-xs">{order.customerCity}</span>
+            </div>
+            <div>
+              <span className="font-black text-sm" style={{ color: "#bfff00" }}>{order.totalPrice} د.أ</span>
+            </div>
+          </div>
+        </div>
+
+        {order.jerseyColorName && (
+          <div className="text-[10px] text-white/25 border-t border-white/[0.06] pt-2 flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-full inline-block border border-white/20" style={{ backgroundColor: order.color }} />
+            {order.jerseyColorName}
+          </div>
+        )}
+
+        {/* Action button */}
+        {next && NEXT_LABEL[order.status] && (
+          <button onClick={advance} disabled={updating}
+            className="w-full py-2.5 text-xs font-black rounded-xl transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+            style={{ background: "linear-gradient(135deg,#bfff00 0%,#7ecf00 100%)", color: "#000" }}>
+            {updating
+              ? <RefreshCw size={13} className="animate-spin" />
+              : <>{NEXT_LABEL[order.status]} <ArrowRight size={13} /></>}
+          </button>
+        )}
+      </motion.div>
+    </>
   );
 }
 
