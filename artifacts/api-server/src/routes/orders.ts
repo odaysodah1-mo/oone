@@ -1,12 +1,14 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { ordersTable, teamsTable } from "@workspace/db";
+import { ordersTable, teamsTable, jerseyColorsTable } from "@workspace/db";
 import { eq, desc, count, sum } from "drizzle-orm";
 import { CreateOrderBody } from "@workspace/api-zod";
+import { adminAuth } from "../middleware/adminAuth";
 
 const router = Router();
 
-router.get("/orders", async (req, res) => {
+/* GET /orders — full list with customer data, admin-only */
+router.get("/orders", adminAuth, async (req, res) => {
   try {
     const orders = await db
       .select()
@@ -26,6 +28,13 @@ router.post("/orders", async (req, res) => {
     return;
   }
   const data = parsed.data;
+
+  /* Server-side phone validation (Jordanian format) */
+  if (!/^07\d{8}$/.test(data.customerPhone)) {
+    res.status(400).json({ error: "رقم الهاتف غير صالح" });
+    return;
+  }
+
   try {
     const [team] = await db
       .select()
@@ -35,7 +44,32 @@ router.post("/orders", async (req, res) => {
       res.status(404).json({ error: "Team not found" });
       return;
     }
-    const totalPrice = team.basePrice * data.quantity;
+
+    /* ── Price calculation using jersey color pricing when available ── */
+    let unitPrice = team.basePrice;
+    const jerseyColorId =
+      typeof (req.body as Record<string, unknown>).jerseyColorId === "number"
+        ? (req.body as Record<string, unknown>).jerseyColorId as number
+        : null;
+
+    if (jerseyColorId) {
+      const [color] = await db
+        .select()
+        .from(jerseyColorsTable)
+        .where(eq(jerseyColorsTable.id, jerseyColorId));
+      if (color) {
+        const hasCustomization = !!(data.playerName && data.playerName.trim());
+        const colorPrice = hasCustomization
+          ? color.priceWithCustomization
+          : color.priceWithoutCustomization;
+        if (colorPrice !== null && colorPrice !== undefined) {
+          unitPrice = colorPrice;
+        }
+      }
+    }
+
+    const totalPrice = unitPrice * data.quantity;
+
     const [order] = await db
       .insert(ordersTable)
       .values({
@@ -70,13 +104,27 @@ router.post("/orders", async (req, res) => {
   }
 });
 
-/* Track orders by phone number */
+/* Track orders by phone number — public */
 router.get("/orders/by-phone", async (req, res) => {
   const phone = typeof req.query.phone === "string" ? req.query.phone.trim() : null;
   if (!phone) { res.status(400).json({ error: "phone required" }); return; }
+  if (!/^07\d{8}$/.test(phone)) { res.status(400).json({ error: "رقم الهاتف غير صالح" }); return; }
   try {
     const orders = await db
-      .select().from(ordersTable)
+      .select({
+        id: ordersTable.id,
+        teamName: ordersTable.teamName,
+        jerseyNumber: ordersTable.jerseyNumber,
+        size: ordersTable.size,
+        color: ordersTable.color,
+        quantity: ordersTable.quantity,
+        totalPrice: ordersTable.totalPrice,
+        status: ordersTable.status,
+        createdAt: ordersTable.createdAt,
+        jerseyColorName: ordersTable.jerseyColorName,
+        playerName: ordersTable.playerName,
+      })
+      .from(ordersTable)
       .where(eq(ordersTable.customerPhone, phone))
       .orderBy(desc(ordersTable.createdAt));
     res.json(orders);
@@ -86,15 +134,11 @@ router.get("/orders/by-phone", async (req, res) => {
   }
 });
 
+/* Public aggregate stats */
 router.get("/orders/stats", async (req, res) => {
   try {
-    const [{ total }] = await db
-      .select({ total: count() })
-      .from(ordersTable);
-
-    const [{ revenue }] = await db
-      .select({ revenue: sum(ordersTable.totalPrice) })
-      .from(ordersTable);
+    const [{ total }] = await db.select({ total: count() }).from(ordersTable);
+    const [{ revenue }] = await db.select({ revenue: sum(ordersTable.totalPrice) }).from(ordersTable);
 
     const topTeamRows = await db
       .select({ teamName: ordersTable.teamName, cnt: count() })

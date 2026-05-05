@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request } from "express";
 import { createHmac, createHash } from "crypto";
 import { db } from "@workspace/db";
 import { branchesTable, ordersTable } from "@workspace/db";
@@ -16,7 +16,7 @@ const JORDAN_GOVERNORATES = [
 const BRANCH_STATUSES = ["pending", "confirmed", "shipped", "delivered"] as const;
 
 /* ── Token helpers ───────────────────────────────────────── */
-interface BranchPayload { id: number; username: string; governorate: string; iat: number }
+interface BranchPayload { id: number; username: string; governorate: string; commissionRate: number; iat: number }
 
 function hashPassword(password: string): string {
   return createHash("sha256").update(password + SECRET).digest("hex");
@@ -40,7 +40,7 @@ function verifyToken(token: string): BranchPayload | null {
   } catch { return null; }
 }
 
-function getBranchFromReq(req: Parameters<Parameters<typeof router.use>[0]>[0]): BranchPayload | null {
+function getBranchFromReq(req: Request): BranchPayload | null {
   const auth = req.headers.authorization;
   if (!auth?.startsWith("Bearer ")) return null;
   return verifyToken(auth.slice(7));
@@ -63,7 +63,7 @@ router.post("/branch/login", async (req, res) => {
     if (branch.passwordHash !== hashPassword(password)) {
       res.status(401).json({ error: "بيانات غير صحيحة" }); return;
     }
-    const token = createToken({ id: branch.id, username: branch.username, governorate: branch.governorate, iat: Date.now() });
+    const token = createToken({ id: branch.id, username: branch.username, governorate: branch.governorate, commissionRate: branch.commissionRate, iat: Date.now() });
     res.json({ token, governorate: branch.governorate, username: branch.username, commissionRate: branch.commissionRate });
   } catch (err) {
     req.log.error({ err }, "branch: login failed");

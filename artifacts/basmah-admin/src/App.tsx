@@ -13,7 +13,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 
-const ADMIN_PASSWORD = "basmah2025";
+const STORAGE_KEY = "admin_key";
 
 /* ─── Types ─────────────────────────────────────────── */
 type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
@@ -65,10 +65,20 @@ interface NahfatPreset {
 
 /* ─── API ─────────────────────────────────────────────── */
 async function apiFetch(path: string, opts?: RequestInit) {
+  const adminKey = sessionStorage.getItem(STORAGE_KEY) ?? "";
   const res = await fetch(`/api${path}`, {
     ...opts,
-    headers: { "Content-Type": "application/json", ...(opts?.headers ?? {}) },
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-key": adminKey,
+      ...(opts?.headers ?? {}),
+    },
   });
+  if (res.status === 401) {
+    sessionStorage.removeItem(STORAGE_KEY);
+    window.location.reload();
+    throw new Error("Unauthorized");
+  }
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
   if (res.status === 204) return null;
   return res.json();
@@ -91,11 +101,25 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (password === ADMIN_PASSWORD) { sessionStorage.setItem("admin_authed", "1"); onLogin(); }
-    else setError("كلمة المرور غير صحيحة");
+    if (!password) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/teams", {
+        headers: { "x-admin-key": password },
+      });
+      if (res.status === 401) { setError("كلمة المرور غير صحيحة"); return; }
+      sessionStorage.setItem(STORAGE_KEY, password);
+      onLogin();
+    } catch {
+      setError("تعذّر الاتصال بالسيرفر");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -121,8 +145,10 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
             </button>
           </div>
           {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
-          <button type="submit" className="w-full mt-4 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 rounded-xl transition-colors">
-            دخول
+          <button type="submit" disabled={loading}
+            className="w-full mt-4 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
+            {loading && <RefreshCw size={16} className="animate-spin" />}
+            {loading ? "جاري التحقق…" : "دخول"}
           </button>
         </form>
       </div>
@@ -2117,7 +2143,7 @@ function PageHeader({ title, subtitle, children }: { title: string; subtitle?: s
 
 /* ─── App ─────────────────────────────────────────────── */
 export default function App() {
-  const [authed, setAuthed] = useState(() => sessionStorage.getItem("admin_authed") === "1");
+  const [authed, setAuthed] = useState(() => !!sessionStorage.getItem(STORAGE_KEY));
   const [section, setSection] = useState<Section>("dashboard");
 
   if (!authed) return (
@@ -2127,7 +2153,7 @@ export default function App() {
     </>
   );
 
-  const handleLogout = () => { sessionStorage.removeItem("admin_authed"); setAuthed(false); };
+  const handleLogout = () => { sessionStorage.removeItem(STORAGE_KEY); setAuthed(false); };
 
   return (
     <div className="flex min-h-screen bg-slate-100" dir="rtl">

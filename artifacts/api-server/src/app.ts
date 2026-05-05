@@ -3,6 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import path from "path";
 import { fileURLToPath } from "url";
+import rateLimit from "express-rate-limit";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
@@ -32,6 +33,36 @@ app.use(
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+/* ── Rate limiting ───────────────────────────────────── */
+const ordersLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "عدد طلبات كثيرة، حاول لاحقاً" },
+  skip: (req) => req.method !== "POST",
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "عدد محاولات تسجيل دخول كثيرة، حاول بعد 15 دقيقة" },
+});
+
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests" },
+});
+
+app.use("/api/orders", ordersLimiter);
+app.use("/api/branch/login", loginLimiter);
+app.use("/api/admin", adminLimiter);
 
 app.use("/api", router);
 

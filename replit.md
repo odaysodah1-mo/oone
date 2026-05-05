@@ -46,3 +46,18 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
   - `DELETE /api/admin/branches/:id` — delete branch
 - **Branch dashboard** (`artifacts/basmah-branch`): Served as pre-built static files from the API server at `/basmah-branch/`. Dark-themed, standalone React app. **When code changes, rebuild with**: `PORT=6800 BASE_PATH=/basmah-branch/ pnpm --filter @workspace/basmah-branch run build`. Served by `artifacts/api-server/src/app.ts` via `express.static`. The `basmah-branch` Vite dev workflow is intentionally non-functional (Replit port detection bug for newly created artifacts) — static serving is the workaround.
 - **Admin branch section**: `BranchesSection` component in `artifacts/basmah-admin/src/App.tsx` — full CRUD table for branches including stats (total orders, revenue, commission).
+
+## Security Hardening
+
+- **Admin auth middleware**: `artifacts/api-server/src/middleware/adminAuth.ts` — checks `x-admin-key` header vs `ADMIN_SECRET` env var (defaults to `basmah2025` in dev, warns in logs). Applied to all `/admin/*` routes and `POST /storage/uploads/request-url`.
+- **Rate limiting** (`express-rate-limit`): `/api/orders` (20/10min), `/api/branch/login` (10/15min), `/api/admin/*` (300/15min).
+- **Admin login flow**: `basmah-admin` stores entered password under `sessionStorage("admin_key")`, validates by hitting `GET /api/admin/teams` with `x-admin-key` header, redirects to login on 401 responses, clears session on logout.
+- **Order pricing**: `POST /api/orders` accepts optional `jerseyColorId`; if provided, uses `jerseyColorsTable.priceWithCustomization / priceWithoutCustomization` for correct pricing. `jerseyColorId` is now passed through from `team-detail.tsx → order-context → order.tsx`.
+- **GET /api/orders** requires admin auth (not public).
+- **GET /api/orders/by-phone** returns limited fields only; server-side phone format validation (`/^07\d{8}$/`).
+
+## Background Removal
+
+- Server-side via `POST /api/admin/remove-background` using `@imgly/background-removal-node` (multer upload, returns PNG).
+- Native modules (`onnxruntime-node`, `sharp`, `protobufjs`) are externalized in `build.mjs` and listed in `onlyBuiltDependencies` in `pnpm-workspace.yaml`.
+- `ImageUploadSlot` in `basmah-admin` has a "جاهزة مقصوصة" toggle to skip BG removal for pre-cut PNGs.

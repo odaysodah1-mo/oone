@@ -255,6 +255,7 @@ export default function TeamDetail() {
       frontImageUrl: capturedFront,
       backImageUrl:  capturedBack,
       jerseyColorName: selectedColor?.name ?? undefined,
+      jerseyColorId: selectedColor?.id ?? undefined,
     });
     setLocation("/order");
   };

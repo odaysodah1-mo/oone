@@ -11,7 +11,8 @@ router.post("/admin/remove-background", upload.single("image"), async (req, res)
     return;
   }
   try {
-    const blob = new Blob([req.file.buffer], { type: req.file.mimetype });
+    const ab = req.file.buffer.buffer.slice(req.file.buffer.byteOffset, req.file.buffer.byteOffset + req.file.buffer.byteLength) as ArrayBuffer;
+    const blob = new Blob([new Uint8Array(ab)], { type: req.file.mimetype });
     const resultBlob = await removeBackground(blob, {
       output: { format: "image/png", quality: 1 },
     });

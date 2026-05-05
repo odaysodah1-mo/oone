@@ -220,6 +220,7 @@ export default function Order() {
         frontImageUrl: order.frontImageUrl || undefined,
         backImageUrl: order.backImageUrl || undefined,
         jerseyColorName: order.jerseyColorName || undefined,
+        jerseyColorId: order.jerseyColorId ?? undefined,
       } as Parameters<typeof createOrder.mutate>[0]["data"]
     }, {
       onSuccess: (data: { id: number; totalPrice: number }) => {
