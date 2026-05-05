@@ -23,8 +23,8 @@ interface JerseyColor {
 }
 
 const SIZE_INFO: Record<string, string> = {
-  XS: "< 160 سم", S: "160–170 سم", M: "170–178 سم",
-  L: "178–186 سم", XL: "186–194 سم", XXL: "> 194 سم",
+  XS: "كتف 38–40 سم", S: "كتف 40–42 سم", M: "كتف 42–44 سم",
+  L: "كتف 44–46 سم", XL: "كتف 46–49 سم", XXL: "كتف 49+ سم",
 };
 
 /* API sticker shape from /api/stickers */
@@ -550,7 +550,14 @@ export default function TeamDetail() {
 
               {tab === "size" && (
                 <motion.div key="s" initial={{ opacity:0,y:8 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0,y:-8 }} className="space-y-2">
-                  <p className="text-xs text-white/30 mb-4">{t("td_select_size")}</p>
+                  {/* Shoulder measurement hint */}
+                  <div className="flex items-start gap-2.5 bg-[#bfff00]/[0.04] border border-[#bfff00]/20 rounded-xl p-3 mb-4">
+                    <span className="text-lg shrink-0">📏</span>
+                    <div>
+                      <p className="text-[11px] font-black text-[#bfff00]/80 leading-snug">القياس من الكتف</p>
+                      <p className="text-[10px] text-white/35 mt-0.5 leading-relaxed">قس المسافة بين طرفي الكتفين من الأعلى. اختر المقاس المطابق لقياسك.</p>
+                    </div>
+                  </div>
                   {team.availableSizes.map(s => (
                     <button key={s} onClick={() => setSize(s)}
                       className="w-full flex items-center justify-between px-4 py-3.5 border transition-all duration-200 group"
@@ -704,18 +711,25 @@ export default function TeamDetail() {
           )}
 
           {mobileTab === "size" && (
-            <div className="p-3 grid grid-cols-3 gap-2">
-              {team.availableSizes.map(s => (
-                <button key={s} onClick={() => setSize(s)}
-                  className="py-3 text-center font-black text-sm border transition-all"
-                  style={{
-                    borderColor: size === s ? "#bfff00" : "rgba(255,255,255,0.07)",
-                    background:  size === s ? "rgba(191,255,0,0.08)" : "rgba(255,255,255,0.02)",
-                    color:       size === s ? "#bfff00" : "rgba(255,255,255,0.5)",
-                  }}>
-                  {s}
-                </button>
-              ))}
+            <div className="p-3 space-y-2">
+              <div className="flex items-center gap-2 bg-[#bfff00]/[0.04] border border-[#bfff00]/20 rounded-xl px-3 py-2 mb-1">
+                <span className="text-sm">📏</span>
+                <p className="text-[10px] text-white/40 leading-tight">القياس من طرف الكتف للطرف الثاني</p>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {team.availableSizes.map(s => (
+                  <button key={s} onClick={() => setSize(s)}
+                    className="py-3 text-center font-black text-sm border transition-all flex flex-col items-center gap-0.5"
+                    style={{
+                      borderColor: size === s ? "#bfff00" : "rgba(255,255,255,0.07)",
+                      background:  size === s ? "rgba(191,255,0,0.08)" : "rgba(255,255,255,0.02)",
+                      color:       size === s ? "#bfff00" : "rgba(255,255,255,0.5)",
+                    }}>
+                    <span>{s}</span>
+                    <span className="text-[8px] font-normal opacity-50">{SIZE_INFO_T[s]?.replace("كتف ", "") ?? ""}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
