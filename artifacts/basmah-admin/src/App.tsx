@@ -820,6 +820,7 @@ function ImageUploadSlot({
 }) {
   const [removingBg, setRemovingBg] = useState(false);
   const [bgStep, setBgStep]         = useState<"idle" | "analyzing" | "uploading">("idle");
+  const [precut, setPrecut]         = useState(false);
 
   const { uploadFile, isUploading, progress } = useUpload({
     onSuccess: r => onChange(`/api/storage${r.objectPath}`),
@@ -829,8 +830,12 @@ function ImageUploadSlot({
   const busy = removingBg || isUploading;
 
   async function handleFile(file: File) {
+    if (precut) {
+      /* صورة جاهزة — ارفع مباشرة بدون معالجة */
+      await uploadFile(file);
+      return;
+    }
     try {
-      /* ── Step 1: send to server for background removal ── */
       setRemovingBg(true);
       setBgStep("analyzing");
       const form = new FormData();
@@ -843,8 +848,6 @@ function ImageUploadSlot({
         file.name.replace(/\.[^.]+$/, "") + "_nobg.png",
         { type: "image/png" },
       );
-
-      /* ── Step 2: upload processed PNG ── */
       setBgStep("uploading");
       setRemovingBg(false);
       await uploadFile(processed);
@@ -860,13 +863,14 @@ function ImageUploadSlot({
   }
 
   const stepLabel =
-    bgStep === "analyzing" ? "جاري تحليل الصورة…" :
+    bgStep === "analyzing" ? "جاري إزالة الخلفية…" :
     bgStep === "uploading"  ? `جاري الرفع… ${progress}%` :
     isUploading             ? `${progress}%` : "";
 
   return (
     <div className="flex flex-col items-center gap-1">
       <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">{label}</span>
+
       {value ? (
         <div className="relative group">
           <img src={value} alt={label}
@@ -878,7 +882,7 @@ function ImageUploadSlot({
         </div>
       ) : (
         <label className={`flex flex-col items-center justify-center w-24 h-28 border-2 border-dashed rounded-xl transition-colors bg-white
-          ${busy ? "border-emerald-400 cursor-wait" : "border-slate-300 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50"}`}>
+          ${busy ? "border-emerald-400 cursor-wait" : precut ? "border-blue-400 cursor-pointer hover:bg-blue-50" : "border-slate-300 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50"}`}>
           <input type="file" accept="image/*" className="hidden" disabled={busy}
             onChange={async e => { const f = e.target.files?.[0]; if (f) await handleFile(f); e.target.value = ""; }} />
           {busy ? (
@@ -888,13 +892,32 @@ function ImageUploadSlot({
             </div>
           ) : (
             <div className="text-center">
-              <Upload size={16} className="text-slate-400 mx-auto mb-1" />
+              <Upload size={16} className={`mx-auto mb-1 ${precut ? "text-blue-400" : "text-slate-400"}`} />
               <p className="text-[10px] text-slate-400">رفع صورة</p>
-              <p className="text-[8px] text-emerald-500 mt-0.5">✦ تُحذف الخلفية</p>
+              {precut
+                ? <p className="text-[8px] text-blue-500 mt-0.5">✓ جاهزة</p>
+                : <p className="text-[8px] text-emerald-500 mt-0.5">✦ تُحذف الخلفية</p>
+              }
             </div>
           )}
         </label>
       )}
+
+      {/* toggle: صورة جاهزة */}
+      <button
+        type="button"
+        onClick={() => setPrecut(v => !v)}
+        className={`flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full border transition-colors
+          ${precut
+            ? "border-blue-400 bg-blue-50 text-blue-600"
+            : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"}`}
+      >
+        <span className={`w-2.5 h-2.5 rounded-full border flex-shrink-0 flex items-center justify-center
+          ${precut ? "border-blue-500 bg-blue-500" : "border-slate-300"}`}>
+          {precut && <Check size={6} strokeWidth={3} className="text-white" />}
+        </span>
+        جاهزة مقصوصة
+      </button>
     </div>
   );
 }
