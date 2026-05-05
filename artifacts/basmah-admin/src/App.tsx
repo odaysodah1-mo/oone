@@ -27,6 +27,10 @@ interface Order {
   frontImageUrl?: string | null;
   backImageUrl?: string | null;
   jerseyColorName?: string | null;
+  customPhrase?: string | null;
+  phrasePrintPrice?: number | null;
+  notes?: string | null;
+  governorate?: string | null;
 }
 
 interface Team {
@@ -158,7 +162,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
 }
 
 /* ─── Sidebar ─────────────────────────────────────────── */
-type Section = "dashboard" | "orders" | "teams" | "nahfat" | "stickers" | "branches";
+type Section = "dashboard" | "orders" | "teams" | "nahfat" | "stickers" | "branches" | "settings";
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: "dashboard", label: "لوحة المعلومات", icon: <LayoutDashboard size={18} /> },
@@ -167,6 +171,7 @@ const NAV_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: "branches",  label: "الفروع",            icon: <MapPin size={18} /> },
   { id: "nahfat",    label: "النهفات",           icon: <Type size={18} /> },
   { id: "stickers",  label: "الملصقات",          icon: <Sticker size={18} /> },
+  { id: "settings",  label: "الإعدادات",         icon: <Star size={18} /> },
 ];
 
 function Sidebar({ active, onSelect, onLogout }: {
@@ -767,7 +772,15 @@ function OrdersSection() {
                       </div>
                     </button>
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-800">{o.customerName}</td>
+                  <td className="px-4 py-3 font-medium text-slate-800">
+                    {o.customerName}
+                    {o.customPhrase && (
+                      <span className="block text-[10px] text-purple-600 font-bold mt-0.5">✍️ {o.customPhrase}</span>
+                    )}
+                    {o.notes && (
+                      <span className="block text-[10px] text-amber-600 font-semibold mt-0.5 max-w-[160px] truncate">📝 {o.notes}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-slate-600 font-mono" dir="ltr">{o.customerPhone}</td>
                   <td className="px-4 py-3 text-slate-600">{o.teamName} / {o.jerseyNumber}</td>
                   <td className="px-4 py-3 text-slate-600">{o.size}</td>
@@ -2393,6 +2406,73 @@ function BranchesSection() {
   );
 }
 
+/* ─── Settings ────────────────────────────────────────── */
+function SettingsSection() {
+  const [phrasePrintPrice, setPhrasePrintPrice] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then(r => r.ok ? r.json() : {})
+      .then((s: Record<string, string>) => {
+        setPhrasePrintPrice(s.phrase_print_price ?? "");
+      })
+      .catch(() => toast.error("تعذّر تحميل الإعدادات"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
+    const price = parseInt(phrasePrintPrice, 10);
+    if (isNaN(price) || price < 0) { toast.error("أدخل سعراً صحيحاً"); return; }
+    setSaving(true);
+    try {
+      await apiFetch("/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ phrase_print_price: String(price) }),
+      });
+      toast.success("تم حفظ الإعدادات");
+    } catch {
+      toast.error("تعذّر حفظ الإعدادات");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6" dir="rtl">
+      <PageHeader title="الإعدادات" subtitle="إعدادات المتجر العامة" />
+      {loading ? <PageLoader /> : (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-lg">
+          <h2 className="text-base font-bold text-slate-800 mb-4">💰 أسعار الطباعة</h2>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">سعر طباعة العبارة المخصصة (د.أ)</label>
+              <p className="text-xs text-slate-400">المبلغ الإضافي الذي يُضاف للطلب عند اختيار طباعة عبارة. اتركه 0 لجعله مجانياً.</p>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number" min="0" value={phrasePrintPrice}
+                  onChange={e => setPhrasePrintPrice(e.target.value)}
+                  className="w-32 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-800 focus:outline-none focus:border-emerald-400"
+                  placeholder="3"
+                />
+                <span className="text-sm text-slate-500">دينار أردني</span>
+              </div>
+            </div>
+            <button
+              onClick={handleSave} disabled={saving}
+              className="flex items-center gap-2 px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold rounded-lg transition-colors disabled:opacity-50"
+            >
+              {saving ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
+              حفظ الإعدادات
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Shared ─────────────────────────────────────────── */
 function PageLoader() {
   return <div className="flex items-center justify-center py-16"><RefreshCw size={24} className="animate-spin text-emerald-500" /></div>;
@@ -2436,6 +2516,7 @@ export default function App() {
         {section === "nahfat" && <NahfatSection />}
         {section === "stickers" && <StickersSection />}
         {section === "branches" && <BranchesSection />}
+        {section === "settings" && <SettingsSection />}
       </main>
       <MobileNav active={section} onSelect={setSection} onLogout={handleLogout} />
       <Toaster position="top-center" richColors />

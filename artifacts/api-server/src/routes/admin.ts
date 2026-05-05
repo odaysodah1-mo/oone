@@ -8,6 +8,7 @@ import {
   teamsTable,
   stickersTable,
   visitorsTable,
+  settingsTable,
 } from "@workspace/db";
 import { eq, desc, inArray, sql } from "drizzle-orm";
 
@@ -600,5 +601,39 @@ router.get("/admin/stats/visitors", async (req, res) => {
   }
 });
 
-export default router;
+/* ═══════════════════════════════════════════════════
+   SITE SETTINGS
+═══════════════════════════════════════════════════ */
 
+/* Public — get all settings as key→value map */
+router.get("/settings", async (req, res) => {
+  try {
+    const rows = await db.select().from(settingsTable);
+    const map: Record<string, string> = {};
+    for (const r of rows) map[r.key] = r.value;
+    res.json(map);
+  } catch (err) {
+    req.log.error({ err }, "settings: list failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* Admin — upsert settings */
+router.patch("/admin/settings", async (req, res) => {
+  const body = req.body as Record<string, string>;
+  try {
+    for (const [key, value] of Object.entries(body)) {
+      if (typeof key !== "string" || typeof value !== "string") continue;
+      await db
+        .insert(settingsTable)
+        .values({ key, value, updatedAt: new Date() })
+        .onConflictDoUpdate({ target: settingsTable.key, set: { value, updatedAt: new Date() } });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err }, "settings: update failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+export default router;

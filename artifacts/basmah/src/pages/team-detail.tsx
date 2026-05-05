@@ -105,6 +105,20 @@ export default function TeamDetail() {
   });
   const [withCustomization, setWithCustomization] = useState(true);
   const [mobileTab, setMobileTab] = useState<MobileTab>("colors");
+  const [phrase, setPhrase]           = useState("");
+  const [phraseEnabled, setPhraseEnabled] = useState(false);
+  const [phrasePrintPrice, setPhrasePrintPrice] = useState(0);
+
+  /* fetch phrase print price from settings */
+  useEffect(() => {
+    fetch("/api/settings")
+      .then(r => r.ok ? r.json() : {})
+      .then((s: Record<string, string>) => {
+        const p = parseInt(s.phrase_print_price ?? "0", 10);
+        if (!isNaN(p) && p > 0) setPhrasePrintPrice(p);
+      })
+      .catch(() => {});
+  }, []);
 
   /* prices */
   const baseEffectivePrice = (() => {
@@ -114,9 +128,10 @@ export default function TeamDetail() {
       : (selectedColor?.priceWithoutCustomization ?? team.basePrice);
   })();
   const discountPercent = (team as (typeof team & { discountPercent?: number }))?.discountPercent ?? 0;
-  const effectivePrice  = discountPercent > 0
+  const baseAfterDiscount = discountPercent > 0
     ? Math.round(baseEffectivePrice * (1 - discountPercent / 100))
     : baseEffectivePrice;
+  const effectivePrice = baseAfterDiscount + (phraseEnabled && phrase.trim() ? phrasePrintPrice : 0);
 
   /* Load jersey colors */
   useEffect(() => {
@@ -160,6 +175,7 @@ export default function TeamDetail() {
 
   const handleOrder = async () => {
     if (!size) { alert(t("td_select_size_alert")); return; }
+    const activePhrase = phraseEnabled && phrase.trim() ? phrase.trim() : undefined;
     updateOrder({
       teamId: team!.id, teamName: team!.name, basePrice: effectivePrice,
       color: colors.body, size: size as "XS" | "S" | "M" | "L" | "XL" | "XXL",
@@ -173,6 +189,8 @@ export default function TeamDetail() {
       backImageUrl:  selectedColor?.backImageUrl  ?? undefined,
       jerseyColorName: selectedColor?.name        ?? undefined,
       jerseyColorId:   selectedColor?.id          ?? undefined,
+      customPhrase:     activePhrase,
+      phrasePrintPrice: activePhrase ? phrasePrintPrice : undefined,
     });
     setLocation("/order");
   };
@@ -298,6 +316,57 @@ export default function TeamDetail() {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+
+  /* Custom phrase section */
+  const PhraseSection = ({ compact = false }: { compact?: boolean }) => (
+    <div className={`rounded-xl border transition-all duration-200 overflow-hidden ${compact ? "" : "mt-1"}`}
+      style={{ borderColor: phraseEnabled ? "rgba(191,255,0,0.35)" : "rgba(255,255,255,0.07)" }}>
+      <button
+        type="button"
+        onClick={() => setPhraseEnabled(e => !e)}
+        className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-right"
+        style={{ background: phraseEnabled ? "rgba(191,255,0,0.06)" : "transparent" }}
+      >
+        <span className={`font-black text-xs ${phraseEnabled ? "text-[#bfff00]" : "text-white/50"}`}>
+          ✍️ طباعة عبارة مخصصة
+        </span>
+        <span className="flex items-center gap-2">
+          {phrasePrintPrice > 0 && (
+            <span className="text-[10px] font-bold text-white/30">+{phrasePrintPrice} د.أ</span>
+          )}
+          <span className={`w-8 h-4 rounded-full transition-all duration-200 relative ${phraseEnabled ? "bg-[#bfff00]" : "bg-white/10"}`}>
+            <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all duration-200 ${phraseEnabled ? "right-0.5" : "left-0.5"}`} />
+          </span>
+        </span>
+      </button>
+      <AnimatePresence>
+        {phraseEnabled && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18 }}
+            className="overflow-hidden"
+          >
+            <div className="px-3 pb-3">
+              <input
+                value={phrase}
+                onChange={e => setPhrase(e.target.value.slice(0, 50))}
+                placeholder="اكتب عبارتك هنا..."
+                dir="auto"
+                className={`w-full bg-white/[0.04] border border-white/[0.09] text-white placeholder:text-white/20
+                            font-bold focus:outline-none focus:border-[#bfff00]/40 transition-colors rounded-lg
+                            ${compact ? "px-3 py-2 text-sm" : "px-4 py-3 text-sm"}`}
+              />
+              <div className="flex justify-end mt-1">
+                <span className="text-[9px] text-white/20 font-bold">{phrase.length}/50</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 
   /* Size grid */
@@ -430,6 +499,9 @@ export default function TeamDetail() {
               {!withCustomization && (
                 <p className="text-[10px] text-white/25 mt-1">اضغط "مع طباعة" لإضافة الاسم والرقم</p>
               )}
+              <div className="mt-2">
+                <PhraseSection />
+              </div>
             </div>
 
             {/* Size */}
@@ -488,6 +560,7 @@ export default function TeamDetail() {
                 {!withCustomization && (
                   <p className="text-[9px] text-white/25 text-center">اضغط "مع طباعة" لإضافة اسمك ورقمك</p>
                 )}
+                <PhraseSection compact />
               </motion.div>
             )}
 

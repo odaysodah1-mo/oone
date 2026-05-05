@@ -8,6 +8,9 @@ type PartialOrder = Partial<CreateOrderBody> & {
   previewName?: string;
   previewNumber?: string;
   jerseyColorId?: number;
+  customPhrase?: string;
+  phrasePrintPrice?: number;
+  notes?: string;
 };
 
 interface OrderContextType {

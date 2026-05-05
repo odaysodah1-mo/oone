@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { ordersTable, teamsTable, jerseyColorsTable } from "@workspace/db";
+import { ordersTable, teamsTable, jerseyColorsTable, settingsTable } from "@workspace/db";
 import { eq, desc, count, sum } from "drizzle-orm";
 import { CreateOrderBody } from "@workspace/api-zod";
 import { adminAuth } from "../middleware/adminAuth";
@@ -73,7 +73,26 @@ router.post("/orders", async (req, res) => {
     const discountedUnitPrice = discount > 0
       ? Math.round(unitPrice * (1 - discount / 100))
       : unitPrice;
-    const totalPrice = discountedUnitPrice * data.quantity;
+    let totalPrice = discountedUnitPrice * data.quantity;
+
+    /* ── Optional extras: custom phrase + notes ── */
+    const rawBody = req.body as Record<string, unknown>;
+    const customPhrase = typeof rawBody.customPhrase === "string"
+      ? rawBody.customPhrase.trim().slice(0, 60) || null
+      : null;
+    const notes = typeof rawBody.notes === "string"
+      ? rawBody.notes.trim().slice(0, 300) || null
+      : null;
+
+    let phrasePrintPrice = 0;
+    if (customPhrase) {
+      const [setting] = await db
+        .select()
+        .from(settingsTable)
+        .where(eq(settingsTable.key, "phrase_print_price"));
+      phrasePrintPrice = parseInt(setting?.value ?? "0", 10) || 0;
+      totalPrice += phrasePrintPrice;
+    }
 
     const [order] = await db
       .insert(ordersTable)
@@ -94,6 +113,9 @@ router.post("/orders", async (req, res) => {
         frontImageUrl: data.frontImageUrl ?? null,
         backImageUrl: data.backImageUrl ?? null,
         jerseyColorName: data.jerseyColorName ?? null,
+        customPhrase,
+        phrasePrintPrice: phrasePrintPrice || null,
+        notes,
       })
       .returning();
 

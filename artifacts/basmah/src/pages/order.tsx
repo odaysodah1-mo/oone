@@ -153,6 +153,7 @@ export default function Order() {
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [city, setCity] = useState("");
   const [governorate, setGovernorate] = useState("");
+  const [notes, setNotes] = useState("");
 
   const GOVERNORATES = [
     "عمان", "إربد", "الزرقاء", "البلقاء", "الكرك", "مادبا",
@@ -221,6 +222,8 @@ export default function Order() {
         backImageUrl: order.backImageUrl || undefined,
         jerseyColorName: order.jerseyColorName || undefined,
         jerseyColorId: order.jerseyColorId ?? undefined,
+        customPhrase: order.customPhrase || undefined,
+        notes: notes.trim() || undefined,
       } as Parameters<typeof createOrder.mutate>[0]["data"]
     }, {
       onSuccess: (data: { id: number; totalPrice: number }) => {
@@ -236,6 +239,8 @@ export default function Order() {
 
   const basePrice = order.basePrice ?? 89;
   const delivery = 3;
+  const phrasePrice = order.phrasePrintPrice ?? 0;
+  const grandTotal = basePrice + delivery + phrasePrice;
 
   return (
     <div className="min-h-screen bg-[#050505] text-white pb-16">
@@ -293,15 +298,28 @@ export default function Order() {
               <span className="text-white/40">{t("order_jersey_price")}</span>
               <span className="text-white font-bold">{basePrice} {t("order_currency")}</span>
             </div>
+            {phrasePrice > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-white/40">✍️ طباعة عبارة مخصصة</span>
+                <span className="text-white font-bold">{phrasePrice} {t("order_currency")}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
               <span className="text-white/40">{t("order_delivery")}</span>
               <span className="text-white font-bold">{delivery} {t("order_currency")}</span>
             </div>
             <div className="flex justify-between text-sm pt-1.5 border-t border-white/[0.06]">
               <span className="text-white font-black">{t("order_total")}</span>
-              <span className="font-black text-lg" style={{ color: "#bfff00" }}>{basePrice + delivery} {t("order_currency")}</span>
+              <span className="font-black text-lg" style={{ color: "#bfff00" }}>{grandTotal} {t("order_currency")}</span>
             </div>
           </div>
+          {/* Custom phrase preview */}
+          {order.customPhrase && (
+            <div className="border-t border-white/[0.04] px-4 py-2">
+              <p className="text-[10px] text-white/30 font-bold">✍️ العبارة المراد طباعتها:</p>
+              <p className="text-sm text-[#bfff00] font-black mt-0.5" dir="auto">{order.customPhrase}</p>
+            </div>
+          )}
         </motion.div>
 
         {/* Payment method */}
@@ -399,6 +417,20 @@ export default function Order() {
                 <option key={g} value={g} className="bg-[#111]">{g}</option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-white/50 text-xs font-bold">ملاحظات (اختياري)</label>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value.slice(0, 300))}
+              placeholder="أي طلب خاص أو ملاحظة للتوصيل..."
+              rows={3}
+              className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.10] text-white font-medium focus:outline-none focus:border-[#bfff00]/50 transition-colors rounded-xl placeholder:text-white/20 resize-none text-sm"
+            />
+            <div className="flex justify-end">
+              <span className="text-[10px] text-white/20">{notes.length}/300</span>
+            </div>
           </div>
 
           <button

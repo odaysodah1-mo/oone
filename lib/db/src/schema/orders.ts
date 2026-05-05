@@ -22,6 +22,9 @@ export const ordersTable = pgTable("orders", {
   frontImageUrl: text("front_image_url"),
   backImageUrl: text("back_image_url"),
   jerseyColorName: text("jersey_color_name"),
+  customPhrase: text("custom_phrase"),
+  phrasePrintPrice: integer("phrase_print_price"),
+  notes: text("notes"),
 });
 
 export const insertOrderSchema = createInsertSchema(ordersTable).omit({ id: true, createdAt: true });

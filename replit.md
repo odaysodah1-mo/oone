@@ -47,6 +47,14 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - **Branch dashboard** (`artifacts/basmah-branch`): Served as pre-built static files from the API server at `/basmah-branch/`. Dark-themed, standalone React app. **When code changes, rebuild with**: `PORT=6800 BASE_PATH=/basmah-branch/ pnpm --filter @workspace/basmah-branch run build`. Served by `artifacts/api-server/src/app.ts` via `express.static`. The `basmah-branch` Vite dev workflow is intentionally non-functional (Replit port detection bug for newly created artifacts) — static serving is the workaround.
 - **Admin branch section**: `BranchesSection` component in `artifacts/basmah-admin/src/App.tsx` — full CRUD table for branches including stats (total orders, revenue, commission).
 
+## Custom Phrase Printing + Order Notes
+
+- **Phrase printing**: Toggle in team-detail.tsx `PhraseSection` — customer enables it, enters up to 50 chars. Price fetched from `GET /api/settings` (key `phrase_print_price`). Added to total client-side and server-side.
+- **Notes field**: Textarea in order.tsx, passed as `notes` in POST body, stored in `ordersTable.notes`.
+- **DB columns added**: `ordersTable.customPhrase`, `ordersTable.phrasePrintPrice`, `ordersTable.notes`.
+- **Settings table**: `settingsTable` (key-value). Admin sets phrase price via `PATCH /api/admin/settings`. Public read via `GET /api/settings`.
+- **Admin**: New "الإعدادات" section in sidebar. Phrase + notes shown inline in orders table (purple/amber badges).
+
 ## Security Hardening
 
 - **Admin auth middleware**: `artifacts/api-server/src/middleware/adminAuth.ts` — checks `x-admin-key` header vs `ADMIN_SECRET` env var (defaults to `basmah2025` in dev, warns in logs). Applied to all `/admin/*` routes and `POST /storage/uploads/request-url`.
