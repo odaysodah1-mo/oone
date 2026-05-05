@@ -1182,7 +1182,7 @@ function TeamCard({ team, onTeamUpdate, onDelete }: { team: Team; onTeamUpdate: 
           <div>
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-semibold text-slate-700">
-                صور الجيرسيهات ({colors.length})
+                صور التيشيرت ({colors.length})
               </span>
               {!showAddForm && (
                 <button onClick={() => setShowAddForm(true)}
