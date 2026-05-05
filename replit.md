@@ -56,6 +56,20 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - **GET /api/orders** requires admin auth (not public).
 - **GET /api/orders/by-phone** returns limited fields only; server-side phone format validation (`/^07\d{8}$/`).
 
+## Legendary UI (Jersey Photo Viewer)
+
+- **File**: `artifacts/basmah/src/components/jersey-photo-viewer.tsx`
+- **Features**: shimmer sweep animation (`jersey-card-shimmer::after`), breathing ambient glow (`glow-breathe`, team-color matched), dot-grid texture, brand badge (ADIDAS/NIKE/PUMA/KELME/JORDAN), flip front↔back button, CSS injected via `useJerseyCSS()` hook
+- **`TEAM_FONT_STYLE` map**: 27 teams → `{ brand, fontId }` — used to show OFFICIAL badge on recommended font, and auto-apply on team load via `useEffect` in `team-detail.tsx`
+- **Mobile font buttons**: updated to also show OFFICIAL badge (lines 755-781 in `team-detail.tsx`)
+
+## Jersey Images (27/27 Complete)
+
+- **Front images**: All 27 teams ✅ (2026 season: Argentina, Brazil, Germany, Morocco, Saudi Arabia, Spain home+away, France, England, Netherlands, Croatia, Portugal; 2024-25: Liverpool, Barcelona, PSG, Real Madrid; Jordanian clubs: KELME kits)
+- **Back images**: All 27 teams ✅ (matching team-specific backs where available, Jordan KELME kit backs for Jordanian clubs, generic fallback for others)
+- **Image upload flow**: POST `/api/storage/uploads/request-url` (x-admin-key) → PUT to GCS → `/api/storage/objects/uploads/<uuid>`
+- **DB update**: PATCH `/api/admin/teams/:id/colors/:colorId` with `frontImageUrl` / `backImageUrl`
+
 ## Background Removal
 
 - Server-side via `POST /api/admin/remove-background` using `@imgly/background-removal-node` (multer upload, returns PNG).
