@@ -479,7 +479,7 @@ function DesignPreviewModal({ order, onClose }: { order: Order; onClose: () => v
                 style={{ backgroundColor: order.color || "#1a1a2e" }}>
                 <Shirt size={36} className="text-white" />
               </div>
-              <p className="text-white/60 text-sm">لا توجد صورة للجيرسيه</p>
+              <p className="text-white/60 text-sm">لا توجد صورة للتيشيرت</p>
             </div>
           )}
 
@@ -497,9 +497,9 @@ function DesignPreviewModal({ order, onClose }: { order: Order; onClose: () => v
         {/* Details */}
         <div className="px-5 py-4 space-y-2" dir="rtl">
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <div><span className="text-slate-400 text-xs block">الاسم على الجيرسيه</span><span className="font-bold text-slate-800">{order.playerName || "—"}</span></div>
+            <div><span className="text-slate-400 text-xs block">الاسم على التيشيرت</span><span className="font-bold text-slate-800">{order.playerName || "—"}</span></div>
             <div><span className="text-slate-400 text-xs block">الرقم</span><span className="font-bold text-slate-800 text-lg">{order.jerseyNumber}</span></div>
-            <div><span className="text-slate-400 text-xs block">لون الجيرسيه</span><span className="font-medium text-slate-700">{order.jerseyColorName || order.color}</span></div>
+            <div><span className="text-slate-400 text-xs block">لون التيشيرت</span><span className="font-medium text-slate-700">{order.jerseyColorName || order.color}</span></div>
             <div><span className="text-slate-400 text-xs block">المقاس</span><span className="font-bold text-slate-800">{order.size}</span></div>
             <div><span className="text-slate-400 text-xs block">المدينة</span><span className="font-medium text-slate-700">{order.customerCity}</span></div>
             <div><span className="text-slate-400 text-xs block">الهاتف</span><span className="font-medium text-slate-700" dir="ltr">{order.customerPhone}</span></div>
@@ -994,14 +994,14 @@ function AddJerseyColorForm({ teamId, colorsCount, onAdd, onCancel }: {
         }),
       });
       onAdd(color);
-      toast.success("تم إضافة الجيرسيه");
+      toast.success("تم إضافة التيشيرت");
     } catch { toast.error("فشل الحفظ"); }
     finally { setSaving(false); }
   }
 
   return (
     <div className="border-2 border-dashed border-emerald-200 rounded-xl p-4 bg-emerald-50/40 col-span-full">
-      <p className="text-sm font-semibold text-slate-700 mb-4">إضافة جيرسيه جديد</p>
+      <p className="text-sm font-semibold text-slate-700 mb-4">إضافة تيشيرت جديد</p>
 
       {/* Two image slots side-by-side */}
       <div className="flex gap-6 mb-4 justify-center">
@@ -1011,7 +1011,7 @@ function AddJerseyColorForm({ teamId, colorsCount, onAdd, onCancel }: {
 
       {/* Name */}
       <div className="mb-3">
-        <label className="block text-xs text-slate-500 mb-1">اسم الجيرسيه *</label>
+        <label className="block text-xs text-slate-500 mb-1">اسم التيشيرت *</label>
         <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="مثال: أبيض الأساسي، أحمر الاحتياطي..."
           className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white" />
       </div>
@@ -1063,7 +1063,7 @@ function AddJerseyColorForm({ teamId, colorsCount, onAdd, onCancel }: {
       {/* Default */}
       <div className="flex items-center gap-2 mb-4">
         <input type="checkbox" id={`def-${teamId}`} checked={isDefault} onChange={e => setIsDefault(e.target.checked)} className="rounded" />
-        <label htmlFor={`def-${teamId}`} className="text-xs text-slate-600">اجعله الجيرسيه الافتراضي</label>
+        <label htmlFor={`def-${teamId}`} className="text-xs text-slate-600">اجعله التيشيرت الافتراضي</label>
       </div>
 
       <div className="flex gap-2">
@@ -1094,7 +1094,7 @@ function TeamCard({ team, onTeamUpdate, onDelete }: { team: Team; onTeamUpdate: 
       const c = await apiFetch(`/admin/teams/${team.id}/colors`);
       setColors(c);
       setColorsLoaded(true);
-    } catch { toast.error("فشل تحميل الجيرسيهات"); }
+    } catch { toast.error("فشل تحميل التيشيرتات"); }
     finally { setColorsLoading(false); }
   }
 
@@ -1187,7 +1187,7 @@ function TeamCard({ team, onTeamUpdate, onDelete }: { team: Team; onTeamUpdate: 
               {!showAddForm && (
                 <button onClick={() => setShowAddForm(true)}
                   className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
-                  <Plus size={12} />إضافة جيرسيه
+                  <Plus size={12} />إضافة تيشيرت
                 </button>
               )}
             </div>
@@ -1210,8 +1210,8 @@ function TeamCard({ team, onTeamUpdate, onDelete }: { team: Team; onTeamUpdate: 
 
                 {colors.length === 0 && !showAddForm && (
                   <div className="col-span-full py-6 text-center">
-                    <p className="text-sm text-slate-400 mb-2">لا توجد جيرسيهات بعد</p>
-                    <button onClick={() => setShowAddForm(true)} className="text-emerald-600 text-xs hover:underline">أضف أول جيرسيه</button>
+                    <p className="text-sm text-slate-400 mb-2">لا توجد تيشيرتات بعد</p>
+                    <button onClick={() => setShowAddForm(true)} className="text-emerald-600 text-xs hover:underline">أضف أول تيشيرت</button>
                   </div>
                 )}
               </div>
@@ -1318,7 +1318,7 @@ function TeamsSection() {
   useEffect(() => { load(); }, [load]);
 
   async function deleteTeam(id: number, name: string) {
-    if (!confirm(`هل أنت متأكد من حذف فريق "${name}"؟ سيتم حذف جميع جيرسيهاته أيضاً.`)) return;
+    if (!confirm(`هل أنت متأكد من حذف فريق "${name}"؟ سيتم حذف جميع تيشيرتاته أيضاً.`)) return;
     try {
       await apiFetch(`/admin/teams/${id}`, { method: "DELETE" });
       setTeams(prev => prev.filter(t => t.id !== id));
@@ -1557,7 +1557,7 @@ function StickersSection() {
         <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center">
           <p className="text-5xl mb-3">🎨</p>
           <p className="font-semibold text-slate-600 mb-1">لا توجد ملصقات بعد</p>
-          <p className="text-slate-400 text-sm">أضف ملصقات يستطيع العملاء وضعها على جيرسيهاتهم</p>
+          <p className="text-slate-400 text-sm">أضف ملصقات يستطيع العملاء وضعها على تيشيرتاتهم</p>
         </div>
       )}
 

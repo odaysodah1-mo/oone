@@ -50,7 +50,7 @@ const ar = {
   td_color_note_body: "الألوان المعروضة هي الألوان الأصلية للكلر المختار. سيتم مطابقة اللون بدقة في المطبعة لضمان أفضل نتيجة.",
   td_color_primary: "اللون الرئيسي",
   td_color_secondary: "لون الأكمام",
-  td_color_no_selection: "اختر كلر الجيرسيه أعلاه لمعاينة الألوان",
+  td_color_no_selection: "اختر كلر التيشيرت أعلاه لمعاينة الألوان",
   td_name_label: "الاسم",
   td_name_placeholder: "اسمك بالإنجليزي",
   td_number_label: "الرقم",
@@ -101,7 +101,7 @@ const ar = {
   order_confirm_accent: "الطلب",
   order_confirm_sub: "خطوة أخيرة وقميصك في الطريق",
   order_team_label: "الفريق",
-  order_jersey_price: "سعر الجيرسيه",
+  order_jersey_price: "سعر التيشيرت",
   order_delivery: "رسوم التوصيل",
   order_total: "الإجمالي",
   order_currency: "د.أ",
@@ -127,7 +127,7 @@ const ar = {
   order_trust_delivery: "توصيل لكل الأردن",
   order_trust_quality: "جودة مضمونة",
   order_empty_title: "لا يوجد طلب حالي",
-  order_empty_sub: "اختر فريقك وصمّم جيرسيهك أولاً",
+  order_empty_sub: "اختر فريقك وصمّم تيشيرتك أولاً",
   order_browse_teams: "تصفح الفرق ←",
   order_order_num: "رقم الطلب",
 
@@ -157,7 +157,7 @@ const ar = {
   track_cancelled: "تم إلغاء الطلب",
   track_need_help: "هل تحتاج مساعدة؟",
   track_contact: "تواصل معنا",
-  track_no_order_yet: "لم تطلب بعد؟ صمّم جيرسيهك الآن ←",
+  track_no_order_yet: "لم تطلب بعد؟ صمّم تيشيرتك الآن ←",
 };
 
 export default ar;
