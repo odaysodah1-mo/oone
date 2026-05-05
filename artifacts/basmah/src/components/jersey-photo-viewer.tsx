@@ -124,33 +124,8 @@ function FifaOverlay({ view, name, number, fontId, trimColor }: OverlayProps) {
     );
   }
 
-  /* ── FRONT ── */
-  /* Squad number only — FIFA min 10 cm → 12% of image width */
-  return (
-    <>
-      {number && (
-        <div style={{
-          position:    "absolute",
-          top:         "43%",
-          left:        "50%",
-          transform:   "translateX(-50%)",
-          fontFamily:  `"${font.family}", Impact, Arial Black, sans-serif`,
-          fontStyle:   isItalic ? "italic" : "normal",
-          fontWeight:  900,
-          /* 10 cm on a jersey ≈ 12% of image width */
-          fontSize:    "12cqw",
-          color:       trimColor,
-          textShadow:  shadow(60),
-          letterSpacing: "-0.03em",
-          lineHeight:  1,
-          pointerEvents: "none",
-          userSelect:  "none",
-        }}>
-          {number}
-        </div>
-      )}
-    </>
-  );
+  /* ── FRONT — no printing on front ── */
+  return null;
 }
 
 /* ─── Main component ─────────────────────────────────────────────── */
