@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { removeBackground } from "@imgly/background-removal";
 import { useUpload } from "@workspace/object-storage-web";
 import {
   ShoppingBag, Shirt, Type, LogOut, LayoutDashboard,
@@ -831,19 +830,21 @@ function ImageUploadSlot({
 
   async function handleFile(file: File) {
     try {
-      /* ── Step 1: remove background ── */
+      /* ── Step 1: send to server for background removal ── */
       setRemovingBg(true);
       setBgStep("analyzing");
-      const blob = await removeBackground(file, {
-        output: { format: "image/png", quality: 1 },
-      });
+      const form = new FormData();
+      form.append("image", file);
+      const resp = await fetch("/api/admin/remove-background", { method: "POST", body: form });
+      if (!resp.ok) throw new Error(`server ${resp.status}`);
+      const resultBlob = await resp.blob();
       const processed = new File(
-        [blob],
+        [resultBlob],
         file.name.replace(/\.[^.]+$/, "") + "_nobg.png",
         { type: "image/png" },
       );
 
-      /* ── Step 2: upload ── */
+      /* ── Step 2: upload processed PNG ── */
       setBgStep("uploading");
       setRemovingBg(false);
       await uploadFile(processed);
@@ -852,7 +853,6 @@ function ImageUploadSlot({
       toast.error("فشل إزالة الخلفية — سيتم رفع الصورة الأصلية");
       setRemovingBg(false);
       setBgStep("idle");
-      /* Fallback: upload original */
       await uploadFile(file);
     } finally {
       setBgStep("idle");

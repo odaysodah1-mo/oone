@@ -1,0 +1,32 @@
+import { Router } from "express";
+import multer from "multer";
+import { removeBackground } from "@imgly/background-removal-node";
+
+const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+
+router.post("/admin/remove-background", upload.single("image"), async (req, res) => {
+  if (!req.file) {
+    res.status(400).json({ error: "No image provided" });
+    return;
+  }
+  try {
+    const blob = new Blob([req.file.buffer], { type: req.file.mimetype });
+    const resultBlob = await removeBackground(blob, {
+      output: { format: "image/png", quality: 1 },
+    });
+    const arrayBuffer = await resultBlob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    res.set({
+      "Content-Type": "image/png",
+      "Content-Length": String(buffer.length),
+      "Cache-Control": "no-store",
+    });
+    res.send(buffer);
+  } catch (err) {
+    req.log.error({ err }, "remove-bg: processing failed");
+    res.status(500).json({ error: "Background removal failed" });
+  }
+});
+
+export default router;
