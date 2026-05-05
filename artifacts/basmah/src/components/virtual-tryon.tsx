@@ -90,7 +90,7 @@ function buildTexture(opts: TextureOptions): Promise<THREE.Texture> {
       tex.flipY       = true;
       if (opts.side === "front") {
         tex.wrapS    = THREE.RepeatWrapping;
-        tex.offset.x = 0.2;
+        tex.offset.x = 0.25;
       }
       tex.needsUpdate = true;
       resolve(tex);
@@ -133,7 +133,7 @@ function buildFallbackTexture(
   tex.flipY      = true;
   if (side === "front") {
     tex.wrapS    = THREE.RepeatWrapping;
-    tex.offset.x = 0.2;
+    tex.offset.x = 0.25;
   }
   tex.needsUpdate = true;
   return tex;
