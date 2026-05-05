@@ -11,11 +11,11 @@ version = "1.0.0"
 
 [[services]]
 name = "web"
-paths = []
-localPort = 6800
+paths = ["/basmah-branch/"]
+localPort = 8091
 
 [services.development]
-run = "node serve-static.mjs"
+run = "pnpm --filter @workspace/basmah-branch run dev"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/basmah-branch", "run", "build" ]
@@ -27,5 +27,5 @@ from = "/*"
 to = "/index.html"
 
 [services.env]
-PORT = "6800"
+PORT = "8091"
 BASE_PATH = "/basmah-branch/"
