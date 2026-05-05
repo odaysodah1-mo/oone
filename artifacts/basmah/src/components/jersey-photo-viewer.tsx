@@ -63,11 +63,10 @@ function FifaOverlay({ view, name, number, fontId, trimColor }: OverlayProps) {
   const font    = FONT_STYLES.find(f => f.id === fontId) ?? FONT_STYLES[0];
   const isItalic = (font.style as Record<string,string>).fontStyle === "italic";
 
-  /* Shadow stack that always pops against any jersey colour */
+  /* Subtle shadow — just enough to pop off any jersey colour */
   const shadow = (size: number) =>
-    `0 0 ${size * 0.08}px rgba(0,0,0,1),`
-    + `0 0 ${size * 0.22}px rgba(0,0,0,0.95),`
-    + `0 ${size * 0.04}px ${size * 0.12}px rgba(0,0,0,0.9)`;
+    `0 ${size * 0.02}px ${size * 0.06}px rgba(0,0,0,0.85),`
+    + `0 0 ${size * 0.10}px rgba(0,0,0,0.55)`;
 
   /* ── BACK ── */
   if (view === "back") {
@@ -78,24 +77,21 @@ function FifaOverlay({ view, name, number, fontId, trimColor }: OverlayProps) {
           <div style={{
             position:      "absolute",
             top:           "33%",
-            left:          "50%",
-            transform:     "translateX(-50%)",
+            left:          0,
+            right:         0,
+            textAlign:     "center",
             fontFamily:    font.family,
             fontStyle:     isItalic ? "italic" : "normal",
             fontWeight:    900,
             fontSize:      "7cqw",
             color:         trimColor,
             textShadow:    shadow(36),
-            letterSpacing: "0.22em",
+            letterSpacing: "0.35em",
             whiteSpace:    "nowrap",
             textTransform: "uppercase",
             lineHeight:    1,
             pointerEvents: "none",
             userSelect:    "none",
-            /* crisp rendering */
-            WebkitFontSmoothing: "antialiased",
-            MozOsxFontSmoothing: "grayscale",
-            paintOrder:    "stroke fill",
           }}>
             {name.toUpperCase()}
           </div>
@@ -106,20 +102,19 @@ function FifaOverlay({ view, name, number, fontId, trimColor }: OverlayProps) {
           <div style={{
             position:      "absolute",
             top:           name ? "43%" : "38%",
-            left:          "50%",
-            transform:     "translateX(-50%)",
+            left:          0,
+            right:         0,
+            textAlign:     "center",
             fontFamily:    font.family,
             fontStyle:     isItalic ? "italic" : "normal",
             fontWeight:    900,
             fontSize:      "26cqw",
             color:         trimColor,
             textShadow:    shadow(130),
-            letterSpacing: "-0.02em",
+            letterSpacing: "0",
             lineHeight:    1,
             pointerEvents: "none",
             userSelect:    "none",
-            WebkitFontSmoothing: "antialiased",
-            MozOsxFontSmoothing: "grayscale",
           }}>
             {number}
           </div>
