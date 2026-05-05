@@ -6,6 +6,7 @@ import { getGetTeamQueryKey } from "@workspace/api-client-react";
 import { useOrder } from "@/components/order-context";
 import { FONT_STYLES, type JerseyColors } from "@/components/configurator-jersey";
 import { ShirtStickerStage, type ShirtStickerStageHandle } from "@/components/shirt-sticker-stage";
+import { VirtualTryOn3D } from "@/components/virtual-tryon";
 import {
   STICKER_LIBRARY,
   getStickerCanvas,
@@ -180,6 +181,9 @@ export default function TeamDetail() {
 
   /* stage ref for snapshot capture */
   const stageRef = useRef<ShirtStickerStageHandle>(null);
+
+  /* 3D virtual try-on overlay */
+  const [showTryOn, setShowTryOn] = useState(false);
 
   /* mobile */
   const [mobileTab, setMobileTab] = useState<MobileTab>("stickers");
@@ -429,7 +433,18 @@ export default function TeamDetail() {
             view={view}
             onViewChange={setView}
           />
+
+          {/* 3D Try-On button — bottom center of the stage */}
+          <button
+            onClick={() => setShowTryOn(true)}
+            className="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/70 border border-white/20 hover:border-[#bfff00]/60 hover:text-[#bfff00] text-white/60 text-[11px] font-black px-4 py-2 rounded-full backdrop-blur-sm transition-all active:scale-95 select-none z-20"
+          >
+            <span>👕</span> تجربة ثلاثية الأبعاد
+          </button>
         </div>
+
+        {/* ══ 3D TRY-ON OVERLAY ══ */}
+        {showTryOn && <VirtualTryOn3D onClose={() => setShowTryOn(false)} />}
 
         {/* ══ CUSTOMIZATION PANEL ══ */}
         <motion.div
