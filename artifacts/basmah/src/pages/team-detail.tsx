@@ -5,7 +5,7 @@ import { useGetTeam } from "@workspace/api-client-react";
 import { getGetTeamQueryKey } from "@workspace/api-client-react";
 import { useOrder } from "@/components/order-context";
 import { FONT_STYLES, type JerseyColors } from "@/components/configurator-jersey";
-import { ShirtViewer3D } from "@/components/virtual-tryon";
+import { JerseyPhotoViewer } from "@/components/jersey-photo-viewer";
 import {
   getStickerCanvas,
   type StickerDef,
@@ -404,11 +404,18 @@ export default function TeamDetail() {
           )}
         </motion.div>
 
-        {/* ══ CENTER — 3D Shirt Viewer ══ */}
+        {/* ══ CENTER — Jersey Photo Viewer ══ */}
         <div className="flex-1 relative min-w-0 overflow-hidden bg-[#080808]">
-          <ShirtViewer3D
+          <JerseyPhotoViewer
             frontImageUrl={selectedColor?.frontImageUrl ?? null}
             backImageUrl={selectedColor?.backImageUrl  ?? null}
+            name={name}
+            number={number}
+            fontId={fontId}
+            colors={colors}
+            withCustomization={withCustomization}
+            view={view}
+            onToggleView={() => setView(v => v === "front" ? "back" : "front")}
           />
         </div>
 
