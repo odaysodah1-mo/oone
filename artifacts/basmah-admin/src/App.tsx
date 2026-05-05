@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
+import { removeBackground } from "@imgly/background-removal";
 import { useUpload } from "@workspace/object-storage-web";
 import {
   ShoppingBag, Shirt, Type, LogOut, LayoutDashboard,
@@ -818,10 +819,50 @@ function ImageUploadSlot({
   value: string | null;
   onChange: (url: string | null) => void;
 }) {
+  const [removingBg, setRemovingBg] = useState(false);
+  const [bgStep, setBgStep]         = useState<"idle" | "analyzing" | "uploading">("idle");
+
   const { uploadFile, isUploading, progress } = useUpload({
     onSuccess: r => onChange(`/api/storage${r.objectPath}`),
     onError: () => toast.error("فشل رفع الصورة"),
   });
+
+  const busy = removingBg || isUploading;
+
+  async function handleFile(file: File) {
+    try {
+      /* ── Step 1: remove background ── */
+      setRemovingBg(true);
+      setBgStep("analyzing");
+      const blob = await removeBackground(file, {
+        output: { format: "image/png", quality: 1 },
+      });
+      const processed = new File(
+        [blob],
+        file.name.replace(/\.[^.]+$/, "") + "_nobg.png",
+        { type: "image/png" },
+      );
+
+      /* ── Step 2: upload ── */
+      setBgStep("uploading");
+      setRemovingBg(false);
+      await uploadFile(processed);
+    } catch (err) {
+      console.error("[ImageUploadSlot] bg removal failed:", err);
+      toast.error("فشل إزالة الخلفية — سيتم رفع الصورة الأصلية");
+      setRemovingBg(false);
+      setBgStep("idle");
+      /* Fallback: upload original */
+      await uploadFile(file);
+    } finally {
+      setBgStep("idle");
+    }
+  }
+
+  const stepLabel =
+    bgStep === "analyzing" ? "جاري تحليل الصورة…" :
+    bgStep === "uploading"  ? `جاري الرفع… ${progress}%` :
+    isUploading             ? `${progress}%` : "";
 
   return (
     <div className="flex flex-col items-center gap-1">
@@ -829,20 +870,29 @@ function ImageUploadSlot({
       {value ? (
         <div className="relative group">
           <img src={value} alt={label}
-            className="w-24 h-28 object-contain rounded-xl border border-slate-200 bg-slate-50 shadow-sm" />
+            className="w-24 h-28 object-contain rounded-xl border border-slate-200 bg-[repeating-conic-gradient(#e2e8f0_0%_25%,white_0%_50%)] bg-[length:10px_10px] shadow-sm" />
           <button onClick={() => onChange(null)}
             className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition-opacity">
             <X size={10} />
           </button>
         </div>
       ) : (
-        <label className="flex flex-col items-center justify-center w-24 h-28 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 transition-colors bg-white">
-          <input type="file" accept="image/*" className="hidden"
-            onChange={async e => { const f = e.target.files?.[0]; if (f) await uploadFile(f); }} />
-          {isUploading
-            ? <div className="text-center"><RefreshCw size={16} className="animate-spin text-emerald-500 mx-auto mb-1" /><p className="text-[10px] text-emerald-600">{progress}%</p></div>
-            : <div className="text-center"><Upload size={16} className="text-slate-400 mx-auto mb-1" /><p className="text-[10px] text-slate-400">رفع صورة</p></div>
-          }
+        <label className={`flex flex-col items-center justify-center w-24 h-28 border-2 border-dashed rounded-xl transition-colors bg-white
+          ${busy ? "border-emerald-400 cursor-wait" : "border-slate-300 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50"}`}>
+          <input type="file" accept="image/*" className="hidden" disabled={busy}
+            onChange={async e => { const f = e.target.files?.[0]; if (f) await handleFile(f); e.target.value = ""; }} />
+          {busy ? (
+            <div className="text-center px-1">
+              <RefreshCw size={16} className="animate-spin text-emerald-500 mx-auto mb-1" />
+              <p className="text-[9px] text-emerald-600 leading-tight">{stepLabel}</p>
+            </div>
+          ) : (
+            <div className="text-center">
+              <Upload size={16} className="text-slate-400 mx-auto mb-1" />
+              <p className="text-[10px] text-slate-400">رفع صورة</p>
+              <p className="text-[8px] text-emerald-500 mt-0.5">✦ تُحذف الخلفية</p>
+            </div>
+          )}
         </label>
       )}
     </div>
