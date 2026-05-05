@@ -10,7 +10,7 @@ const ar = {
   home_hero_title_accent: "بصمتك",
   home_hero_sub: "صمم قميص فريقك المفضل باسمك ورقمك. ارتدي هويتك في الملعب.",
   home_cta: "ابدأ التصميم الآن",
-  home_how_title: "كيف تعمل",
+  home_how_title: "كيف يعمل",
   home_how_title_accent: "O ONE",
   home_how_sub: "ثلاث خطوات بسيطة للحصول على قميصك المخصص",
   home_step1_title: "اختر فريقك",
