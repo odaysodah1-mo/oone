@@ -88,6 +88,10 @@ function buildTexture(opts: TextureOptions): Promise<THREE.Texture> {
       const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace  = THREE.SRGBColorSpace;
       tex.flipY       = true;
+      if (opts.side === "front") {
+        tex.wrapS    = THREE.RepeatWrapping;
+        tex.offset.x = 0.5;
+      }
       tex.needsUpdate = true;
       resolve(tex);
     };
@@ -127,6 +131,10 @@ function buildFallbackTexture(
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.flipY      = true;
+  if (side === "front") {
+    tex.wrapS    = THREE.RepeatWrapping;
+    tex.offset.x = 0.5;
+  }
   tex.needsUpdate = true;
   return tex;
 }
