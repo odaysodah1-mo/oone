@@ -142,7 +142,7 @@ function Sidebar({ active, onSelect, onLogout }: {
   active: Section; onSelect: (s: Section) => void; onLogout: () => void;
 }) {
   return (
-    <aside className="w-56 bg-slate-900 border-l border-slate-700 flex flex-col h-screen sticky top-0" dir="rtl">
+    <aside className="hidden md:flex w-56 bg-slate-900 border-l border-slate-700 flex-col h-screen sticky top-0" dir="rtl">
       <div className="flex items-center gap-3 px-4 py-5 border-b border-slate-700">
         <div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center">
           <Shirt size={20} className="text-white" />
@@ -167,6 +167,36 @@ function Sidebar({ active, onSelect, onLogout }: {
         </button>
       </div>
     </aside>
+  );
+}
+
+/* ─── Mobile Bottom Nav ──────────────────────────────────── */
+function MobileNav({ active, onSelect, onLogout }: {
+  active: Section; onSelect: (s: Section) => void; onLogout: () => void;
+}) {
+  const items = [
+    { id: "dashboard" as Section, label: "الرئيسية", icon: <LayoutDashboard size={20} /> },
+    { id: "orders"    as Section, label: "الطلبات",  icon: <ShoppingBag size={20} /> },
+    { id: "teams"     as Section, label: "الفرق",    icon: <Shirt size={20} /> },
+    { id: "nahfat"    as Section, label: "النهفات",  icon: <Type size={20} /> },
+    { id: "stickers"  as Section, label: "الملصقات", icon: <Sticker size={20} /> },
+  ];
+  return (
+    <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-slate-900 border-t border-slate-700 flex" dir="rtl">
+      {items.map(item => (
+        <button key={item.id} onClick={() => onSelect(item.id)}
+          className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-bold transition-colors ${
+            active === item.id ? "text-emerald-400" : "text-slate-500"
+          }`}>
+          <span className={active === item.id ? "text-emerald-400" : "text-slate-500"}>{item.icon}</span>
+          {item.label}
+        </button>
+      ))}
+      <button onClick={onLogout}
+        className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-bold text-slate-500 hover:text-red-400 transition-colors">
+        <LogOut size={20} />خروج
+      </button>
+    </nav>
   );
 }
 
@@ -321,12 +351,31 @@ function Dashboard() {
           </div>
         )}
 
-        {/* Recent orders table */}
+        {/* Recent orders */}
         <div className={`bg-white border border-slate-200 rounded-2xl overflow-hidden ${charts && charts.byTeam.length > 0 ? "lg:col-span-3" : "lg:col-span-5"}`}>
           <div className="px-5 py-4 border-b border-slate-100">
             <h2 className="font-semibold text-slate-800 text-sm">آخر الطلبات</h2>
           </div>
-          <div className="overflow-x-auto">
+          {/* Mobile list */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {orders.slice(0, 5).map(o => (
+              <div key={o.id} className="flex items-center justify-between px-4 py-3 gap-3" dir="rtl">
+                <div className="min-w-0">
+                  <p className="font-medium text-slate-800 text-sm truncate">{o.customerName}</p>
+                  <p className="text-xs text-slate-500">{o.teamName}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLORS[o.status]}`}>
+                    {STATUS_LABELS[o.status]}
+                  </span>
+                  <span className="font-semibold text-slate-800 text-sm">{o.totalPrice} د.أ</span>
+                </div>
+              </div>
+            ))}
+            {orders.length === 0 && <p className="px-4 py-8 text-center text-slate-400 text-sm">لا توجد طلبات بعد</p>}
+          </div>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-slate-500 text-xs">
                 <tr>
@@ -495,7 +544,44 @@ function OrdersSection() {
           <RefreshCw size={14} />تحديث
         </button>
       </PageHeader>
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+      {/* Mobile: cards */}
+      <div className="md:hidden space-y-3">
+        {orders.length === 0 && (
+          <div className="bg-white border border-slate-200 rounded-2xl py-12 text-center text-slate-400 text-sm">لا توجد طلبات بعد</div>
+        )}
+        {orders.map(o => (
+          <div key={o.id} className="bg-white border border-slate-200 rounded-2xl p-4" dir="rtl">
+            <div className="flex items-start gap-3">
+              <button onClick={() => setPreviewOrder(o)}
+                className="w-12 h-14 flex-shrink-0 flex items-center justify-center rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
+                {o.frontImageUrl ? (
+                  <img src={o.frontImageUrl} alt="jersey" className="w-full h-full object-contain"
+                    onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                ) : (
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: o.color || "#1a1a2e" }}>
+                    <Shirt size={14} className="text-white" />
+                  </div>
+                )}
+              </button>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="font-bold text-slate-800 truncate">{o.customerName}</span>
+                  <span className="font-bold text-emerald-600 flex-shrink-0">{o.totalPrice} د.أ</span>
+                </div>
+                <p className="text-xs text-slate-500 mb-2">{o.teamName} · رقم {o.jerseyNumber} · {o.size}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <StatusDropdown status={o.status} disabled={updatingId === o.id} onChange={s => updateStatus(o.id, s)} />
+                  <span className="text-xs text-slate-400">{new Date(o.createdAt).toLocaleDateString("ar-JO")}</span>
+                </div>
+                <p className="text-xs text-slate-400 mt-1 font-mono" dir="ltr">{o.customerPhone}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block bg-white border border-slate-200 rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-slate-500 text-xs">
@@ -1560,12 +1646,14 @@ function PageLoader() {
 
 function PageHeader({ title, subtitle, children }: { title: string; subtitle?: string; children?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between mb-6" dir="rtl">
-      <div>
-        <h1 className="text-xl font-bold text-slate-800">{title}</h1>
-        {subtitle && <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>}
+    <div className="mb-5" dir="rtl">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg md:text-xl font-bold text-slate-800">{title}</h1>
+          {subtitle && <p className="text-xs md:text-sm text-slate-500 mt-0.5">{subtitle}</p>}
+        </div>
+        {children && <div className="flex gap-2 flex-shrink-0">{children}</div>}
       </div>
-      {children && <div className="flex gap-2">{children}</div>}
     </div>
   );
 }
@@ -1582,16 +1670,19 @@ export default function App() {
     </>
   );
 
+  const handleLogout = () => { sessionStorage.removeItem("admin_authed"); setAuthed(false); };
+
   return (
     <div className="flex min-h-screen bg-slate-100" dir="rtl">
-      <Sidebar active={section} onSelect={setSection} onLogout={() => { sessionStorage.removeItem("admin_authed"); setAuthed(false); }} />
-      <main className="flex-1 p-6 overflow-y-auto min-h-screen">
+      <Sidebar active={section} onSelect={setSection} onLogout={handleLogout} />
+      <main className="flex-1 p-3 md:p-6 overflow-y-auto min-h-screen pb-24 md:pb-6">
         {section === "dashboard" && <Dashboard />}
         {section === "orders" && <OrdersSection />}
         {section === "teams" && <TeamsSection />}
         {section === "nahfat" && <NahfatSection />}
         {section === "stickers" && <StickersSection />}
       </main>
+      <MobileNav active={section} onSelect={setSection} onLogout={handleLogout} />
       <Toaster position="top-center" richColors />
     </div>
   );
