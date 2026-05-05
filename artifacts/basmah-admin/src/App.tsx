@@ -42,6 +42,8 @@ interface JerseyColor {
   hexCode: string; secondaryHexCode: string;
   isDefault: boolean; sortOrder: number;
   isSoldOut: boolean;
+  priceWithCustomization: number | null;
+  priceWithoutCustomization: number | null;
 }
 
 const LEAGUES = [
@@ -667,9 +669,9 @@ function StatusDropdown({ status, disabled, onChange }: {
 
 /* ─── Teams + Jerseys ─────────────────────────────────── */
 
-function InlineEdit({ value, onSave, prefix, suffix, type = "text", min }: {
+function InlineEdit({ value, onSave, prefix, suffix, type = "text", min, placeholder }: {
   value: string | number; onSave: (v: string) => Promise<void>;
-  prefix?: string; suffix?: string; type?: string; min?: number;
+  prefix?: string; suffix?: string; type?: string; min?: number; placeholder?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(value));
@@ -705,7 +707,10 @@ function InlineEdit({ value, onSave, prefix, suffix, type = "text", min }: {
     <button onClick={() => { setDraft(String(value)); setEditing(true); }}
       className="inline-flex items-center gap-1 group hover:text-emerald-700 transition-colors">
       {prefix && <span className="text-slate-500 text-xs">{prefix}</span>}
-      <span className="font-semibold text-slate-800">{value}</span>
+      {value !== "" && value !== null && value !== undefined
+        ? <span className="font-semibold text-slate-800">{value}</span>
+        : <span className="text-slate-400 italic text-xs">{placeholder ?? "—"}</span>
+      }
       {suffix && <span className="text-slate-500 text-xs">{suffix}</span>}
       <Pencil size={11} className="opacity-0 group-hover:opacity-100 text-emerald-500" />
     </button>
@@ -846,6 +851,37 @@ function JerseyColorCard({ color, onDelete, onUpdate }: {
             {color.isDefault ? "افتراضي" : "اجعله افتراضي"}
           </button>
         </div>
+
+        {/* Pricing */}
+        <div className="grid grid-cols-2 gap-1 text-[10px]">
+          <div>
+            <p className="text-slate-400 mb-0.5">✏️ مع طباعة (د.أ)</p>
+            <InlineEdit
+              value={color.priceWithCustomization ?? ""}
+              placeholder="سعر الفريق"
+              onSave={async v => {
+                const n = v === "" ? null : Number(v);
+                if (v !== "" && (isNaN(n as number) || (n as number) <= 0)) return;
+                await onUpdate({ priceWithCustomization: n });
+              }}
+              type="number"
+            />
+          </div>
+          <div>
+            <p className="text-slate-400 mb-0.5">👕 بدون طباعة (د.أ)</p>
+            <InlineEdit
+              value={color.priceWithoutCustomization ?? ""}
+              placeholder="سعر الفريق"
+              onSave={async v => {
+                const n = v === "" ? null : Number(v);
+                if (v !== "" && (isNaN(n as number) || (n as number) <= 0)) return;
+                await onUpdate({ priceWithoutCustomization: n });
+              }}
+              type="number"
+            />
+          </div>
+        </div>
+
         {/* Sold Out toggle */}
         <button onClick={() => onUpdate({ isSoldOut: !color.isSoldOut })}
           className={`w-full text-[10px] font-bold px-2 py-1 rounded-lg border transition-all ${
@@ -872,6 +908,8 @@ function AddJerseyColorForm({ teamId, colorsCount, onAdd, onCancel }: {
   const [isDefault, setIsDefault] = useState(false);
   const [frontImageUrl, setFrontImageUrl] = useState<string | null>(null);
   const [backImageUrl, setBackImageUrl] = useState<string | null>(null);
+  const [priceWithCustomization, setPriceWithCustomization] = useState<string>("");
+  const [priceWithoutCustomization, setPriceWithoutCustomization] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
@@ -883,6 +921,8 @@ function AddJerseyColorForm({ teamId, colorsCount, onAdd, onCancel }: {
         body: JSON.stringify({
           name, frontImageUrl, backImageUrl,
           hexCode, secondaryHexCode, isDefault, sortOrder: colorsCount,
+          priceWithCustomization: priceWithCustomization ? Number(priceWithCustomization) : null,
+          priceWithoutCustomization: priceWithoutCustomization ? Number(priceWithoutCustomization) : null,
         }),
       });
       onAdd(color);
@@ -929,6 +969,26 @@ function AddJerseyColorForm({ teamId, colorsCount, onAdd, onCancel }: {
               className="flex-1 border border-slate-200 rounded-md px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-emerald-300 bg-white" />
             <div className="w-6 h-6 rounded-full border border-slate-200 flex-shrink-0" style={{ backgroundColor: secondaryHexCode }} />
           </div>
+        </div>
+      </div>
+
+      {/* Pricing */}
+      <div className="mb-3 grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">✏️ سعر مع طباعة (د.أ)</label>
+          <input type="number" min={1} value={priceWithCustomization}
+            onChange={e => setPriceWithCustomization(e.target.value)}
+            placeholder="مثال: 89"
+            className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white" />
+          <p className="text-[10px] text-slate-400 mt-0.5">اتركه فارغاً لاستخدام سعر الفريق</p>
+        </div>
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">👕 سعر بدون طباعة (د.أ)</label>
+          <input type="number" min={1} value={priceWithoutCustomization}
+            onChange={e => setPriceWithoutCustomization(e.target.value)}
+            placeholder="مثال: 65"
+            className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white" />
+          <p className="text-[10px] text-slate-400 mt-0.5">اتركه فارغاً لاستخدام سعر الفريق</p>
         </div>
       </div>
 

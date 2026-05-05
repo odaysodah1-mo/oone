@@ -155,7 +155,8 @@ router.get("/admin/teams/:id/colors", async (req, res) => {
 router.post("/admin/teams/:id/colors", async (req, res) => {
   const teamId = parseInt(req.params.id, 10);
   if (isNaN(teamId)) { res.status(400).json({ error: "Invalid team id" }); return; }
-  const { name, frontImageUrl, backImageUrl, hexCode, secondaryHexCode, isDefault, sortOrder } =
+  const { name, frontImageUrl, backImageUrl, hexCode, secondaryHexCode, isDefault, sortOrder,
+          priceWithCustomization, priceWithoutCustomization } =
     req.body as Record<string, unknown>;
   if (!name || typeof name !== "string" || !frontImageUrl || typeof frontImageUrl !== "string") {
     res.status(400).json({ error: "name and frontImageUrl are required" }); return;
@@ -170,6 +171,8 @@ router.post("/admin/teams/:id/colors", async (req, res) => {
       secondaryHexCode: typeof secondaryHexCode === "string" ? secondaryHexCode : "#000000",
       isDefault: Boolean(isDefault),
       sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
+      priceWithCustomization: typeof priceWithCustomization === "number" ? priceWithCustomization : null,
+      priceWithoutCustomization: typeof priceWithoutCustomization === "number" ? priceWithoutCustomization : null,
     }).returning();
     res.status(201).json(color);
   } catch (err) {
@@ -181,8 +184,8 @@ router.post("/admin/teams/:id/colors", async (req, res) => {
 router.patch("/admin/teams/:teamId/colors/:colorId", async (req, res) => {
   const colorId = parseInt(req.params.colorId, 10);
   if (isNaN(colorId)) { res.status(400).json({ error: "Invalid color id" }); return; }
-  const { name, frontImageUrl, backImageUrl, hexCode, secondaryHexCode, isDefault, sortOrder } =
-    req.body as Record<string, unknown>;
+  const body = req.body as Record<string, unknown>;
+  const { name, frontImageUrl, backImageUrl, hexCode, secondaryHexCode, isDefault, sortOrder } = body;
   const update: Record<string, unknown> = {};
   if (typeof name === "string" && name) update.name = name;
   if (typeof frontImageUrl === "string") update.frontImageUrl = frontImageUrl;
@@ -191,7 +194,11 @@ router.patch("/admin/teams/:teamId/colors/:colorId", async (req, res) => {
   if (typeof secondaryHexCode === "string") update.secondaryHexCode = secondaryHexCode;
   if (typeof isDefault === "boolean") update.isDefault = isDefault;
   if (typeof sortOrder === "number") update.sortOrder = sortOrder;
-  if (typeof (req.body as Record<string, unknown>).isSoldOut === "boolean") update.isSoldOut = (req.body as Record<string, unknown>).isSoldOut;
+  if (typeof body.isSoldOut === "boolean") update.isSoldOut = body.isSoldOut;
+  if (typeof body.priceWithCustomization === "number" || body.priceWithCustomization === null)
+    update.priceWithCustomization = body.priceWithCustomization;
+  if (typeof body.priceWithoutCustomization === "number" || body.priceWithoutCustomization === null)
+    update.priceWithoutCustomization = body.priceWithoutCustomization;
   if (Object.keys(update).length === 0) {
     res.status(400).json({ error: "Nothing to update" }); return;
   }

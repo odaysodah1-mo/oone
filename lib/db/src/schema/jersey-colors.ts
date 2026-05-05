@@ -14,6 +14,8 @@ export const jerseyColorsTable = pgTable("jersey_colors", {
   isDefault: boolean("is_default").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
   isSoldOut: boolean("is_sold_out").notNull().default(false),
+  priceWithCustomization: integer("price_with_customization"),
+  priceWithoutCustomization: integer("price_without_customization"),
 });
 
 export const insertJerseyColorSchema = createInsertSchema(jerseyColorsTable).omit({ id: true });

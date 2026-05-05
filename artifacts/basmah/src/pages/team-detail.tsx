@@ -18,6 +18,8 @@ interface JerseyColor {
   frontImageUrl: string; backImageUrl: string | null; isSoldOut?: boolean;
   hexCode: string; secondaryHexCode: string;
   isDefault: boolean; sortOrder: number;
+  priceWithCustomization?: number | null;
+  priceWithoutCustomization?: number | null;
 }
 
 /* ─── Palette ─────────────────────────────────────────────── */
@@ -198,6 +200,19 @@ export default function TeamDetail() {
   const [placedCount, setPlacedCount]       = useState(0);
   const [nahfaText, setNahfaText]           = useState("");
 
+  /* customization mode: with printing (name+number) or without */
+  const [withCustomization, setWithCustomization] = useState(true);
+
+  /* effective price based on mode and selected color */
+  const effectivePrice = (() => {
+    if (!team) return 0;
+    if (withCustomization) {
+      return selectedColor?.priceWithCustomization ?? team.basePrice;
+    } else {
+      return selectedColor?.priceWithoutCustomization ?? team.basePrice;
+    }
+  })();
+
   /* stage ref for snapshot capture */
   const stageRef = useRef<ShirtStickerStageHandle>(null);
 
@@ -280,12 +295,14 @@ export default function TeamDetail() {
     }
 
     updateOrder({
-      teamId: team!.id, teamName: team!.name, basePrice: team!.basePrice,
+      teamId: team!.id, teamName: team!.name, basePrice: effectivePrice,
       color: colors.body, size: size as "XS" | "S" | "M" | "L" | "XL" | "XXL",
-      customerName: name || "BASMAH", jerseyNumber: number || "10",
+      customerName: withCustomization ? (name || "BASMAH") : "BASMAH",
+      jerseyNumber: withCustomization ? (number || "10") : "—",
       quantity: 1, previewColor: colors.body,
-      previewName: name || "BASMAH", previewNumber: number || "10",
-      playerName: name || undefined,
+      previewName: withCustomization ? (name || "BASMAH") : "BASMAH",
+      previewNumber: withCustomization ? (number || "10") : "—",
+      playerName: withCustomization ? (name || undefined) : undefined,
       frontImageUrl: capturedFront,
       backImageUrl:  capturedBack,
       jerseyColorName: selectedColor?.name ?? undefined,
@@ -359,9 +376,9 @@ export default function TeamDetail() {
           <h1 className="text-sm md:text-lg font-black text-white leading-tight">{team.name}</h1>
         </div>
         <div className="text-left">
-          <div className="text-[10px] text-white/30">السعر</div>
+          <div className="text-[10px] text-white/30">{withCustomization ? "مع طباعة" : "بدون طباعة"}</div>
           <div className="text-xl font-black text-[#bfff00]">
-            {team.basePrice}<span className="text-xs text-white/50 ml-1">د.أ</span>
+            {effectivePrice}<span className="text-xs text-white/50 ml-1">د.أ</span>
           </div>
         </div>
       </div>
@@ -463,6 +480,27 @@ export default function TeamDetail() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-5 space-y-5 scrollbar-thin scrollbar-thumb-white/10">
+
+            {/* Customization mode toggle */}
+            <div className="flex rounded-xl overflow-hidden border border-white/[0.08]">
+              <button onClick={() => setWithCustomization(true)}
+                className="flex-1 py-2.5 text-xs font-black transition-all"
+                style={{
+                  background: withCustomization ? "#bfff00" : "transparent",
+                  color:      withCustomization ? "#000"    : "rgba(255,255,255,0.35)",
+                }}>
+                ✏️ مع طباعة
+              </button>
+              <button onClick={() => setWithCustomization(false)}
+                className="flex-1 py-2.5 text-xs font-black transition-all"
+                style={{
+                  background: !withCustomization ? "#bfff00" : "transparent",
+                  color:      !withCustomization ? "#000"    : "rgba(255,255,255,0.35)",
+                }}>
+                👕 بدون طباعة
+              </button>
+            </div>
+
             <AnimatePresence mode="wait">
 
               {tab === "colors" && (
@@ -691,14 +729,33 @@ export default function TeamDetail() {
         </div>
 
         {/* Mobile CTA */}
-        <div className="p-3 border-t border-white/[0.06]">
+        <div className="p-3 border-t border-white/[0.06] space-y-2">
+          {/* Customization mode toggle — mobile */}
+          <div className="flex rounded-xl overflow-hidden border border-white/[0.08]">
+            <button onClick={() => setWithCustomization(true)}
+              className="flex-1 py-2 text-[11px] font-black transition-all"
+              style={{
+                background: withCustomization ? "#bfff00" : "transparent",
+                color:      withCustomization ? "#000"    : "rgba(255,255,255,0.35)",
+              }}>
+              ✏️ مع طباعة
+            </button>
+            <button onClick={() => setWithCustomization(false)}
+              className="flex-1 py-2 text-[11px] font-black transition-all"
+              style={{
+                background: !withCustomization ? "#bfff00" : "transparent",
+                color:      !withCustomization ? "#000"    : "rgba(255,255,255,0.35)",
+              }}>
+              👕 بدون طباعة
+            </button>
+          </div>
           <button onClick={handleOrder} disabled={!size}
             className="w-full py-3.5 text-base font-black transition-all disabled:opacity-30"
             style={{
               background: size ? "linear-gradient(135deg,#bfff00 0%,#7ecf00 100%)" : "#1a1a1a",
               color:      size ? "#000" : "#444",
             }}>
-            {size ? "🛒 إتمام الطلب" : "اختر المقاس أولاً"}
+            {size ? `🛒 إتمام الطلب — ${effectivePrice} د.أ` : "اختر المقاس أولاً"}
           </button>
         </div>
       </div>
