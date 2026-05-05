@@ -546,6 +546,8 @@ function OrdersSection() {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
+  const [purging, setPurging] = useState(false);
+  const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -564,12 +566,62 @@ function OrdersSection() {
     finally { setUpdatingId(null); }
   }
 
+  async function purgeDelivered() {
+    setPurging(true);
+    setShowPurgeConfirm(false);
+    try {
+      const result = await apiFetch("/admin/orders/delivered", { method: "DELETE" }) as { deleted: number };
+      setOrders(prev => prev.filter(o => o.status !== "delivered" && o.status !== "cancelled"));
+      toast.success(`تم حذف ${result.deleted} طلب مكتمل/ملغي`);
+    } catch { toast.error("فشل حذف الطلبات المكتملة"); }
+    finally { setPurging(false); }
+  }
+
+  const purgeCount = orders.filter(o => o.status === "delivered" || o.status === "cancelled").length;
+
   if (loading) return <PageLoader />;
 
   return (
     <div dir="rtl">
       {previewOrder && <DesignPreviewModal order={previewOrder} onClose={() => setPreviewOrder(null)} />}
+
+      {/* Purge confirm dialog */}
+      {showPurgeConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setShowPurgeConfirm(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <Trash2 size={18} className="text-red-600" />
+              </div>
+              <div>
+                <p className="font-bold text-slate-800">حذف الطلبات المكتملة</p>
+                <p className="text-sm text-slate-500">سيتم حذف {purgeCount} طلب نهائياً</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600 bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
+              سيتم حذف جميع الطلبات ذات حالة <strong>مُسلَّم</strong> أو <strong>ملغي</strong> بشكل دائم ولا يمكن التراجع عن هذا الإجراء.
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setShowPurgeConfirm(false)}
+                className="flex-1 py-2 text-sm border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50">
+                إلغاء
+              </button>
+              <button onClick={purgeDelivered} disabled={purging}
+                className="flex-1 py-2 text-sm bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold disabled:opacity-50">
+                {purging ? "جاري الحذف…" : "نعم، احذف"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <PageHeader title="إدارة الطلبات" subtitle={`${orders.length} طلب`}>
+        {purgeCount > 0 && (
+          <button onClick={() => setShowPurgeConfirm(true)} disabled={purging}
+            className="flex items-center gap-2 text-sm text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 bg-red-50 hover:bg-red-100 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50">
+            <Trash2 size={14} />حذف المكتملة ({purgeCount})
+          </button>
+        )}
         <button onClick={load} className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-1.5">
           <RefreshCw size={14} />تحديث
         </button>

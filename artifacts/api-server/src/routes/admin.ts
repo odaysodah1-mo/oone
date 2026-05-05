@@ -7,7 +7,7 @@ import {
   teamsTable,
   stickersTable,
 } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 
 const router = Router();
 
@@ -40,6 +40,26 @@ router.patch("/admin/orders/:id/status", async (req, res) => {
     res.json(updated);
   } catch (err) {
     req.log.error({ err }, "admin: failed to update order status");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* DELETE /admin/orders/delivered — bulk-purge completed orders */
+router.delete("/admin/orders/delivered", async (req, res) => {
+  try {
+    const toDelete = await db
+      .select({ id: ordersTable.id })
+      .from(ordersTable)
+      .where(inArray(ordersTable.status, ["delivered", "cancelled"]));
+    if (toDelete.length === 0) {
+      res.json({ deleted: 0 }); return;
+    }
+    const ids = toDelete.map(r => r.id);
+    await db.delete(ordersTable).where(inArray(ordersTable.id, ids));
+    req.log.info({ count: ids.length }, "admin: purged delivered/cancelled orders");
+    res.json({ deleted: ids.length });
+  } catch (err) {
+    req.log.error({ err }, "admin: failed to purge delivered orders");
     res.status(500).json({ error: "Internal server error" });
   }
 });
