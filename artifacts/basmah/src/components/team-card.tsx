@@ -68,7 +68,6 @@ const COUNTRY_ISO: Record<string, string> = {
   "الكاميرون": "cm", "cameroon": "cm",
   "السنغال": "sn", "senegal": "sn",
   "كوت ديفوار": "ci", "ivory coast": "ci",
-  "المغرب": "ma",
   "إثيوبيا": "et", "ethiopia": "et",
   "كينيا": "ke", "kenya": "ke",
   "جنوب أفريقيا": "za", "south africa": "za",

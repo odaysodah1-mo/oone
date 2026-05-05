@@ -23,14 +23,6 @@ interface JerseyColor {
   priceWithoutCustomization?: number | null;
 }
 
-/* ─── Palette ─────────────────────────────────────────────── */
-const PALETTE = [
-  "#000000","#1a1a2e","#16213e","#ffffff","#f5f5f5","#cccccc",
-  "#e63946","#c1121f","#ff6b6b","#023e8a","#0077b6","#00b4d8",
-  "#2d6a4f","#40916c","#52b788","#ffd60a","#fca311","#e9c46a",
-  "#6d6875","#b5838d","#6a4c93","#ff9f1c","#2ec4b6","#e71d36",
-];
-
 const SIZE_INFO: Record<string, string> = {
   XS: "< 160 سم", S: "160–170 سم", M: "170–178 سم",
   L: "178–186 سم", XL: "186–194 سم", XXL: "> 194 سم",
@@ -40,35 +32,6 @@ const STICKER_CATS = Array.from(new Set(STICKER_LIBRARY.map(s => s.category)));
 
 type CustomTab = "colors" | "name" | "size";
 type MobileTab = "stickers" | "colors" | "name" | "size";
-
-/* ─── ZonePicker ─────────────────────────────────────────── */
-function ZonePicker({ label, value, onChange, palette }: {
-  label: string; value: string; onChange: (c: string) => void; palette: string[];
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-bold text-white/70">{label}</span>
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-full border border-white/25" style={{ backgroundColor: value }} />
-          <span className="text-[10px] text-white/40 font-mono uppercase">{value}</span>
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {palette.map(c => (
-          <button key={c} title={c} onClick={() => onChange(c)}
-            className="w-7 h-7 rounded-full transition-all duration-150 hover:scale-110 active:scale-95"
-            style={{
-              backgroundColor: c,
-              border:    value === c ? "2.5px solid #bfff00" : "2px solid rgba(255,255,255,0.10)",
-              boxShadow: value === c ? "0 0 10px rgba(191,255,0,0.65)" : "none",
-              transform: value === c ? "scale(1.2)" : "scale(1)",
-            }} />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 /* ─── StickerBtn ─────────────────────────────────────────── */
 function StickerBtn({ s, selected, onClick }: {
@@ -247,9 +210,6 @@ export default function TeamDetail() {
       setColors(prev => ({ ...prev, body: selectedColor.hexCode, sleeves: selectedColor.secondaryHexCode, trim: selectedColor.secondaryHexCode }));
     }
   }, [selectedColor]);
-
-  const setZone = (zone: keyof JerseyColors) => (c: string) =>
-    setColors(prev => ({ ...prev, [zone]: c }));
 
   const handleOrder = async () => {
     if (!size) { alert("الرجاء اختيار المقاس"); return; }
@@ -512,9 +472,9 @@ export default function TeamDetail() {
             <AnimatePresence mode="wait">
 
               {tab === "colors" && (
-                <motion.div key="c" initial={{ opacity:0,y:8 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0,y:-8 }} className="space-y-6">
+                <motion.div key="c" initial={{ opacity:0,y:8 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0,y:-8 }} className="space-y-5">
 
-                  {/* Jersey selector — if jerseys are uploaded */}
+                  {/* Jersey color selector */}
                   {jerseyColors.length > 0 && (
                     <>
                       <JerseyColorPicker
@@ -528,22 +488,39 @@ export default function TeamDetail() {
                     </>
                   )}
 
-                  {/* If no photo, show color pickers */}
-                  {!hasPhoto ? (
-                    <>
-                      <ZonePicker label={t("td_body_color")}          value={colors.body}    onChange={setZone("body")}    palette={PALETTE} />
-                      <div className="h-px bg-white/[0.06]" />
-                      <ZonePicker label={t("td_sleeves_color")}       value={colors.sleeves} onChange={setZone("sleeves")} palette={PALETTE} />
-                      <div className="h-px bg-white/[0.06]" />
-                      <ZonePicker label={t("td_collar_color")}        value={colors.collar}  onChange={setZone("collar")}  palette={PALETTE} />
-                      <div className="h-px bg-white/[0.06]" />
-                      <ZonePicker label={t("td_name_number_color")}   value={colors.trim}    onChange={setZone("trim")}    palette={PALETTE} />
-                    </>
-                  ) : (
-                    <>
-                      <ZonePicker label={t("td_name_number_color2")} value={colors.trim} onChange={setZone("trim")} palette={PALETTE} />
-                    </>
-                  )}
+                  {/* Color info note */}
+                  <div className="rounded-xl border border-[#bfff00]/20 bg-[#bfff00]/[0.04] p-4 space-y-3">
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-xl shrink-0 mt-0.5">🖨️</span>
+                      <div>
+                        <p className="text-[13px] font-black text-[#bfff00]/90 leading-snug">{t("td_color_note_title")}</p>
+                        <p className="text-[11px] text-white/40 mt-1 leading-relaxed">{t("td_color_note_body")}</p>
+                      </div>
+                    </div>
+
+                    {selectedColor ? (
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div className="flex items-center gap-2.5 bg-white/[0.04] rounded-lg px-3 py-2.5 border border-white/[0.07]">
+                          <div className="w-8 h-8 rounded-md border border-white/20 shadow-lg shrink-0"
+                            style={{ backgroundColor: selectedColor.hexCode }} />
+                          <div className="min-w-0">
+                            <p className="text-[9px] text-white/35 font-bold uppercase tracking-widest">{t("td_color_primary")}</p>
+                            <p className="text-xs font-black text-white/80 font-mono uppercase truncate">{selectedColor.hexCode}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2.5 bg-white/[0.04] rounded-lg px-3 py-2.5 border border-white/[0.07]">
+                          <div className="w-8 h-8 rounded-md border border-white/20 shadow-lg shrink-0"
+                            style={{ backgroundColor: selectedColor.secondaryHexCode }} />
+                          <div className="min-w-0">
+                            <p className="text-[9px] text-white/35 font-bold uppercase tracking-widest">{t("td_color_secondary")}</p>
+                            <p className="text-xs font-black text-white/80 font-mono uppercase truncate">{selectedColor.secondaryHexCode}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-white/30 text-center py-1">{t("td_color_no_selection")}</p>
+                    )}
+                  </div>
                 </motion.div>
               )}
 
@@ -678,20 +655,45 @@ export default function TeamDetail() {
 
           {mobileTab === "colors" && (
             <div className="p-3 space-y-3">
-              {jerseyColors.length > 0 ? (
+              {jerseyColors.length > 0 && (
                 <JerseyColorPicker
                   colors={jerseyColors} selected={selectedColor}
                   onSelect={setSelectedColor} view={view}
                   onToggleView={() => setView(v => v === "front" ? "back" : "front")}
                 />
-              ) : (
-                <>
-                  <ZonePicker label={t("td_body_color")}    value={colors.body}    onChange={setZone("body")}    palette={PALETTE} />
-                  <ZonePicker label={t("td_sleeves_color")} value={colors.sleeves} onChange={setZone("sleeves")} palette={PALETTE} />
-                  <ZonePicker label={t("td_collar_color")}  value={colors.collar}  onChange={setZone("collar")}  palette={PALETTE} />
-                </>
               )}
-              <ZonePicker label={t("td_name_number_color")} value={colors.trim} onChange={setZone("trim")} palette={PALETTE} />
+              {/* Color note */}
+              <div className="rounded-xl border border-[#bfff00]/20 bg-[#bfff00]/[0.04] p-3 space-y-2.5">
+                <div className="flex items-start gap-2">
+                  <span className="text-base shrink-0">🖨️</span>
+                  <div>
+                    <p className="text-[11px] font-black text-[#bfff00]/90 leading-snug">{t("td_color_note_title")}</p>
+                    <p className="text-[10px] text-white/35 mt-0.5 leading-relaxed">{t("td_color_note_body")}</p>
+                  </div>
+                </div>
+                {selectedColor ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2 bg-white/[0.04] rounded-lg px-2.5 py-2 border border-white/[0.07]">
+                      <div className="w-6 h-6 rounded shrink-0 border border-white/20"
+                        style={{ backgroundColor: selectedColor.hexCode }} />
+                      <div className="min-w-0">
+                        <p className="text-[8px] text-white/30 font-bold uppercase">{t("td_color_primary")}</p>
+                        <p className="text-[10px] font-black text-white/70 font-mono uppercase truncate">{selectedColor.hexCode}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 bg-white/[0.04] rounded-lg px-2.5 py-2 border border-white/[0.07]">
+                      <div className="w-6 h-6 rounded shrink-0 border border-white/20"
+                        style={{ backgroundColor: selectedColor.secondaryHexCode }} />
+                      <div className="min-w-0">
+                        <p className="text-[8px] text-white/30 font-bold uppercase">{t("td_color_secondary")}</p>
+                        <p className="text-[10px] font-black text-white/70 font-mono uppercase truncate">{selectedColor.secondaryHexCode}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-white/25 text-center">{t("td_color_no_selection")}</p>
+                )}
+              </div>
             </div>
           )}
 
