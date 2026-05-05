@@ -1334,7 +1334,7 @@ function TeamsSection() {
 
   return (
     <div dir="rtl">
-      <PageHeader title="الفرق والجيرسيهات" subtitle={`${teams.length} فريق`}>
+      <PageHeader title="الفرق والتيشيرتات" subtitle={`${teams.length} فريق`}>
         <button onClick={load} className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 border border-slate-200 rounded-lg px-3 py-1.5">
           <RefreshCw size={14} />تحديث
         </button>
