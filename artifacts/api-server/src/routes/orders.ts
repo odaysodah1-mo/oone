@@ -116,6 +116,7 @@ router.post("/orders", async (req, res) => {
         customPhrase,
         phrasePrintPrice: phrasePrintPrice || null,
         notes,
+        address: typeof rawBody.address === "string" ? rawBody.address.trim().slice(0, 300) || null : null,
       })
       .returning();
 

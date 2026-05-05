@@ -153,6 +153,7 @@ export default function Order() {
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [city, setCity] = useState("");
   const [governorate, setGovernorate] = useState("");
+  const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
 
   const GOVERNORATES = [
@@ -224,6 +225,7 @@ export default function Order() {
         jerseyColorId: order.jerseyColorId ?? undefined,
         customPhrase: order.customPhrase || undefined,
         notes: notes.trim() || undefined,
+        address: address.trim() || undefined,
       } as Parameters<typeof createOrder.mutate>[0]["data"]
     }, {
       onSuccess: (data: { id: number; totalPrice: number }) => {
@@ -420,6 +422,18 @@ export default function Order() {
           </div>
 
           <div className="space-y-1.5">
+            <label className="text-white/50 text-xs font-bold">موقع السكن بالضبط</label>
+            <textarea
+              required
+              value={address}
+              onChange={e => setAddress(e.target.value.slice(0, 300))}
+              placeholder="مثال: شارع الرينبو، بناية الياسمين، طابق 3، شقة 7..."
+              rows={2}
+              className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.10] text-white font-medium focus:outline-none focus:border-[#bfff00]/50 transition-colors rounded-xl placeholder:text-white/20 resize-none text-sm"
+            />
+          </div>
+
+          <div className="space-y-1.5">
             <label className="text-white/50 text-xs font-bold">ملاحظات (اختياري)</label>
             <textarea
               value={notes}
@@ -435,7 +449,7 @@ export default function Order() {
 
           <button
             type="submit"
-            disabled={createOrder.isPending || !isValidPhone || !city || !governorate}
+            disabled={createOrder.isPending || !isValidPhone || !city || !governorate || !address.trim()}
             className="w-full py-4 font-black text-xl rounded-xl transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
               background: (!isValidPhone || !city) ? "#1a1a1a" : "linear-gradient(135deg,#bfff00 0%,#7ecf00 100%)",

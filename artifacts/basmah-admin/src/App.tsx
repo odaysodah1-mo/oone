@@ -31,6 +31,7 @@ interface Order {
   phrasePrintPrice?: number | null;
   notes?: string | null;
   governorate?: string | null;
+  address?: string | null;
 }
 
 interface Team {
@@ -728,6 +729,9 @@ function OrdersSection() {
                   <span className="text-xs text-slate-400">{new Date(o.createdAt).toLocaleDateString("ar-JO")}</span>
                 </div>
                 <p className="text-xs text-slate-400 mt-1 font-mono" dir="ltr">{o.customerPhone}</p>
+                {o.address && (
+                  <p className="text-[10px] text-blue-600 mt-0.5">🏠 {o.address}</p>
+                )}
               </div>
             </div>
           </div>
@@ -781,7 +785,15 @@ function OrdersSection() {
                       <span className="block text-[10px] text-amber-600 font-semibold mt-0.5 max-w-[160px] truncate">📝 {o.notes}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-600 font-mono" dir="ltr">{o.customerPhone}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    <span className="font-mono" dir="ltr">{o.customerPhone}</span>
+                    {o.governorate && (
+                      <span className="block text-[10px] text-slate-400 mt-0.5">📍 {o.governorate}</span>
+                    )}
+                    {o.address && (
+                      <span className="block text-[10px] text-blue-600 mt-0.5 max-w-[180px]">🏠 {o.address}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-slate-600">{o.teamName} / {o.jerseyNumber}</td>
                   <td className="px-4 py-3 text-slate-600">{o.size}</td>
                   <td className="px-4 py-3 font-semibold text-slate-800">{o.totalPrice} د.أ</td>

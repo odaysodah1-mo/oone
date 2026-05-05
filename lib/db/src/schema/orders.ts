@@ -25,6 +25,7 @@ export const ordersTable = pgTable("orders", {
   customPhrase: text("custom_phrase"),
   phrasePrintPrice: integer("phrase_print_price"),
   notes: text("notes"),
+  address: text("address"),
 });
 
 export const insertOrderSchema = createInsertSchema(ordersTable).omit({ id: true, createdAt: true });
