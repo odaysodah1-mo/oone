@@ -17,12 +17,12 @@ function SuccessScreen({ orderId, phone, teamName, playerName, jerseyNumber, tot
 
   const whatsappText = encodeURIComponent(
     isAr
-      ? `🏆 طلبت تيشيرت ${teamName}${playerName ? ` — ${playerName} #${jerseyNumber}` : ""} من بصمة!\nرقم الطلب: #${orderId}`
-      : `🏆 I ordered a ${teamName} jersey${playerName ? ` — ${playerName} #${jerseyNumber}` : ""} from Basmah!\nOrder #${orderId}`
+      ? `🏆 طلبت تيشيرت ${teamName}${playerName ? ` — ${playerName} #${jerseyNumber}` : ""} من O ONE!\nرقم الطلب: #${orderId}`
+      : `🏆 I ordered a ${teamName} jersey${playerName ? ` — ${playerName} #${jerseyNumber}` : ""} from O ONE!\nOrder #${orderId}`
   );
   const igText = isAr
-    ? `طلبت تيشيرتي من بصمة 🔥 #بصمة #الأردن #${teamName.replace(/\s/g,"_")}`
-    : `Got my custom jersey from Basmah 🔥 #Basmah #Jordan #${teamName.replace(/\s/g,"_")}`;
+    ? `طلبت تيشيرتي من O ONE 🔥 #OONE #الأردن #${teamName.replace(/\s/g,"_")}`
+    : `Got my custom jersey from O ONE 🔥 #OONE #Jordan #${teamName.replace(/\s/g,"_")}`;
 
   const PARTICLES = Array.from({ length: 22 }, (_, i) => ({
     id: i,

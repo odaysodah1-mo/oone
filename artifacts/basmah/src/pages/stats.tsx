@@ -9,7 +9,7 @@ export default function Stats() {
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl md:text-5xl font-black mb-12 uppercase text-center"><span className="text-primary">إحصائيات</span> بصمة</h1>
+        <h1 className="text-4xl md:text-5xl font-black mb-12 uppercase text-center"><span className="text-primary">إحصائيات</span> O ONE</h1>
 
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

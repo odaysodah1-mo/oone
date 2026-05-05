@@ -11,7 +11,7 @@ const en = {
   home_hero_sub: "Design your favorite team's jersey with your name and number. Wear your identity on the pitch.",
   home_cta: "Start Designing Now",
   home_how_title: "How Does",
-  home_how_title_accent: "Basmah",
+  home_how_title_accent: "O ONE",
   home_how_sub: "Three simple steps to get your custom jersey",
   home_step1_title: "Choose Your Team",
   home_step1_desc: "Pick from the strongest clubs and national teams, local and international.",

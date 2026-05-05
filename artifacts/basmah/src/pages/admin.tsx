@@ -45,7 +45,7 @@ function PasswordGate({ onEnter }: { onEnter: () => void }) {
     <div className="min-h-screen flex items-center justify-center" style={{ background: "#0a0a0a" }}>
       <div className="w-full max-w-sm mx-auto p-8 rounded-3xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
         <div className="text-center mb-8">
-          <div className="text-5xl font-black mb-2" style={{ color: "#bfff00" }}>بصمة</div>
+          <div className="text-5xl font-black mb-2" style={{ color: "#bfff00" }}>O ONE</div>
           <div className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>لوحة التحكم</div>
         </div>
         <input
@@ -500,7 +500,7 @@ export default function Admin() {
       <div style={{ background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xl font-black" style={{ color: "#bfff00" }}>بصمة</span>
+            <span className="text-xl font-black" style={{ color: "#bfff00" }}>O ONE</span>
             <span className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>/ الأدمن</span>
           </div>
           <button onClick={() => setAuthed(false)} className="text-xs px-3 py-1.5 rounded-xl"
