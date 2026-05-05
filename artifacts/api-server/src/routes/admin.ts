@@ -3,12 +3,25 @@ import { db } from "@workspace/db";
 import {
   ordersTable,
   jerseyColorsTable,
+  jerseyColorImagesTable,
   nahfatPresetsTable,
   teamsTable,
   stickersTable,
   visitorsTable,
 } from "@workspace/db";
 import { eq, desc, inArray, sql } from "drizzle-orm";
+
+/* ── helper: fetch images array for a color (front + back + extras) ── */
+async function getColorImages(colorId: number, frontUrl: string, backUrl: string | null): Promise<string[]> {
+  const extras = await db
+    .select()
+    .from(jerseyColorImagesTable)
+    .where(eq(jerseyColorImagesTable.jerseyColorId, colorId))
+    .orderBy(jerseyColorImagesTable.sortOrder);
+  const base = [frontUrl, ...(backUrl ? [backUrl] : [])];
+  const extraUrls = extras.map(e => e.imageUrl).filter(u => !base.includes(u));
+  return [...base, ...extraUrls];
+}
 
 const router = Router();
 
@@ -251,7 +264,7 @@ router.delete("/admin/teams/:teamId/colors/:colorId", async (req, res) => {
   }
 });
 
-/* Public — jersey colors for a team */
+/* Public — jersey colors for a team (with images array) */
 router.get("/teams/:id/jersey-colors", async (req, res) => {
   const teamId = parseInt(req.params.id, 10);
   if (isNaN(teamId)) { res.status(400).json({ error: "Invalid team id" }); return; }
@@ -260,9 +273,65 @@ router.get("/teams/:id/jersey-colors", async (req, res) => {
       .select().from(jerseyColorsTable)
       .where(eq(jerseyColorsTable.teamId, teamId))
       .orderBy(jerseyColorsTable.sortOrder);
-    res.json(colors);
+    const withImages = await Promise.all(
+      colors.map(async c => ({
+        ...c,
+        images: await getColorImages(c.id, c.frontImageUrl, c.backImageUrl),
+      }))
+    );
+    res.json(withImages);
   } catch (err) {
     req.log.error({ err }, "failed to list jersey colors");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* Admin — add extra image to a jersey color */
+router.post("/admin/jersey-colors/:colorId/images", async (req, res) => {
+  const colorId = parseInt(req.params.colorId, 10);
+  if (isNaN(colorId)) { res.status(400).json({ error: "Invalid color id" }); return; }
+  const { imageUrl, sortOrder } = req.body as Record<string, unknown>;
+  if (!imageUrl || typeof imageUrl !== "string") {
+    res.status(400).json({ error: "imageUrl is required" }); return;
+  }
+  try {
+    const [img] = await db.insert(jerseyColorImagesTable).values({
+      jerseyColorId: colorId,
+      imageUrl,
+      sortOrder: typeof sortOrder === "number" ? sortOrder : 99,
+    }).returning();
+    res.status(201).json(img);
+  } catch (err) {
+    req.log.error({ err }, "admin: failed to add jersey color image");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* Admin — delete extra image */
+router.delete("/admin/jersey-colors/:colorId/images/:imageId", async (req, res) => {
+  const imageId = parseInt(req.params.imageId, 10);
+  if (isNaN(imageId)) { res.status(400).json({ error: "Invalid image id" }); return; }
+  try {
+    await db.delete(jerseyColorImagesTable).where(eq(jerseyColorImagesTable.id, imageId));
+    res.status(204).end();
+  } catch (err) {
+    req.log.error({ err }, "admin: failed to delete jersey color image");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* Admin — get extra images for a color */
+router.get("/admin/jersey-colors/:colorId/images", async (req, res) => {
+  const colorId = parseInt(req.params.colorId, 10);
+  if (isNaN(colorId)) { res.status(400).json({ error: "Invalid color id" }); return; }
+  try {
+    const imgs = await db
+      .select().from(jerseyColorImagesTable)
+      .where(eq(jerseyColorImagesTable.jerseyColorId, colorId))
+      .orderBy(jerseyColorImagesTable.sortOrder);
+    res.json(imgs);
+  } catch (err) {
+    req.log.error({ err }, "admin: failed to list jersey color images");
     res.status(500).json({ error: "Internal server error" });
   }
 });

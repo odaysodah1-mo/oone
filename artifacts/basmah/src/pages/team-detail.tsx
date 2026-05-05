@@ -11,7 +11,9 @@ import { useTranslation } from "react-i18next";
 /* ─── Types ──────────────────────────────────────────────── */
 interface JerseyColor {
   id: number; teamId: number; name: string;
-  frontImageUrl: string; backImageUrl: string | null; isSoldOut?: boolean;
+  frontImageUrl: string; backImageUrl: string | null;
+  images: string[];           /* all image URLs in display order */
+  isSoldOut?: boolean;
   hexCode: string; secondaryHexCode: string;
   isDefault: boolean; sortOrder: number;
   priceWithCustomization?: number | null;
@@ -21,11 +23,10 @@ interface JerseyColor {
 type MobileTab = "colors" | "name" | "size";
 
 /* ─── Color thumbnail strip ──────────────────────────────── */
-function ColorStrip({ colors, selected, onSelect, view }: {
+function ColorStrip({ colors, selected, onSelect }: {
   colors: JerseyColor[];
   selected: JerseyColor | null;
   onSelect: (c: JerseyColor) => void;
-  view: "front" | "back";
 }) {
   if (colors.length === 0) return null;
   return (
@@ -49,7 +50,7 @@ function ColorStrip({ colors, selected, onSelect, view }: {
           }}
         >
           <img
-            src={view === "front" ? c.frontImageUrl : (c.backImageUrl ?? c.frontImageUrl)}
+            src={c.frontImageUrl}
             alt={c.name}
             style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center top" }}
             onError={e => {
@@ -94,7 +95,7 @@ export default function TeamDetail() {
 
   const [jerseyColors, setJerseyColors] = useState<JerseyColor[]>([]);
   const [selectedColor, setSelectedColor] = useState<JerseyColor | null>(null);
-  const [view, setView]   = useState<"front" | "back">("front");
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [name, setName]   = useState("");
   const [number, setNumber] = useState("");
   const [size, setSize]   = useState("");
@@ -146,6 +147,7 @@ export default function TeamDetail() {
         sleeves: selectedColor.secondaryHexCode,
         trim: selectedColor.secondaryHexCode,
       }));
+      setActiveImageIndex(0); /* reset to first image when color changes */
     }
   }, [selectedColor]);
 
@@ -233,7 +235,7 @@ export default function TeamDetail() {
     <div className="space-y-3">
       <ColorStrip
         colors={jerseyColors} selected={selectedColor}
-        onSelect={setSelectedColor} view={view}
+        onSelect={setSelectedColor}
       />
       {selectedColor && (
         <div className="flex items-center gap-3 pt-0.5">
@@ -391,12 +393,11 @@ export default function TeamDetail() {
         {/* ══ CENTER — Jersey Viewer ══ */}
         <div className="flex-1 relative min-w-0 overflow-hidden bg-[#070707]">
           <JerseyPhotoViewer
-            frontImageUrl={selectedColor?.frontImageUrl ?? null}
-            backImageUrl={selectedColor?.backImageUrl  ?? null}
+            images={selectedColor?.images ?? (selectedColor ? [selectedColor.frontImageUrl] : [])}
+            activeImageIndex={activeImageIndex}
+            onImageIndexChange={setActiveImageIndex}
             name={name} number={number} fontId={fontId}
             colors={colors} withCustomization={withCustomization}
-            view={view}
-            onToggleView={() => setView(v => v === "front" ? "back" : "front")}
             teamId={team?.id}
           />
         </div>

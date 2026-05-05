@@ -1080,16 +1080,89 @@ function JerseyColorCard({ color, onDelete, onUpdate }: {
   onDelete: () => Promise<void>;
   onUpdate: (data: Partial<JerseyColor>) => Promise<void>;
 }) {
-  const [side, setSide] = useState<"front" | "back">("front");
-  const [deleting, setDeleting] = useState(false);
+  const [deleting, setDeleting]     = useState(false);
+  const [viewIdx, setViewIdx]       = useState(0);
+  const [extraImgs, setExtraImgs]   = useState<{ id: number; imageUrl: string }[]>([]);
+  const [loadingImgs, setLoadingImgs] = useState(false);
+  const [showAddImg, setShowAddImg] = useState(false);
+  const [addingImg, setAddingImg]   = useState(false);
 
-  const currentImg = side === "front" ? color.frontImageUrl : (color.backImageUrl ?? color.frontImageUrl);
+  const adminKey = sessionStorage.getItem(STORAGE_KEY) ?? "";
+
+  /* build full images list: frontImageUrl + backImageUrl? + extras */
+  const allImages: string[] = [
+    color.frontImageUrl,
+    ...(color.backImageUrl ? [color.backImageUrl] : []),
+    ...extraImgs.map(e => e.imageUrl),
+  ];
+  const safeIdx = Math.min(viewIdx, allImages.length - 1);
+  const currentImg = allImages[safeIdx] ?? color.frontImageUrl;
+
+  /* load extra images */
+  async function loadExtraImages() {
+    setLoadingImgs(true);
+    try {
+      const imgs = await apiFetch(`/admin/jersey-colors/${color.id}/images`);
+      setExtraImgs(imgs);
+    } catch { /* ignore */ }
+    finally { setLoadingImgs(false); }
+  }
+
+  useEffect(() => { loadExtraImages(); }, [color.id]);
 
   async function handleDelete() {
     if (!confirm(`حذف "${color.name}"؟`)) return;
     setDeleting(true);
     try { await onDelete(); }
     catch { toast.error("فشل الحذف"); setDeleting(false); }
+  }
+
+  async function handleDeleteExtra(imgId: number) {
+    if (!confirm("حذف هذه الصورة؟")) return;
+    try {
+      await apiFetch(`/admin/jersey-colors/${color.id}/images/${imgId}`, { method: "DELETE" });
+      setExtraImgs(prev => prev.filter(e => e.id !== imgId));
+      if (viewIdx >= allImages.length - 1) setViewIdx(0);
+      toast.success("تم حذف الصورة");
+    } catch { toast.error("فشل الحذف"); }
+  }
+
+  /* mini upload for extra images */
+  const { uploadFile, isUploading, progress } = useUpload({
+    onSuccess: async r => {
+      const url = `/api/storage${r.objectPath}`;
+      try {
+        const img = await apiFetch(`/admin/jersey-colors/${color.id}/images`, {
+          method: "POST",
+          body: JSON.stringify({ imageUrl: url, sortOrder: extraImgs.length + 10 }),
+        });
+        setExtraImgs(prev => [...prev, img]);
+        setShowAddImg(false);
+        toast.success("تمت إضافة الصورة");
+      } catch { toast.error("فشل حفظ الصورة"); }
+      setAddingImg(false);
+    },
+    onError: () => { toast.error("فشل رفع الصورة"); setAddingImg(false); },
+    extraHeaders: adminKey ? { "x-admin-key": adminKey } : {},
+  });
+
+  async function handleExtraFile(file: File) {
+    setAddingImg(true);
+    try {
+      /* try BG removal */
+      const form = new FormData();
+      form.append("image", file);
+      const resp = await fetch("/api/admin/remove-background", {
+        method: "POST", headers: adminKey ? { "x-admin-key": adminKey } : {}, body: form,
+      });
+      if (resp.ok) {
+        const blob = await resp.blob();
+        const processed = new File([blob], file.name.replace(/\.[^.]+$/, "") + "_nobg.png", { type: "image/png" });
+        await uploadFile(processed);
+      } else {
+        await uploadFile(file);
+      }
+    } catch { await uploadFile(file); }
   }
 
   return (
@@ -1102,25 +1175,64 @@ function JerseyColorCard({ color, onDelete, onUpdate }: {
         <Trash2 size={10} />
       </button>
 
-      {/* Jersey image with front/back toggle */}
+      {/* Main image preview */}
       <div className="h-32 flex items-center justify-center p-2 bg-slate-50 relative">
-        <img src={currentImg} alt={side}
-          className="max-h-full max-w-full object-contain transition-opacity duration-200"
+        <img src={currentImg} alt=""
+          className="max-h-full max-w-full object-contain"
           onError={e => { (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' fill='%23e2e8f0'%3E%3Crect width='80' height='80'/%3E%3C/svg%3E"; }} />
 
-        {/* front/back toggle button */}
-        {color.backImageUrl && (
-          <button onClick={() => setSide(s => s === "front" ? "back" : "front")}
-            className="absolute bottom-1.5 left-1.5 flex items-center gap-1 bg-slate-800/70 text-white text-[9px] px-2 py-1 rounded-full font-medium hover:bg-slate-800 transition-colors">
-            <RotateCcw size={9} />
-            {side === "front" ? "خلف" : "أمام"}
-          </button>
-        )}
-
-        {!color.backImageUrl && (
-          <div className="absolute bottom-1.5 left-1.5 bg-amber-100 text-amber-700 text-[9px] px-1.5 py-0.5 rounded-full">
-            بدون خلف
+        {/* image counter pill */}
+        {allImages.length > 1 && (
+          <div className="absolute bottom-1.5 left-1.5 bg-slate-800/70 text-white text-[9px] px-1.5 py-0.5 rounded-full font-medium">
+            {safeIdx + 1}/{allImages.length}
           </div>
+        )}
+      </div>
+
+      {/* Image thumbnails strip */}
+      <div className="px-2 pt-1.5 pb-1">
+        <div className="flex gap-1 flex-wrap">
+          {allImages.map((url, i) => {
+            const extraIdx = i - (color.backImageUrl ? 2 : 1);
+            const extraId = extraIdx >= 0 ? extraImgs[extraIdx]?.id : undefined;
+            return (
+              <div key={i} className="relative group/thumb">
+                <button
+                  onClick={() => setViewIdx(i)}
+                  className="relative w-8 h-10 rounded border overflow-hidden flex-shrink-0 transition-all"
+                  style={{
+                    borderColor: i === safeIdx ? "#10b981" : "#e2e8f0",
+                    boxShadow:   i === safeIdx ? "0 0 0 1px #10b981" : "none",
+                  }}
+                >
+                  <img src={url} alt="" className="w-full h-full object-contain" />
+                </button>
+                {/* delete extra image (not front/back) */}
+                {extraId !== undefined && (
+                  <button
+                    onClick={() => handleDeleteExtra(extraId)}
+                    className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full items-center justify-center hidden group-hover/thumb:flex z-10"
+                    style={{ fontSize: 8, lineHeight: 1 }}
+                  >✕</button>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Add image button */}
+          <label className={`w-8 h-10 rounded border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors flex-shrink-0
+            ${addingImg || isUploading ? "border-emerald-400 bg-emerald-50" : "border-slate-200 hover:border-emerald-400 hover:bg-emerald-50"}`}>
+            <input type="file" accept="image/*" className="hidden"
+              disabled={addingImg || isUploading}
+              onChange={async e => { const f = e.target.files?.[0]; if (f) await handleExtraFile(f); e.target.value = ""; }} />
+            {addingImg || isUploading
+              ? <RefreshCw size={8} className="animate-spin text-emerald-500" />
+              : <Plus size={10} className="text-slate-400" />
+            }
+          </label>
+        </div>
+        {(addingImg || isUploading) && (
+          <p className="text-[9px] text-emerald-600 mt-0.5">{isUploading ? `رفع ${progress}%` : "إزالة الخلفية…"}</p>
         )}
       </div>
 

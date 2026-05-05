@@ -1,15 +1,16 @@
 /**
- * JerseyPhotoViewer — "Studio Hold" v3
+ * JerseyPhotoViewer — "Studio Hold" v4  (multi-image gallery)
  *
  * Innovations:
  *  1. Mouse-tracking 3D tilt  — jersey reacts like a physical object in your hands
  *  2. Polyester specular sheen — studio light reflects off synthetic fabric (follows mouse)
- *  3. True 3D card flip       — rotateY animation when switching front ↔ back
+ *  3. True 3D card flip       — rotateY animation when switching images
  *  4. Studio environment      — overhead cove light, depth shadow, floor echo
  *  5. Edge-catching light     — top & side rim lit by studio overhead
  *  6. Fabric grain texture    — SVG noise gives textile depth
  *  7. Raised heat-transfer    — name/number with physical emboss depth
  *  8. Auto official font      — per-team mapping, no picker needed
+ *  9. Multi-image gallery     — dot nav, any number of images per color
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -20,7 +21,7 @@ import { ConfiguratorJersey } from "./configurator-jersey";
 /* ─── CSS ─────────────────────────────────────────────────────────── */
 function useJerseyCSS() {
   useEffect(() => {
-    const id = "basmah-jersey-v3";
+    const id = "basmah-jersey-v4";
     if (document.getElementById(id)) return;
     const s = document.createElement("style");
     s.id = id;
@@ -113,23 +114,24 @@ interface JerseyColors {
 }
 
 interface Props {
-  frontImageUrl?: string | null;
-  backImageUrl?:  string | null;
-  name:              string;
-  number:            string;
-  fontId:            string;
-  colors:            JerseyColors;
-  withCustomization: boolean;
-  view:              "front" | "back";
-  onToggleView:      () => void;
-  teamId?:           number;
+  images:              string[];   /* all image URLs in display order */
+  activeImageIndex:    number;
+  onImageIndexChange:  (i: number) => void;
+  name:                string;
+  number:              string;
+  fontId:              string;
+  colors:              JerseyColors;
+  withCustomization:   boolean;
+  teamId?:             number;
 }
 
 /* ─── Raised heat-transfer print overlay ─────────────────────────── */
-function FifaOverlay({ view, name, number, fontId, trimColor, teamId }: {
-  view: "front" | "back"; name: string; number: string;
+function FifaOverlay({ isBack, name, number, fontId, trimColor, teamId }: {
+  isBack: boolean; name: string; number: string;
   fontId: string; trimColor: string; teamId?: number;
 }) {
+  if (!isBack) return null;
+
   const ts = teamId ? TEAM_FONT_STYLE[teamId] : undefined;
   const fid  = ts?.fontId   ?? fontId;
   const nameSpacing = ts?.nameSpacing ?? "0.06em";
@@ -137,7 +139,6 @@ function FifaOverlay({ view, name, number, fontId, trimColor, teamId }: {
   const font     = FONT_STYLES.find(f => f.id === fid) ?? FONT_STYLES[0];
   const isItalic = (font.style as Record<string, string>).fontStyle === "italic";
 
-  /* Raised emboss effect — 8-direction stroke + depth layers + top-edge light */
   const s = "rgba(0,0,0,0.95)";
   const nameTextShadow = [
     `1px 0 0 ${s}`,  `-1px 0 0 ${s}`,
@@ -173,7 +174,6 @@ function FifaOverlay({ view, name, number, fontId, trimColor, teamId }: {
     textTransform: "uppercase",
   };
 
-  if (view !== "back") return null;
   return (
     <>
       {name && (
@@ -210,8 +210,8 @@ function FifaOverlay({ view, name, number, fontId, trimColor, teamId }: {
 
 /* ─── Main component ─────────────────────────────────────────────── */
 export function JerseyPhotoViewer({
-  frontImageUrl, backImageUrl, name, number, fontId,
-  colors, withCustomization, view, onToggleView, teamId,
+  images, activeImageIndex, onImageIndexChange,
+  name, number, fontId, colors, withCustomization, teamId,
 }: Props) {
   useJerseyCSS();
 
@@ -243,19 +243,33 @@ export function JerseyPhotoViewer({
     setTilt({ x: 0, y: 0 });
   }, []);
 
-  const imgUrl        = view === "front" ? frontImageUrl : (backImageUrl ?? frontImageUrl);
-  const hasImg        = !!imgUrl;
-  const hasBack       = !!backImageUrl;
-  const displayName   = withCustomization ? name   : "";
-  const displayNumber = withCustomization ? number : "";
-  const teamStyle     = teamId ? TEAM_FONT_STYLE[teamId] : undefined;
-  const brand         = teamStyle?.brand;
+  const safeIndex    = Math.max(0, Math.min(activeImageIndex, images.length - 1));
+  const imgUrl       = images[safeIndex] ?? null;
+  const hasImg       = !!imgUrl;
+  const isBack       = safeIndex > 0;              /* index 0 = front, rest = show overlay */
+  const displayName  = withCustomization ? name   : "";
+  const displayNum   = withCustomization ? number : "";
+  const teamStyle    = teamId ? TEAM_FONT_STYLE[teamId] : undefined;
+  const brand        = teamStyle?.brand;
 
-  /* Dynamic shadow that tilts with the card — like a real object casting shadow */
   const shadowX    = hovering ? -tilt.y * 3.2 : 0;
   const shadowY    = hovering ? 44 + tilt.x * 2.0 : 32;
   const shadowBlur = hovering ? 96 : 62;
   const glowR      = hovering ? 140 : 82;
+
+  /* swipe support */
+  const touchStartX = useRef<number | null>(null);
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) < 40) return;
+    if (dx < 0 && safeIndex < images.length - 1) onImageIndexChange(safeIndex + 1);
+    if (dx > 0 && safeIndex > 0) onImageIndexChange(safeIndex - 1);
+    touchStartX.current = null;
+  }
 
   return (
     <div
@@ -264,9 +278,11 @@ export function JerseyPhotoViewer({
       onMouseMove={onMove}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={onLeave}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
 
-      {/* ── Studio overhead cove (subtle white ceiling light) ── */}
+      {/* ── Studio overhead cove ── */}
       <div className="absolute inset-0 pointer-events-none" style={{
         background: `radial-gradient(ellipse 70% 38% at 50% 0%,
           rgba(255,255,255,0.028) 0%,
@@ -279,7 +295,7 @@ export function JerseyPhotoViewer({
         backgroundSize:  "26px 26px",
       }} />
 
-      {/* ── Team-color ambient glow (breathes) ── */}
+      {/* ── Team-color ambient glow ── */}
       <div className="absolute inset-0 pointer-events-none jersey-glow" style={{
         background: `radial-gradient(ellipse 92% 76% at 50% 42%,
           ${colors.body}55 0%,
@@ -289,7 +305,7 @@ export function JerseyPhotoViewer({
         transition: "background 1s ease",
       }} />
 
-      {/* ── Floor echo (studio floor reflection under jersey) ── */}
+      {/* ── Floor echo ── */}
       <div className="absolute pointer-events-none" style={{
         bottom: "3%",
         left: "50%",
@@ -325,15 +341,14 @@ export function JerseyPhotoViewer({
           ].join(", "),
         }}
       >
-
-        {/* ── Jersey image / SVG (3D flip animation) ── */}
+        {/* ── Jersey image (flip animation between images) ── */}
         <AnimatePresence mode="wait">
           <motion.div
-            key={view + (imgUrl ?? "svg")}
-            initial={{ opacity: 0, rotateY: view === "back" ? -88 : 88, scale: 0.95 }}
-            animate={{ opacity: 1, rotateY: 0, scale: 1 }}
-            exit={{   opacity: 0, rotateY: view === "back" ?  88 : -88, scale: 0.95 }}
-            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            key={safeIndex + (imgUrl ?? "svg")}
+            initial={{ opacity: 0, rotateY: 88, scale: 0.95 }}
+            animate={{ opacity: 1, rotateY: 0,  scale: 1 }}
+            exit={{   opacity: 0, rotateY: -88, scale: 0.95 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             style={{
               position: "absolute", inset: 0,
               width: "100%", height: "100%",
@@ -343,17 +358,17 @@ export function JerseyPhotoViewer({
             {hasImg ? (
               <>
                 <img
-                  src={imgUrl!} alt={view} draggable={false}
+                  src={imgUrl} alt="" draggable={false}
                   style={{
                     width: "100%", height: "100%",
                     objectFit: "contain", objectPosition: "center top",
                     display: "block",
                   }}
                 />
-                {(displayName || displayNumber) && (
+                {(displayName || displayNum) && (
                   <FifaOverlay
-                    view={view}
-                    name={displayName} number={displayNumber}
+                    isBack={isBack}
+                    name={displayName} number={displayNum}
                     fontId={fontId} trimColor={colors.trim} teamId={teamId}
                   />
                 )}
@@ -363,15 +378,15 @@ export function JerseyPhotoViewer({
                 <ConfiguratorJersey
                   colors={colors}
                   name={displayName || "BASMAH"}
-                  number={displayNumber || "10"}
-                  view={view} fontId={fontId}
+                  number={displayNum || "10"}
+                  view="front" fontId={fontId}
                 />
               </div>
             )}
           </motion.div>
         </AnimatePresence>
 
-        {/* ── Polyester specular sheen (follows mouse — simulates synthetic fabric) ── */}
+        {/* ── Polyester specular sheen ── */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -388,7 +403,7 @@ export function JerseyPhotoViewer({
           }}
         />
 
-        {/* ── Fabric / mesh grain texture (SVG noise) ── */}
+        {/* ── Fabric grain ── */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -400,7 +415,7 @@ export function JerseyPhotoViewer({
           }}
         />
 
-        {/* ── Top-edge studio light catch ── */}
+        {/* ── Top-edge light catch ── */}
         <div className="absolute inset-x-0 top-0 pointer-events-none" style={{
           height: "1.5px",
           background: `linear-gradient(90deg,
@@ -413,7 +428,7 @@ export function JerseyPhotoViewer({
           zIndex: 20,
         }} />
 
-        {/* ── Left-edge studio light catch ── */}
+        {/* ── Left-edge light catch ── */}
         <div className="absolute inset-y-0 left-0 pointer-events-none" style={{
           width: "1.5px",
           background: `linear-gradient(to bottom,
@@ -428,45 +443,63 @@ export function JerseyPhotoViewer({
       </div>
       {/* ════════════════════════════════════════ */}
 
-      {/* ── Flip button ── */}
-      {(hasBack || !hasImg) && (
-        <button
-          onClick={onToggleView}
-          className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-2
-                     px-5 py-2.5 rounded-full text-xs font-black transition-all
-                     duration-200 active:scale-95 hover:scale-105"
-          style={{
-            background:     `linear-gradient(135deg, ${colors.body}26, ${colors.body}0d)`,
-            border:         `1px solid ${colors.body}52`,
-            color:          "rgba(255,255,255,0.82)",
-            backdropFilter: "blur(14px)",
-            boxShadow:      `0 0 28px ${colors.body}24, 0 5px 22px rgba(0,0,0,0.52)`,
-            letterSpacing:  "0.5px",
-          }}
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth="2.5"
-            strokeLinecap="round" strokeLinejoin="round">
-            <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/>
-          </svg>
-          {view === "front" ? "عرض الخلف" : "عرض الأمام"}
-        </button>
-      )}
+      {/* ── Image dots / prev-next ── */}
+      {images.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 z-30">
+          {/* prev */}
+          <button
+            onClick={() => safeIndex > 0 && onImageIndexChange(safeIndex - 1)}
+            disabled={safeIndex === 0}
+            className="w-7 h-7 flex items-center justify-center rounded-full transition-all active:scale-90 disabled:opacity-20"
+            style={{
+              background:     "rgba(0,0,0,0.55)",
+              border:         "1px solid rgba(255,255,255,0.12)",
+              backdropFilter: "blur(10px)",
+              color:          "rgba(255,255,255,0.75)",
+            }}
+          >
+            <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+              <path d="M6 1.5 L3 4.5 L6 7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
 
-      {/* ── FRONT / BACK pill ── */}
-      <div className="absolute top-3 left-3 pointer-events-none" style={{
-        background:     "rgba(0,0,0,0.60)",
-        border:         "1px solid rgba(255,255,255,0.07)",
-        borderRadius:   20,
-        padding:        "3px 11px",
-        fontSize:       9,
-        fontWeight:     900,
-        color:          "rgba(255,255,255,0.38)",
-        backdropFilter: "blur(12px)",
-        letterSpacing:  "1.5px",
-      }}>
-        {view === "front" ? "FRONT" : "BACK"}
-      </div>
+          {/* dots */}
+          <div className="flex items-center gap-1.5">
+            {images.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => onImageIndexChange(i)}
+                className="transition-all duration-200 rounded-full"
+                style={{
+                  width:   i === safeIndex ? 18 : 6,
+                  height:  6,
+                  background: i === safeIndex
+                    ? "#bfff00"
+                    : "rgba(255,255,255,0.25)",
+                  boxShadow: i === safeIndex ? "0 0 8px rgba(191,255,0,0.6)" : "none",
+                }}
+              />
+            ))}
+          </div>
+
+          {/* next */}
+          <button
+            onClick={() => safeIndex < images.length - 1 && onImageIndexChange(safeIndex + 1)}
+            disabled={safeIndex === images.length - 1}
+            className="w-7 h-7 flex items-center justify-center rounded-full transition-all active:scale-90 disabled:opacity-20"
+            style={{
+              background:     "rgba(0,0,0,0.55)",
+              border:         "1px solid rgba(255,255,255,0.12)",
+              backdropFilter: "blur(10px)",
+              color:          "rgba(255,255,255,0.75)",
+            }}
+          >
+            <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+              <path d="M3 1.5 L6 4.5 L3 7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* ── Brand badge ── */}
       {brand && (
