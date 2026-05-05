@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGetTeam } from "@workspace/api-client-react";
@@ -6,10 +6,6 @@ import { getGetTeamQueryKey } from "@workspace/api-client-react";
 import { useOrder } from "@/components/order-context";
 import { type JerseyColors } from "@/components/configurator-jersey";
 import { JerseyPhotoViewer, TEAM_FONT_STYLE } from "@/components/jersey-photo-viewer";
-import {
-  getStickerCanvas,
-  type StickerDef,
-} from "@/components/sticker-library";
 import { useTranslation } from "react-i18next";
 
 /* ─── Types ──────────────────────────────────────────────── */
@@ -22,124 +18,68 @@ interface JerseyColor {
   priceWithoutCustomization?: number | null;
 }
 
-const SIZE_INFO: Record<string, string> = {
-  XS: "كتف 38–40 سم", S: "كتف 40–42 سم", M: "كتف 42–44 سم",
-  L: "كتف 44–46 سم", XL: "كتف 46–49 سم", XXL: "كتف 49+ سم",
-};
+type MobileTab = "colors" | "name" | "size";
 
-/* API sticker shape from /api/stickers */
-interface ApiSticker { id: number; name: string; url: string; category: string; }
-
-type CustomTab = "colors" | "name" | "size";
-type MobileTab = "stickers" | "colors" | "name" | "size";
-
-/* ─── StickerBtn ─────────────────────────────────────────── */
-function StickerBtn({ s, selected, onClick }: {
-  s: StickerDef; selected: boolean; onClick: () => void;
-}) {
-  /* Hooks must be at the top — called unconditionally */
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    if (s.url) return; // URL stickers use <img>, no canvas needed
-    const img = getStickerCanvas(s);
-    if (!img || !canvasRef.current) return;
-    const c = canvasRef.current;
-    c.width = img.width; c.height = img.height;
-    const ctx = c.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, c.width, c.height);
-    ctx.drawImage(img, 0, 0);
-  }, [s]);
-
-  const btnStyle = {
-    background: selected ? "rgba(191,255,0,0.14)" : "rgba(255,255,255,0.03)",
-    border:     selected ? "1.5px solid #bfff00"  : "1.5px solid rgba(255,255,255,0.06)",
-    boxShadow:  selected ? "0 0 12px rgba(191,255,0,0.35)" : "none",
-  };
-
-  return (
-    <button onClick={onClick}
-      className="flex flex-col items-center gap-1 p-1.5 rounded-xl transition-all duration-150 active:scale-90"
-      style={btnStyle}>
-      {s.url
-        ? <img src={s.url} alt={s.label} className="w-10 h-10 object-contain" />
-        : <canvas ref={canvasRef} width={80} height={80} className="w-10 h-10" />
-      }
-      <span className="text-[9px] text-white/45 font-bold truncate max-w-[44px] text-center leading-tight">
-        {s.label}
-      </span>
-    </button>
-  );
-}
-
-/* ─── Jersey Color Picker strip ─────────────────────────── */
-function JerseyColorPicker({ colors, selected, onSelect, view, onToggleView }: {
+/* ─── Color thumbnail strip ──────────────────────────────── */
+function ColorStrip({ colors, selected, onSelect, view }: {
   colors: JerseyColor[];
   selected: JerseyColor | null;
   onSelect: (c: JerseyColor) => void;
   view: "front" | "back";
-  onToggleView: () => void;
 }) {
-  const { t } = useTranslation();
   if (colors.length === 0) return null;
-
   return (
-    <div className="flex flex-col gap-2">
-      {/* View toggle */}
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-black text-white/50 uppercase tracking-widest">{t("td_jersey_color")}</span>
-        <button onClick={onToggleView}
-          className="flex items-center gap-1.5 bg-white/[0.07] border border-white/[0.10] text-white/60 hover:text-[#bfff00] hover:border-[#bfff00]/40 text-[10px] font-black px-2.5 py-1.5 rounded-lg transition-all">
-          <span>↔</span>
-          {view === "front" ? t("td_view_back") : t("td_view_front")}
-        </button>
-      </div>
-      {/* Color cards */}
-      <div className="flex flex-wrap gap-2">
-        {colors.map(c => (
-          <button key={c.id}
-            onClick={() => !c.isSoldOut && onSelect(c)}
-            disabled={!!c.isSoldOut}
-            className="relative flex-shrink-0 rounded-xl overflow-hidden transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
-            style={{
-              width: 52, height: 62,
-              border: selected?.id === c.id ? "2px solid #bfff00" : "2px solid rgba(255,255,255,0.08)",
-              boxShadow: selected?.id === c.id ? "0 0 14px rgba(191,255,0,0.45)" : "none",
-              background: "rgba(255,255,255,0.04)",
-            }}>
-            <img src={view === "front" ? c.frontImageUrl : (c.backImageUrl ?? c.frontImageUrl)}
-              alt={c.name}
-              style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center top" }}
-              onError={e => {
-                (e.target as HTMLImageElement).style.display = "none";
-                const parent = (e.target as HTMLImageElement).parentElement;
-                if (parent) parent.style.backgroundColor = c.hexCode;
-              }} />
-            {/* Sold Out overlay */}
-            {c.isSoldOut && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/55">
-                <span className="text-[7px] font-black text-white bg-red-600 px-1 py-0.5 rounded rotate-[-10deg] leading-none tracking-wide">SOLD OUT</span>
-              </div>
-            )}
-            {selected?.id === c.id && (
-              <div className="absolute bottom-0 inset-x-0 bg-[#bfff00]/90 text-black text-[8px] font-black text-center py-0.5 truncate px-1">
-                {c.name}
-              </div>
-            )}
-          </button>
-        ))}
-      </div>
-      {selected && (
-        <div className="flex items-center gap-2 mt-1">
-          <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: selected.hexCode }} />
-          <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: selected.secondaryHexCode }} />
-          <span className="text-[10px] text-white/40 font-bold">{selected.name}</span>
-          {!selected.backImageUrl && (
-            <span className="text-[9px] text-amber-400/60">{t("td_no_back_image")}</span>
+    <div className="flex gap-2 flex-wrap">
+      {colors.map(c => (
+        <button
+          key={c.id}
+          onClick={() => !c.isSoldOut && onSelect(c)}
+          disabled={!!c.isSoldOut}
+          title={c.name}
+          className="relative shrink-0 rounded-lg overflow-hidden transition-all duration-150 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{
+            width: 48, height: 58,
+            border: selected?.id === c.id
+              ? "2px solid #bfff00"
+              : "2px solid rgba(255,255,255,0.07)",
+            boxShadow: selected?.id === c.id
+              ? "0 0 14px rgba(191,255,0,0.40)"
+              : "none",
+            background: "rgba(255,255,255,0.03)",
+          }}
+        >
+          <img
+            src={view === "front" ? c.frontImageUrl : (c.backImageUrl ?? c.frontImageUrl)}
+            alt={c.name}
+            style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center top" }}
+            onError={e => {
+              (e.target as HTMLImageElement).style.display = "none";
+              const p = (e.target as HTMLImageElement).parentElement;
+              if (p) p.style.backgroundColor = c.hexCode;
+            }}
+          />
+          {c.isSoldOut && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+              <span className="text-[6px] font-black text-white bg-red-600 px-1 py-0.5 rounded rotate-[-10deg] leading-none">SOLD</span>
+            </div>
           )}
-        </div>
-      )}
+          {selected?.id === c.id && (
+            <div className="absolute bottom-0 inset-x-0 bg-[#bfff00] text-black text-[7px] font-black text-center py-0.5 truncate px-0.5 leading-none">
+              {c.name}
+            </div>
+          )}
+        </button>
+      ))}
     </div>
+  );
+}
+
+/* ─── Section header ─────────────────────────────────────── */
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[9px] font-black tracking-[2.5px] uppercase text-white/30 mb-2">
+      {children}
+    </p>
   );
 }
 
@@ -152,66 +92,30 @@ export default function TeamDetail() {
   });
   const { updateOrder } = useOrder();
 
-  /* jersey colors from API */
   const [jerseyColors, setJerseyColors] = useState<JerseyColor[]>([]);
   const [selectedColor, setSelectedColor] = useState<JerseyColor | null>(null);
-  const [view, setView] = useState<"front" | "back">("front");
-
-  /* customization */
-  const [tab, setTab]       = useState<CustomTab>("colors");
-  const [name, setName]     = useState("");
+  const [view, setView]   = useState<"front" | "back">("front");
+  const [name, setName]   = useState("");
   const [number, setNumber] = useState("");
-  const [size, setSize]     = useState("");
+  const [size, setSize]   = useState("");
   const [fontId, setFontId] = useState("block");
   const [colors, setColors] = useState<JerseyColors>({
     body: "#cc0000", sleeves: "#ffffff", collar: "#cc0000", trim: "#ffffff",
   });
-
-  /* stickers — fetched from API (admin-managed) */
-  const [apiStickers, setApiStickers]       = useState<StickerDef[]>([]);
-  const [stickerCat, setStickerCat]         = useState<string>("");
-  const [pendingSticker, setPendingSticker] = useState<StickerDef | null>(null);
-  const [placedCount, setPlacedCount]       = useState(0);
-  const [nahfaText, setNahfaText]           = useState("");
-
-  /* customization mode: with printing (name+number) or without */
   const [withCustomization, setWithCustomization] = useState(true);
+  const [mobileTab, setMobileTab] = useState<MobileTab>("colors");
 
-  /* effective price based on mode and selected color */
+  /* prices */
   const baseEffectivePrice = (() => {
     if (!team) return 0;
-    if (withCustomization) {
-      return selectedColor?.priceWithCustomization ?? team.basePrice;
-    } else {
-      return selectedColor?.priceWithoutCustomization ?? team.basePrice;
-    }
+    return withCustomization
+      ? (selectedColor?.priceWithCustomization ?? team.basePrice)
+      : (selectedColor?.priceWithoutCustomization ?? team.basePrice);
   })();
-
   const discountPercent = (team as (typeof team & { discountPercent?: number }))?.discountPercent ?? 0;
-  const effectivePrice = discountPercent > 0
+  const effectivePrice  = discountPercent > 0
     ? Math.round(baseEffectivePrice * (1 - discountPercent / 100))
     : baseEffectivePrice;
-
-  /* mobile */
-  const [mobileTab, setMobileTab] = useState<MobileTab>("stickers");
-
-  /* Load active stickers from API (admin-managed) */
-  useEffect(() => {
-    fetch("/api/stickers")
-      .then(r => r.ok ? r.json() : [])
-      .then((rows: ApiSticker[]) => {
-        const defs: StickerDef[] = rows.map(r => ({
-          id: String(r.id),
-          label: r.name,
-          category: r.category,
-          url: r.url,
-        }));
-        setApiStickers(defs);
-        /* Set first category as default */
-        if (defs.length > 0) setStickerCat(defs[0].category);
-      })
-      .catch(() => {});
-  }, []);
 
   /* Load jersey colors */
   useEffect(() => {
@@ -234,14 +138,17 @@ export default function TeamDetail() {
     }
   }, [team]);
 
-  /* when selected jersey color changes, sync SVG colors */
   useEffect(() => {
     if (selectedColor) {
-      setColors(prev => ({ ...prev, body: selectedColor.hexCode, sleeves: selectedColor.secondaryHexCode, trim: selectedColor.secondaryHexCode }));
+      setColors(prev => ({
+        ...prev,
+        body: selectedColor.hexCode,
+        sleeves: selectedColor.secondaryHexCode,
+        trim: selectedColor.secondaryHexCode,
+      }));
     }
   }, [selectedColor]);
 
-  /* auto-suggest the official brand font when team loads */
   useEffect(() => {
     if (team?.id) {
       const suggested = TEAM_FONT_STYLE[team.id]?.fontId;
@@ -251,45 +158,22 @@ export default function TeamDetail() {
 
   const handleOrder = async () => {
     if (!size) { alert(t("td_select_size_alert")); return; }
-
-    /* Use the admin-uploaded jersey images directly */
-    const capturedFront: string | undefined = selectedColor?.frontImageUrl ?? undefined;
-    const capturedBack:  string | undefined = selectedColor?.backImageUrl  ?? undefined;
-
     updateOrder({
       teamId: team!.id, teamName: team!.name, basePrice: effectivePrice,
       color: colors.body, size: size as "XS" | "S" | "M" | "L" | "XL" | "XXL",
-      customerName: withCustomization ? (name || "BASMAH") : "BASMAH",
-      jerseyNumber: withCustomization ? (number || "10") : "—",
+      customerName:  withCustomization ? (name   || "BASMAH") : "BASMAH",
+      jerseyNumber:  withCustomization ? (number || "10")     : "—",
       quantity: 1, previewColor: colors.body,
-      previewName: withCustomization ? (name || "BASMAH") : "BASMAH",
-      previewNumber: withCustomization ? (number || "10") : "—",
-      playerName: withCustomization ? (name || undefined) : undefined,
-      frontImageUrl: capturedFront,
-      backImageUrl:  capturedBack,
-      jerseyColorName: selectedColor?.name ?? undefined,
-      jerseyColorId: selectedColor?.id ?? undefined,
+      previewName:   withCustomization ? (name   || "BASMAH") : "BASMAH",
+      previewNumber: withCustomization ? (number || "10")     : "—",
+      playerName:    withCustomization ? (name || undefined)  : undefined,
+      frontImageUrl: selectedColor?.frontImageUrl ?? undefined,
+      backImageUrl:  selectedColor?.backImageUrl  ?? undefined,
+      jerseyColorName: selectedColor?.name        ?? undefined,
+      jerseyColorId:   selectedColor?.id          ?? undefined,
     });
     setLocation("/order");
   };
-
-  const selectSticker = useCallback((s: StickerDef) => {
-    setPendingSticker(prev => prev?.id === s.id ? null : s);
-  }, []);
-
-  const addNahfa = useCallback(() => {
-    const txt = nahfaText.trim();
-    if (!txt) return;
-    const def: StickerDef = {
-      id: `nahfa-${Date.now()}`, label: txt, category: "عربي",
-      text: txt, textColor: "#bfff00", isArabic: /[\u0600-\u06FF]/.test(txt),
-    };
-    setPendingSticker(def);
-    setNahfaText("");
-  }, [nahfaText]);
-
-  const stickerCats = Array.from(new Set(apiStickers.map(s => s.category)));
-  const filteredStickers = apiStickers.filter(s => s.category === stickerCat);
 
   const { t } = useTranslation();
 
@@ -298,19 +182,10 @@ export default function TeamDetail() {
     L: t("td_size_l"), XL: t("td_size_xl"), XXL: t("td_size_xxl"),
   };
 
-  const customTabs: { id: CustomTab; icon: string; label: string }[] = [
-    { id: "colors", icon: "🎨", label: t("td_tab_colors") },
-    { id: "name",   icon: "✏️",  label: t("td_tab_name")   },
-    { id: "size",   icon: "📐",  label: t("td_tab_size")   },
-  ];
-
   /* ── Loading / 404 ──────────────────────────────────────── */
   if (isLoading) return (
     <div className="fixed inset-0 bg-black flex items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-16 h-16 border-4 border-[#bfff00] border-t-transparent rounded-full animate-spin" />
-        <p className="text-white/50 font-bold">…</p>
-      </div>
+      <div className="w-12 h-12 border-4 border-[#bfff00] border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
@@ -323,448 +198,313 @@ export default function TeamDetail() {
     </div>
   );
 
+  /* ─────────────────────────────────────────────────────────
+     SHARED content blocks (used in both desktop + mobile)
+  ───────────────────────────────────────────────────────── */
+
+  /* Print toggle */
+  const PrintToggle = ({ compact = false }: { compact?: boolean }) => (
+    <div className={`flex rounded-lg overflow-hidden border border-white/[0.08] ${compact ? "" : "w-full"}`}>
+      <button
+        onClick={() => setWithCustomization(true)}
+        className={`flex-1 font-black transition-all duration-150 ${compact ? "py-2 text-[11px]" : "py-2.5 text-xs"}`}
+        style={{
+          background: withCustomization ? "#bfff00" : "transparent",
+          color:      withCustomization ? "#000"    : "rgba(255,255,255,0.30)",
+        }}
+      >
+        {t("td_with_print")}
+      </button>
+      <button
+        onClick={() => setWithCustomization(false)}
+        className={`flex-1 font-black transition-all duration-150 ${compact ? "py-2 text-[11px]" : "py-2.5 text-xs"}`}
+        style={{
+          background: !withCustomization ? "#bfff00" : "transparent",
+          color:      !withCustomization ? "#000"    : "rgba(255,255,255,0.30)",
+        }}
+      >
+        {t("td_without_print")}
+      </button>
+    </div>
+  );
+
+  /* Color chips + info */
+  const ColorSection = ({ compact = false }: { compact?: boolean }) => (
+    <div className="space-y-3">
+      <ColorStrip
+        colors={jerseyColors} selected={selectedColor}
+        onSelect={setSelectedColor} view={view}
+      />
+      {selectedColor && (
+        <div className="flex items-center gap-3 pt-0.5">
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-4 rounded border border-white/20" style={{ backgroundColor: selectedColor.hexCode }} />
+            <span className="text-[10px] font-mono font-bold text-white/35 uppercase">{selectedColor.hexCode}</span>
+          </div>
+          <div className="w-px h-3 bg-white/[0.12]" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-4 rounded border border-white/20" style={{ backgroundColor: selectedColor.secondaryHexCode }} />
+            <span className="text-[10px] font-mono font-bold text-white/35 uppercase">{selectedColor.secondaryHexCode}</span>
+          </div>
+          <span className="text-[10px] text-white/25 font-bold mr-auto">{selectedColor.name}</span>
+        </div>
+      )}
+      <div className={`flex items-start gap-2 rounded-lg border border-[#bfff00]/15 bg-[#bfff00]/[0.03] ${compact ? "p-2.5" : "p-3"}`}>
+        <div className="w-5 h-5 shrink-0 mt-0.5 text-[#bfff00]/50 text-xs flex items-center justify-center">🖨️</div>
+        <p className={`text-white/35 leading-relaxed ${compact ? "text-[9px]" : "text-[10px]"}`}>
+          {t("td_color_note_body")}
+        </p>
+      </div>
+    </div>
+  );
+
+  /* Name + Number inputs */
+  const PrintSection = ({ compact = false }: { compact?: boolean }) => (
+    <AnimatePresence>
+      {withCustomization && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.2 }}
+          className="overflow-hidden"
+        >
+          <div className={`space-y-3 ${compact ? "" : "pt-1"}`}>
+            <div>
+              <input
+                value={name}
+                onChange={e => setName(e.target.value.replace(/[^A-Za-z\s.]/g, "").toUpperCase())}
+                placeholder={t("td_name_label")}
+                maxLength={12} dir="ltr" lang="en"
+                className={`w-full bg-white/[0.04] border border-white/[0.09] text-white placeholder:text-white/20
+                            font-black tracking-[3px] focus:outline-none focus:border-[#bfff00]/40 transition-colors
+                            ${compact ? "px-3 py-2 text-sm" : "px-4 py-3 text-base"}`}
+              />
+              <div className="flex justify-end mt-1">
+                <span className="text-[9px] text-white/20 font-bold">{name.length}/12</span>
+              </div>
+            </div>
+            <input
+              value={number}
+              onChange={e => setNumber(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
+              placeholder="10" maxLength={2} type="tel"
+              className={`w-full bg-white/[0.04] border border-white/[0.09] text-white placeholder:text-white/15
+                          font-black text-center focus:outline-none focus:border-[#bfff00]/40 transition-colors
+                          ${compact ? "py-3 text-3xl" : "py-4 text-5xl"}`}
+            />
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  /* Size grid */
+  const SizeSection = ({ compact = false }: { compact?: boolean }) => (
+    <div className="space-y-2">
+      <div className={`grid gap-2 ${compact ? "grid-cols-6" : "grid-cols-3"}`}>
+        {team.availableSizes.map(s => (
+          <button
+            key={s}
+            onClick={() => setSize(s)}
+            className="flex flex-col items-center justify-center border font-black transition-all duration-150 hover:scale-105 active:scale-95"
+            style={{
+              padding:     compact ? "8px 4px" : "12px 4px",
+              borderColor: size === s ? "#bfff00" : "rgba(255,255,255,0.07)",
+              background:  size === s ? "rgba(191,255,0,0.09)" : "rgba(255,255,255,0.02)",
+              color:       size === s ? "#bfff00" : "rgba(255,255,255,0.45)",
+              boxShadow:   size === s ? "0 0 14px rgba(191,255,0,0.20)" : "none",
+            }}
+          >
+            <span className={compact ? "text-sm" : "text-lg"}>{s}</span>
+            {!compact && (
+              <span className="text-[8px] text-white/25 font-normal mt-0.5">{SIZE_INFO_T[s]?.replace("كتف ", "") ?? ""}</span>
+            )}
+          </button>
+        ))}
+      </div>
+      {!compact && (
+        <p className="text-[9px] text-white/25 leading-relaxed pt-1">
+          قس المسافة بين طرفي الكتفين، اختر المقاس الأقرب لقياسك.
+        </p>
+      )}
+    </div>
+  );
+
+  /* CTA button */
+  const OrderBtn = ({ large = false }: { large?: boolean }) => (
+    <button
+      onClick={handleOrder}
+      disabled={!size}
+      className={`w-full font-black transition-all duration-200 disabled:opacity-25 disabled:cursor-not-allowed
+                  ${large ? "py-4 text-lg" : "py-3.5 text-base"}`}
+      style={{
+        background: size
+          ? "linear-gradient(135deg, #bfff00 0%, #7ecf00 100%)"
+          : "#111",
+        color:     size ? "#000" : "#333",
+        boxShadow: size ? "0 0 32px rgba(191,255,0,0.28), 0 4px 18px rgba(0,0,0,0.5)" : "none",
+      }}
+    >
+      {size
+        ? `${t("td_order_btn")} · ${effectivePrice} ${t("td_currency")}`
+        : t("td_select_size_first")}
+    </button>
+  );
+
   /* ── Render ───────────────────────────────────────────── */
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-black" dir="rtl">
+
       {/* ══ TOP BAR ══ */}
-      <div className="flex items-center justify-between px-4 md:px-6 py-3 shrink-0 z-20
-                      border-b border-white/[0.06] bg-black/80 backdrop-blur-sm">
-        <button onClick={() => setLocation("/teams")}
-          className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white transition-colors font-bold">
-          <span className="text-base">→</span> {t("nav_teams")}
+      <div className="flex items-center justify-between px-4 md:px-5 py-3 shrink-0 z-20
+                      border-b border-white/[0.05] bg-black/90 backdrop-blur-sm">
+        <button
+          onClick={() => setLocation("/teams")}
+          className="flex items-center gap-1.5 text-sm text-white/35 hover:text-white transition-colors font-bold"
+        >
+          <span>→</span>
+          <span className="hidden sm:inline">{t("nav_teams")}</span>
         </button>
+
         <div className="text-center">
-          <div className="flex items-center justify-center gap-2 text-xs text-white/40 mb-0.5">
-            <span className="bg-[#bfff00]/20 text-[#bfff00] px-2 py-0.5 rounded text-[10px] font-black">
-              {team.league}
-            </span>
-            <span>·</span><span>{team.country}</span>
-          </div>
-          <h1 className="text-sm md:text-lg font-black text-white leading-tight">{team.name}</h1>
+          <span className="text-[10px] text-white/25 font-bold">{team.league} · {team.country}</span>
+          <h1 className="text-sm md:text-base font-black text-white leading-tight">{team.name}</h1>
         </div>
+
         <div className="text-left">
-          <div className="text-[10px] text-white/30">{withCustomization ? t("td_price_label_with") : t("td_price_label_without")}</div>
+          <div className="text-[9px] text-white/25 font-bold">{withCustomization ? t("td_price_label_with") : t("td_price_label_without")}</div>
           {discountPercent > 0 && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] text-white/35 line-through font-bold">
-                {baseEffectivePrice}
-              </span>
-              <span className="text-[9px] font-black bg-red-500 text-white rounded px-1 py-0.5 leading-none">
-                -{discountPercent}%
-              </span>
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] text-white/25 line-through">{baseEffectivePrice}</span>
+              <span className="text-[8px] font-black bg-red-500 text-white rounded px-1 leading-none py-0.5">-{discountPercent}%</span>
             </div>
           )}
-          <div className="text-xl font-black text-[#bfff00]">
-            {effectivePrice}<span className="text-xs text-white/50 ml-1">{t("td_currency")}</span>
+          <div className="text-xl font-black text-[#bfff00] leading-tight">
+            {effectivePrice}<span className="text-[10px] text-white/35 mr-0.5">{t("td_currency")}</span>
           </div>
         </div>
       </div>
+
       {/* ══ MAIN ══ */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
-        {/* ══ STICKER PANEL ══ */}
-        <motion.div
-          initial={{ x: 280, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 260, damping: 28 }}
-          className="w-[155px] shrink-0 hidden md:flex flex-col bg-[#090909] border-l border-white/[0.06] z-10 overflow-hidden"
-        >
-          <div className="px-3 py-2.5 border-b border-white/[0.06] flex items-center gap-1.5">
-            <span className="text-base">🎯</span>
-            <p className="text-[10px] font-black text-white/35 uppercase tracking-widest">{t("td_stickers_panel")}</p>
-          </div>
-          <div className="flex border-b border-white/[0.06] overflow-x-auto scrollbar-none">
-            {stickerCats.map(cat => (
-              <button key={cat} onClick={() => setStickerCat(cat)}
-                className="shrink-0 px-2.5 py-2 text-[10px] font-black transition-colors"
-                style={{
-                  color:        stickerCat === cat ? "#bfff00" : "rgba(255,255,255,0.3)",
-                  borderBottom: stickerCat === cat ? "2px solid #bfff00" : "2px solid transparent",
-                }}>
-                {cat}
-              </button>
-            ))}
-          </div>
-          <div className="flex-1 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-white/10">
-            {apiStickers.length === 0 ? (
-              <div className="py-8 text-center">
-                <p className="text-[10px] text-white/20">لا توجد ملصقات مفعّلة</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-1.5">
-                <AnimatePresence mode="wait">
-                  <motion.div key={stickerCat} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="contents">
-                    {filteredStickers.map(s => (
-                      <StickerBtn key={s.id} s={s} selected={pendingSticker?.id === s.id} onClick={() => selectSticker(s)} />
-                    ))}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            )}
-          </div>
-          <div className="p-2.5 border-t border-white/[0.06] space-y-2">
-            <p className="text-[10px] font-black text-[#bfff00]/60 uppercase tracking-widest">{t("td_your_mark")}</p>
-            <textarea value={nahfaText} onChange={e => setNahfaText(e.target.value)}
-              placeholder={t("td_nahfa_placeholder")} maxLength={20} rows={2} dir="auto"
-              className="w-full px-2 py-1.5 bg-white/[0.04] border border-white/[0.08] text-white text-xs font-bold resize-none focus:outline-none focus:border-[#bfff00]/40 placeholder:text-white/20" />
-            <button onClick={addNahfa} disabled={!nahfaText.trim()}
-              className="w-full py-1.5 text-xs font-black disabled:opacity-30 transition-all"
-              style={{ background: nahfaText.trim() ? "#bfff00" : "#1a1a1a", color: nahfaText.trim() ? "#000" : "#444" }}>
-              {t("td_add_to_jersey")}
-            </button>
-          </div>
-          {pendingSticker && (
-            <div className="px-2.5 pb-2.5">
-              <div className="bg-[#bfff00]/10 border border-[#bfff00]/25 rounded-lg p-2 text-center">
-                <p className="text-[9px] text-[#bfff00] font-black leading-tight">{t("td_click_jersey_hint")}</p>
-                <button onClick={() => setPendingSticker(null)} className="mt-1.5 text-[9px] text-white/30 hover:text-white/60 underline">{t("td_cancel")}</button>
-              </div>
-            </div>
-          )}
-          {placedCount > 0 && (
-            <div className="px-2.5 pb-2 text-center">
-              <span className="text-[9px] text-white/22">{t("td_sticker_count", { count: placedCount })}</span>
-            </div>
-          )}
-        </motion.div>
-
-        {/* ══ CENTER — Jersey Photo Viewer ══ */}
-        <div className="flex-1 relative min-w-0 overflow-hidden bg-[#080808]">
+        {/* ══ CENTER — Jersey Viewer ══ */}
+        <div className="flex-1 relative min-w-0 overflow-hidden bg-[#070707]">
           <JerseyPhotoViewer
             frontImageUrl={selectedColor?.frontImageUrl ?? null}
             backImageUrl={selectedColor?.backImageUrl  ?? null}
-            name={name}
-            number={number}
-            fontId={fontId}
-            colors={colors}
-            withCustomization={withCustomization}
+            name={name} number={number} fontId={fontId}
+            colors={colors} withCustomization={withCustomization}
             view={view}
             onToggleView={() => setView(v => v === "front" ? "back" : "front")}
             teamId={team?.id}
           />
         </div>
 
-        {/* ══ CUSTOMIZATION PANEL ══ */}
+        {/* ══ DESKTOP RIGHT PANEL ══ */}
         <motion.div
-          initial={{ x: -300, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 260, damping: 28, delay: 0.05 }}
-          className="w-[280px] md:w-[300px] shrink-0 hidden md:flex flex-col bg-[#0a0a0a] border-r border-white/[0.06] z-10 overflow-hidden"
+          initial={{ x: -280, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 280, damping: 30, delay: 0.04 }}
+          className="w-[268px] shrink-0 hidden md:flex flex-col bg-[#080808] border-r border-white/[0.05] z-10"
         >
-          <div className="flex border-b border-white/[0.07]">
-            {customTabs.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)}
-                className={`flex-1 flex flex-col items-center py-3.5 gap-0.5 text-xs font-black transition-all duration-200 ${
-                  tab === t.id ? "text-[#bfff00] border-b-2 border-[#bfff00] bg-[#bfff00]/5" : "text-white/30 hover:text-white/70"
-                }`}>
-                <span className="text-base">{t.icon}</span><span>{t.label}</span>
-              </button>
-            ))}
+          {/* Print toggle — pinned top */}
+          <div className="px-4 py-3 border-b border-white/[0.05]">
+            <PrintToggle />
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5 space-y-5 scrollbar-thin scrollbar-thumb-white/10">
+          {/* Scrollable sections */}
+          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/[0.06]">
 
-            {/* Customization mode toggle */}
-            <div className="flex rounded-xl overflow-hidden border border-white/[0.08]">
-              <button onClick={() => setWithCustomization(true)}
-                className="flex-1 py-2.5 text-xs font-black transition-all"
-                style={{
-                  background: withCustomization ? "#bfff00" : "transparent",
-                  color:      withCustomization ? "#000"    : "rgba(255,255,255,0.35)",
-                }}>
-                ✏️ {t("td_with_print")}
-              </button>
-              <button onClick={() => setWithCustomization(false)}
-                className="flex-1 py-2.5 text-xs font-black transition-all"
-                style={{
-                  background: !withCustomization ? "#bfff00" : "transparent",
-                  color:      !withCustomization ? "#000"    : "rgba(255,255,255,0.35)",
-                }}>
-                👕 {t("td_without_print")}
-              </button>
+            {/* Colors */}
+            <div className="px-4 pt-4 pb-5 border-b border-white/[0.05]">
+              <SectionLabel>{t("td_jersey_color")}</SectionLabel>
+              <ColorSection />
             </div>
 
-            <AnimatePresence mode="wait">
-
-              {tab === "colors" && (
-                <motion.div key="c" initial={{ opacity:0,y:8 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0,y:-8 }} className="space-y-5">
-
-                  {/* Jersey color selector */}
-                  {jerseyColors.length > 0 && (
-                    <>
-                      <JerseyColorPicker
-                        colors={jerseyColors}
-                        selected={selectedColor}
-                        onSelect={c => { setSelectedColor(c); }}
-                        view={view}
-                        onToggleView={() => setView(v => v === "front" ? "back" : "front")}
-                      />
-                      <div className="h-px bg-white/[0.06]" />
-                    </>
-                  )}
-
-                  {/* Color info note */}
-                  <div className="rounded-xl border border-[#bfff00]/20 bg-[#bfff00]/[0.04] p-4 space-y-3">
-                    <div className="flex items-start gap-2.5">
-                      <span className="text-xl shrink-0 mt-0.5">🖨️</span>
-                      <div>
-                        <p className="text-[13px] font-black text-[#bfff00]/90 leading-snug">{t("td_color_note_title")}</p>
-                        <p className="text-[11px] text-white/40 mt-1 leading-relaxed">{t("td_color_note_body")}</p>
-                      </div>
-                    </div>
-
-                    {selectedColor ? (
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        <div className="flex items-center gap-2.5 bg-white/[0.04] rounded-lg px-3 py-2.5 border border-white/[0.07]">
-                          <div className="w-8 h-8 rounded-md border border-white/20 shadow-lg shrink-0"
-                            style={{ backgroundColor: selectedColor.hexCode }} />
-                          <div className="min-w-0">
-                            <p className="text-[9px] text-white/35 font-bold uppercase tracking-widest">{t("td_color_primary")}</p>
-                            <p className="text-xs font-black text-white/80 font-mono uppercase truncate">{selectedColor.hexCode}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2.5 bg-white/[0.04] rounded-lg px-3 py-2.5 border border-white/[0.07]">
-                          <div className="w-8 h-8 rounded-md border border-white/20 shadow-lg shrink-0"
-                            style={{ backgroundColor: selectedColor.secondaryHexCode }} />
-                          <div className="min-w-0">
-                            <p className="text-[9px] text-white/35 font-bold uppercase tracking-widest">{t("td_color_secondary")}</p>
-                            <p className="text-xs font-black text-white/80 font-mono uppercase truncate">{selectedColor.secondaryHexCode}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-[11px] text-white/30 text-center py-1">{t("td_color_no_selection")}</p>
-                    )}
-                  </div>
-                </motion.div>
+            {/* Name + Number */}
+            <div className="px-4 pt-4 pb-4 border-b border-white/[0.05]">
+              <SectionLabel>الطباعة</SectionLabel>
+              <PrintSection />
+              {!withCustomization && (
+                <p className="text-[10px] text-white/25 mt-1">اضغط "مع طباعة" لإضافة الاسم والرقم</p>
               )}
+            </div>
 
-              {tab === "name" && (
-                <motion.div key="n" initial={{ opacity:0,y:8 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0,y:-8 }} className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-white/50 uppercase tracking-widest block">
-                      {t("td_name_label")}
-                    </label>
-                    <input value={name}
-                      onChange={e => setName(e.target.value.replace(/[^A-Za-z\s.]/g, "").toUpperCase())}
-                      placeholder="AHMED" maxLength={12} dir="ltr" lang="en"
-                      className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.10] text-white placeholder:text-white/20 font-black text-lg focus:outline-none focus:border-[#bfff00]/50 transition-colors tracking-widest" />
-                    <div className="flex justify-between text-[10px] text-white/25">
-                      <span></span><span>{name.length}/12</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-white/50 uppercase tracking-widest block">{t("td_number_label")}</label>
-                    <input value={number}
-                      onChange={e => setNumber(e.target.value.replace(/[^0-9]/g,"").slice(0,2))}
-                      placeholder={t("td_number_placeholder")} maxLength={2}
-                      className="w-full px-4 py-4 bg-white/[0.04] border border-white/[0.10] text-white placeholder:text-white/20 font-black text-5xl text-center focus:outline-none focus:border-[#bfff00]/50 transition-colors" />
-                  </div>
-                </motion.div>
-              )}
+            {/* Size */}
+            <div className="px-4 pt-4 pb-5">
+              <SectionLabel>{t("td_tab_size")}</SectionLabel>
+              <SizeSection />
+            </div>
 
-              {tab === "size" && (
-                <motion.div key="s" initial={{ opacity:0,y:8 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0,y:-8 }} className="space-y-2">
-                  {/* Shoulder measurement hint */}
-                  <div className="flex items-start gap-2.5 bg-[#bfff00]/[0.04] border border-[#bfff00]/20 rounded-xl p-3 mb-4">
-                    <span className="text-lg shrink-0">📏</span>
-                    <div>
-                      <p className="text-[11px] font-black text-[#bfff00]/80 leading-snug">القياس من الكتف</p>
-                      <p className="text-[10px] text-white/35 mt-0.5 leading-relaxed">قس المسافة بين طرفي الكتفين من الأعلى. اختر المقاس المطابق لقياسك.</p>
-                    </div>
-                  </div>
-                  {team.availableSizes.map(s => (
-                    <button key={s} onClick={() => setSize(s)}
-                      className="w-full flex items-center justify-between px-4 py-3.5 border transition-all duration-200 group"
-                      style={{
-                        borderColor: size === s ? "#bfff00" : "rgba(255,255,255,0.07)",
-                        background:  size === s ? "rgba(191,255,0,0.08)" : "rgba(255,255,255,0.02)",
-                      }}>
-                      <span className={`text-2xl font-black transition-colors ${size === s ? "text-[#bfff00]" : "text-white/50 group-hover:text-white/80"}`}>{s}</span>
-                      <span className="text-xs text-white/30">{SIZE_INFO_T[s] ?? ""}</span>
-                      {size === s && <span className="text-[#bfff00] text-lg font-black">✓</span>}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
 
-          {/* CTA */}
-          <div className="p-4 border-t border-white/[0.06] shrink-0 bg-black/60">
-            {!size && <p className="text-[10px] text-center text-amber-400/70 mb-2">{t("td_select_size_hint")}</p>}
-            <button onClick={handleOrder} disabled={!size}
-              className="w-full py-4 text-lg font-black transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
-              style={{
-                background: size ? "linear-gradient(135deg,#bfff00 0%,#7ecf00 100%)" : "#1a1a1a",
-                color:      size ? "#000" : "#444",
-                boxShadow:  size ? "0 0 30px rgba(191,255,0,0.30), 0 4px 16px rgba(0,0,0,0.5)" : "none",
-              }}>
-              {size ? t("td_order_btn") : t("td_select_size_first")}
-            </button>
+          {/* CTA — pinned bottom */}
+          <div className="px-4 py-3 border-t border-white/[0.05] bg-black/70">
+            <OrderBtn large />
           </div>
         </motion.div>
       </div>
-      {/* ══ MOBILE BOTTOM BAR ══ */}
-      <div className="md:hidden border-t border-white/[0.06] bg-[#080808] shrink-0 z-20">
-        <div className="flex border-b border-white/[0.06]">
-          {[
-            { id: "stickers" as MobileTab, icon: "🎯", label: t("td_tab_stickers") },
-            { id: "colors"   as MobileTab, icon: "🎨", label: t("td_tab_colors")   },
-            { id: "name"     as MobileTab, icon: "✏️",  label: t("td_tab_name")    },
-            { id: "size"     as MobileTab, icon: "📐",  label: t("td_tab_size")    },
-          ].map(t => (
-            <button key={t.id} onClick={() => setMobileTab(t.id)}
-              className={`flex-1 flex flex-col items-center py-2.5 gap-0.5 text-[10px] font-black transition-all ${
-                mobileTab === t.id ? "text-[#bfff00] border-t-2 border-[#bfff00] bg-[#bfff00]/5" : "text-white/25"
-              }`}>
-              <span className="text-sm">{t.icon}</span><span>{t.label}</span>
+
+      {/* ══ MOBILE BOTTOM ══ */}
+      <div className="md:hidden border-t border-white/[0.05] bg-[#070707] shrink-0 z-20">
+
+        {/* Tab bar */}
+        <div className="flex border-b border-white/[0.05]">
+          {([
+            { id: "colors" as MobileTab, label: t("td_tab_colors") },
+            { id: "name"   as MobileTab, label: t("td_tab_name")   },
+            { id: "size"   as MobileTab, label: t("td_tab_size")   },
+          ]).map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setMobileTab(tab.id)}
+              className={`flex-1 py-2.5 text-[11px] font-black transition-all ${
+                mobileTab === tab.id
+                  ? "text-[#bfff00] border-t-2 border-[#bfff00] bg-[#bfff00]/[0.04]"
+                  : "text-white/25"
+              }`}
+            >
+              {tab.label}
             </button>
           ))}
         </div>
 
-        <div className="max-h-[220px] overflow-y-auto">
-          {mobileTab === "stickers" && (
-            <div className="p-3 space-y-3">
-              <div className="flex overflow-x-auto gap-1.5 pb-1 scrollbar-none">
-                {stickerCats.map(cat => (
-                  <button key={cat} onClick={() => setStickerCat(cat)}
-                    className="shrink-0 px-3 py-1.5 text-[10px] font-black rounded-full border transition-colors"
-                    style={{
-                      color:        stickerCat === cat ? "#000"            : "rgba(255,255,255,0.4)",
-                      background:   stickerCat === cat ? "#bfff00"         : "rgba(255,255,255,0.04)",
-                      borderColor:  stickerCat === cat ? "#bfff00"         : "rgba(255,255,255,0.06)",
-                    }}>
-                    {cat}
-                  </button>
-                ))}
-              </div>
-              <div className="grid grid-cols-5 gap-2">
-                {filteredStickers.map(s => (
-                  <StickerBtn key={s.id} s={s} selected={pendingSticker?.id === s.id} onClick={() => selectSticker(s)} />
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <textarea value={nahfaText} onChange={e => setNahfaText(e.target.value)}
-                  placeholder={t("td_nahfa_placeholder")} maxLength={20} rows={1} dir="auto"
-                  className="flex-1 px-3 py-1.5 bg-white/[0.04] border border-white/[0.08] text-white text-xs font-bold resize-none focus:outline-none focus:border-[#bfff00]/40" />
-                <button onClick={addNahfa} disabled={!nahfaText.trim()}
-                  className="px-3 py-1.5 text-xs font-black disabled:opacity-30"
-                  style={{ background: nahfaText.trim() ? "#bfff00" : "#1a1a1a", color: nahfaText.trim() ? "#000" : "#444" }}>
-                  {t("td_nahfa_add")}
-                </button>
-              </div>
-            </div>
-          )}
+        {/* Tab content */}
+        <div className="overflow-y-auto" style={{ maxHeight: 200 }}>
+          <AnimatePresence mode="wait">
 
-          {mobileTab === "colors" && (
-            <div className="p-3 space-y-3">
-              {jerseyColors.length > 0 && (
-                <JerseyColorPicker
-                  colors={jerseyColors} selected={selectedColor}
-                  onSelect={setSelectedColor} view={view}
-                  onToggleView={() => setView(v => v === "front" ? "back" : "front")}
-                />
-              )}
-              {/* Color note */}
-              <div className="rounded-xl border border-[#bfff00]/20 bg-[#bfff00]/[0.04] p-3 space-y-2.5">
-                <div className="flex items-start gap-2">
-                  <span className="text-base shrink-0">🖨️</span>
-                  <div>
-                    <p className="text-[11px] font-black text-[#bfff00]/90 leading-snug">{t("td_color_note_title")}</p>
-                    <p className="text-[10px] text-white/35 mt-0.5 leading-relaxed">{t("td_color_note_body")}</p>
-                  </div>
-                </div>
-                {selectedColor ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center gap-2 bg-white/[0.04] rounded-lg px-2.5 py-2 border border-white/[0.07]">
-                      <div className="w-6 h-6 rounded shrink-0 border border-white/20"
-                        style={{ backgroundColor: selectedColor.hexCode }} />
-                      <div className="min-w-0">
-                        <p className="text-[8px] text-white/30 font-bold uppercase">{t("td_color_primary")}</p>
-                        <p className="text-[10px] font-black text-white/70 font-mono uppercase truncate">{selectedColor.hexCode}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 bg-white/[0.04] rounded-lg px-2.5 py-2 border border-white/[0.07]">
-                      <div className="w-6 h-6 rounded shrink-0 border border-white/20"
-                        style={{ backgroundColor: selectedColor.secondaryHexCode }} />
-                      <div className="min-w-0">
-                        <p className="text-[8px] text-white/30 font-bold uppercase">{t("td_color_secondary")}</p>
-                        <p className="text-[10px] font-black text-white/70 font-mono uppercase truncate">{selectedColor.secondaryHexCode}</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-[10px] text-white/25 text-center">{t("td_color_no_selection")}</p>
+            {mobileTab === "colors" && (
+              <motion.div key="mc" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-3">
+                <ColorSection compact />
+              </motion.div>
+            )}
+
+            {mobileTab === "name" && (
+              <motion.div key="mn" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-3 space-y-2">
+                <PrintToggle compact />
+                <PrintSection compact />
+                {!withCustomization && (
+                  <p className="text-[9px] text-white/25 text-center">اضغط "مع طباعة" لإضافة اسمك ورقمك</p>
                 )}
-              </div>
-            </div>
-          )}
+              </motion.div>
+            )}
 
-          {mobileTab === "name" && (
-            <div className="p-3 space-y-3">
-              <input value={name}
-                onChange={e => setName(e.target.value.replace(/[^A-Za-z\s.]/g, "").toUpperCase())}
-                placeholder="AHMED" maxLength={12} dir="ltr" lang="en"
-                className="w-full px-4 py-2 bg-white/[0.04] border border-white/[0.10] text-white placeholder:text-white/20 font-black text-sm focus:outline-none focus:border-[#bfff00]/50 tracking-widest" />
-              <input value={number} onChange={e => setNumber(e.target.value.replace(/[^0-9]/g,"").slice(0,2))} placeholder="10" maxLength={2}
-                className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.10] text-white placeholder:text-white/20 font-black text-3xl text-center focus:outline-none focus:border-[#bfff00]/50" />
-            </div>
-          )}
+            {mobileTab === "size" && (
+              <motion.div key="ms" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="p-3">
+                <SizeSection compact />
+              </motion.div>
+            )}
 
-          {mobileTab === "size" && (
-            <div className="p-3 space-y-2">
-              <div className="flex items-center gap-2 bg-[#bfff00]/[0.04] border border-[#bfff00]/20 rounded-xl px-3 py-2 mb-1">
-                <span className="text-sm">📏</span>
-                <p className="text-[10px] text-white/40 leading-tight">القياس من طرف الكتف للطرف الثاني</p>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {team.availableSizes.map(s => (
-                  <button key={s} onClick={() => setSize(s)}
-                    className="py-3 text-center font-black text-sm border transition-all flex flex-col items-center gap-0.5"
-                    style={{
-                      borderColor: size === s ? "#bfff00" : "rgba(255,255,255,0.07)",
-                      background:  size === s ? "rgba(191,255,0,0.08)" : "rgba(255,255,255,0.02)",
-                      color:       size === s ? "#bfff00" : "rgba(255,255,255,0.5)",
-                    }}>
-                    <span>{s}</span>
-                    <span className="text-[8px] font-normal opacity-50">{SIZE_INFO_T[s]?.replace("كتف ", "") ?? ""}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          </AnimatePresence>
         </div>
 
         {/* Mobile CTA */}
-        <div className="p-3 border-t border-white/[0.06] space-y-2">
-          {/* Customization mode toggle — mobile */}
-          <div className="flex rounded-xl overflow-hidden border border-white/[0.08]">
-            <button onClick={() => setWithCustomization(true)}
-              className="flex-1 py-2 text-[11px] font-black transition-all"
-              style={{
-                background: withCustomization ? "#bfff00" : "transparent",
-                color:      withCustomization ? "#000"    : "rgba(255,255,255,0.35)",
-              }}>
-              ✏️ {t("td_with_print")}
-            </button>
-            <button onClick={() => setWithCustomization(false)}
-              className="flex-1 py-2 text-[11px] font-black transition-all"
-              style={{
-                background: !withCustomization ? "#bfff00" : "transparent",
-                color:      !withCustomization ? "#000"    : "rgba(255,255,255,0.35)",
-              }}>
-              👕 {t("td_without_print")}
-            </button>
-          </div>
-          <button onClick={handleOrder} disabled={!size}
-            className="w-full py-3.5 text-base font-black transition-all disabled:opacity-30"
-            style={{
-              background: size ? "linear-gradient(135deg,#bfff00 0%,#7ecf00 100%)" : "#1a1a1a",
-              color:      size ? "#000" : "#444",
-            }}>
-            {size ? t("td_order_price", { price: effectivePrice }) : t("td_select_size_first")}
-          </button>
+        <div className="px-3 py-2.5 border-t border-white/[0.05] space-y-2 bg-black/60">
+          <OrderBtn />
         </div>
       </div>
+
     </div>
   );
 }
