@@ -72,17 +72,18 @@ function JerseyColorPicker({ colors, selected, onSelect, view, onToggleView }: {
   view: "front" | "back";
   onToggleView: () => void;
 }) {
+  const { t } = useTranslation();
   if (colors.length === 0) return null;
 
   return (
     <div className="flex flex-col gap-2">
       {/* View toggle */}
       <div className="flex items-center justify-between">
-        <span className="text-xs font-black text-white/50 uppercase tracking-widest">الكلر</span>
+        <span className="text-xs font-black text-white/50 uppercase tracking-widest">{t("td_jersey_color")}</span>
         <button onClick={onToggleView}
           className="flex items-center gap-1.5 bg-white/[0.07] border border-white/[0.10] text-white/60 hover:text-[#bfff00] hover:border-[#bfff00]/40 text-[10px] font-black px-2.5 py-1.5 rounded-lg transition-all">
           <span>↔</span>
-          {view === "front" ? "رؤية الخلف" : "رؤية الأمام"}
+          {view === "front" ? t("td_view_back") : t("td_view_front")}
         </button>
       </div>
       {/* Color cards */}
@@ -126,7 +127,7 @@ function JerseyColorPicker({ colors, selected, onSelect, view, onToggleView }: {
           <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: selected.secondaryHexCode }} />
           <span className="text-[10px] text-white/40 font-bold">{selected.name}</span>
           {!selected.backImageUrl && (
-            <span className="text-[9px] text-amber-400/60">(بدون صورة خلف)</span>
+            <span className="text-[9px] text-amber-400/60">{t("td_no_back_image")}</span>
           )}
         </div>
       )}
@@ -212,7 +213,7 @@ export default function TeamDetail() {
   }, [selectedColor]);
 
   const handleOrder = async () => {
-    if (!size) { alert("الرجاء اختيار المقاس"); return; }
+    if (!size) { alert(t("td_select_size_alert")); return; }
 
     let capturedFront: string | undefined = selectedColor?.frontImageUrl ?? undefined;
     let capturedBack:  string | undefined = selectedColor?.backImageUrl  ?? undefined;
@@ -361,7 +362,7 @@ export default function TeamDetail() {
         >
           <div className="px-3 py-2.5 border-b border-white/[0.06] flex items-center gap-1.5">
             <span className="text-base">🎯</span>
-            <p className="text-[10px] font-black text-white/35 uppercase tracking-widest">ستيكرات</p>
+            <p className="text-[10px] font-black text-white/35 uppercase tracking-widest">{t("td_stickers_panel")}</p>
           </div>
           <div className="flex border-b border-white/[0.06] overflow-x-auto scrollbar-none">
             {STICKER_CATS.map(cat => (
@@ -387,27 +388,27 @@ export default function TeamDetail() {
             </div>
           </div>
           <div className="p-2.5 border-t border-white/[0.06] space-y-2">
-            <p className="text-[10px] font-black text-[#bfff00]/60 uppercase tracking-widest">بصمتك ✍️</p>
+            <p className="text-[10px] font-black text-[#bfff00]/60 uppercase tracking-widest">{t("td_your_mark")}</p>
             <textarea value={nahfaText} onChange={e => setNahfaText(e.target.value)}
-              placeholder="اكتب نصك…" maxLength={20} rows={2} dir="auto"
+              placeholder={t("td_nahfa_placeholder")} maxLength={20} rows={2} dir="auto"
               className="w-full px-2 py-1.5 bg-white/[0.04] border border-white/[0.08] text-white text-xs font-bold resize-none focus:outline-none focus:border-[#bfff00]/40 placeholder:text-white/20" />
             <button onClick={addNahfa} disabled={!nahfaText.trim()}
               className="w-full py-1.5 text-xs font-black disabled:opacity-30 transition-all"
               style={{ background: nahfaText.trim() ? "#bfff00" : "#1a1a1a", color: nahfaText.trim() ? "#000" : "#444" }}>
-              إضافة للقميص
+              {t("td_add_to_jersey")}
             </button>
           </div>
           {pendingSticker && (
             <div className="px-2.5 pb-2.5">
               <div className="bg-[#bfff00]/10 border border-[#bfff00]/25 rounded-lg p-2 text-center">
-                <p className="text-[9px] text-[#bfff00] font-black leading-tight">انقر على<br />القميص لوضعه</p>
-                <button onClick={() => setPendingSticker(null)} className="mt-1.5 text-[9px] text-white/30 hover:text-white/60 underline">إلغاء</button>
+                <p className="text-[9px] text-[#bfff00] font-black leading-tight">{t("td_click_jersey_hint")}</p>
+                <button onClick={() => setPendingSticker(null)} className="mt-1.5 text-[9px] text-white/30 hover:text-white/60 underline">{t("td_cancel")}</button>
               </div>
             </div>
           )}
           {placedCount > 0 && (
             <div className="px-2.5 pb-2 text-center">
-              <span className="text-[9px] text-white/22">{placedCount} ستيكر</span>
+              <span className="text-[9px] text-white/22">{t("td_sticker_count", { count: placedCount })}</span>
             </div>
           )}
         </motion.div>
