@@ -29,3 +29,27 @@ id = "88XffuXzRXCZMsn1DT5LH"
 uri = "file://attached_assets/basmah-source.tar.gz"
 type = "unspecified"
 title = "بصمة — كل الأكواد المصدرية"
+
+[[outputs]]
+id = "HdHOka__22zKaRPbixhU5"
+uri = "file://attached_assets/jersey_analysis/spain_back_yamal.webp"
+type = "image"
+title = "إسبانيا — ظهر الجيرسي (Yamal 19)"
+
+[[outputs]]
+id = "cNIZiMBsze2rO5-3CW6OT"
+uri = "file://attached_assets/jersey_analysis/morocco_back_hakimi.jpg"
+type = "image"
+title = "المغرب — ظهر الجيرسي (Hakimi 2)"
+
+[[outputs]]
+id = "QFHZZN5xjPWXI6yUGLTrp"
+uri = "file://attached_assets/jersey_analysis/england_back_font.webp"
+type = "image"
+title = "إنجلترا — خط الطباعة الرسمي"
+
+[[outputs]]
+id = "YVS8YT6OyhqWL8cXWMtFU"
+uri = "file://attached_assets/jersey_analysis/saudi_back_font.webp"
+type = "image"
+title = "السعودية — خط الطباعة الرسمي"

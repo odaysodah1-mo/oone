@@ -63,16 +63,32 @@ function FifaOverlay({ view, name, number, fontId, trimColor }: OverlayProps) {
   const font    = FONT_STYLES.find(f => f.id === fontId) ?? FONT_STYLES[0];
   const isItalic = (font.style as Record<string,string>).fontStyle === "italic";
 
-  /* Subtle shadow — just enough to pop off any jersey colour */
-  const shadow = (size: number) =>
-    `0 ${size * 0.02}px ${size * 0.06}px rgba(0,0,0,0.85),`
-    + `0 0 ${size * 0.10}px rgba(0,0,0,0.55)`;
+  /*
+   * Professional jersey printing uses a very thin outline (paint-order stroke)
+   * rather than a heavy drop-shadow.  We replicate with a tight multi-shadow.
+   */
+  const nameStroke = (hex: string) => {
+    const dark = "rgba(0,0,0,0.9)";
+    return [
+      `1px 1px 0 ${dark}`, `-1px -1px 0 ${dark}`,
+      `1px -1px 0 ${dark}`, `-1px 1px 0 ${dark}`,
+      `0 2px 4px rgba(0,0,0,0.45)`,
+    ].join(",");
+  };
+  const numStroke = (hex: string) => {
+    const dark = "rgba(0,0,0,0.8)";
+    return [
+      `2px 2px 0 ${dark}`, `-2px -2px 0 ${dark}`,
+      `2px -2px 0 ${dark}`, `-2px 2px 0 ${dark}`,
+      `0 4px 8px rgba(0,0,0,0.35)`,
+    ].join(",");
+  };
 
   /* ── BACK ── */
   if (view === "back") {
     return (
       <>
-        {/* Player name — FIFA min 5 cm → 6.5% of image width */}
+        {/* Player name — professional condensed style, tight tracking */}
         {name && (
           <div style={{
             position:      "absolute",
@@ -85,8 +101,8 @@ function FifaOverlay({ view, name, number, fontId, trimColor }: OverlayProps) {
             fontWeight:    900,
             fontSize:      "7cqw",
             color:         trimColor,
-            textShadow:    shadow(36),
-            letterSpacing: "0.35em",
+            textShadow:    nameStroke(trimColor),
+            letterSpacing: "0.06em",
             whiteSpace:    "nowrap",
             textTransform: "uppercase",
             lineHeight:    1,
@@ -97,21 +113,21 @@ function FifaOverlay({ view, name, number, fontId, trimColor }: OverlayProps) {
           </div>
         )}
 
-        {/* Squad number — FIFA min 20 cm → 26% of image width */}
+        {/* Squad number — bold condensed, professional proportions */}
         {number && (
           <div style={{
             position:      "absolute",
-            top:           name ? "43%" : "38%",
+            top:           name ? "34%" : "33%",
             left:          0,
             right:         0,
             textAlign:     "center",
             fontFamily:    font.family,
             fontStyle:     isItalic ? "italic" : "normal",
             fontWeight:    900,
-            fontSize:      "26cqw",
+            fontSize:      "28cqw",
             color:         trimColor,
-            textShadow:    shadow(130),
-            letterSpacing: "0",
+            textShadow:    numStroke(trimColor),
+            letterSpacing: "-0.02em",
             lineHeight:    1,
             pointerEvents: "none",
             userSelect:    "none",

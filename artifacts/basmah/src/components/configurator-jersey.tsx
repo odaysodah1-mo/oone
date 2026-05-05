@@ -279,17 +279,26 @@ export function ConfiguratorJersey({
               fontSize="34" fontWeight="900" fill={colors.trim}
               fontFamily={font.family}
               fontStyle={(font.style as Record<string,string>).fontStyle ?? "normal"}
-              letterSpacing="5"
-              style={{ filter: "drop-shadow(0 2px 12px rgba(0,0,0,0.95))" }}>
+              letterSpacing="2"
+              style={{
+                paintOrder: "stroke fill",
+                stroke: "rgba(0,0,0,0.85)", strokeWidth: "3px",
+                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))"
+              }}>
               {name.toUpperCase()}
             </text>
           )}
           {number && (
-            <text x="250" y="480" textAnchor="middle"
-              fontSize="195" fontWeight="900" fill={colors.trim}
+            <text x="250" y="490" textAnchor="middle"
+              fontSize="200" fontWeight="900" fill={colors.trim}
               fontFamily={font.family}
               fontStyle={(font.style as Record<string,string>).fontStyle ?? "normal"}
-              style={{ letterSpacing: "-8px", filter: "drop-shadow(0 8px 28px rgba(0,0,0,0.95))" }}>
+              letterSpacing="-6"
+              style={{
+                paintOrder: "stroke fill",
+                stroke: "rgba(0,0,0,0.75)", strokeWidth: "4px",
+                filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.4))"
+              }}>
               {number}
             </text>
           )}
