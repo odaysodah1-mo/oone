@@ -166,10 +166,12 @@ export default function Track() {
   const [error, setError] = useState("");
   const { t } = useTranslation();
 
+  const isValidPhone = /^07\d{8}$/.test(phone.trim());
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const p = phone.trim();
-    if (!p) return;
+    if (!p || !isValidPhone) return;
     setLoading(true); setError(""); setSearched(false);
     try {
       const res = await fetch(`/api/orders/by-phone?phone=${encodeURIComponent(p)}`);
@@ -221,17 +223,23 @@ export default function Track() {
           onSubmit={handleSearch}
           className="flex gap-2 mb-8"
         >
-          <input
-            type="tel" dir="ltr"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            placeholder="07xxxxxxxx"
-            className="flex-1 px-4 py-4 bg-white/[0.05] border border-white/[0.10] text-white text-center text-lg font-bold tracking-widest focus:outline-none focus:border-[#bfff00]/60 transition-colors placeholder:text-white/20 rounded-xl"
-          />
+          <div className="flex-1 space-y-1">
+            <input
+              type="tel" dir="ltr"
+              value={phone}
+              onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+              placeholder="07xxxxxxxx"
+              className="w-full px-4 py-4 bg-white/[0.05] text-white text-center text-lg font-bold tracking-widest focus:outline-none transition-colors placeholder:text-white/20 rounded-xl border"
+              style={{ borderColor: phone.length > 0 && !isValidPhone ? "#f87171" : "rgba(255,255,255,0.10)" }}
+            />
+            {phone.length > 0 && !isValidPhone && (
+              <p className="text-red-400 text-[11px] text-center">{t("track_phone_invalid")}</p>
+            )}
+          </div>
           <button
-            type="submit" disabled={loading || !phone.trim()}
+            type="submit" disabled={loading || !isValidPhone}
             className="px-6 py-4 font-black text-black rounded-xl transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: phone.trim() ? "#bfff00" : "#333" }}
+            style={{ background: isValidPhone ? "#bfff00" : "#333" }}
           >
             {loading ? t("track_searching") : t("track_search")}
           </button>

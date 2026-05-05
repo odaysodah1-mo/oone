@@ -116,6 +116,8 @@ const en = {
   order_delivery_title: "📍 Delivery Info",
   order_phone_label: "Mobile Number",
   order_phone_hint: "We'll contact you on this number to confirm your order",
+  order_phone_invalid: "Enter a valid Jordanian number (10 digits starting with 07)",
+  track_phone_invalid: "Enter a valid Jordanian number (10 digits starting with 07)",
   order_city_label: "City",
   order_city_placeholder: "Amman, Irbid, Zarqa, Aqaba...",
   order_submit: "🛒 Confirm Order",

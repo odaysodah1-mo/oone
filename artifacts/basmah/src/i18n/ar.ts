@@ -116,6 +116,8 @@ const ar = {
   order_delivery_title: "📍 بيانات التوصيل",
   order_phone_label: "رقم الجوال",
   order_phone_hint: "سنتواصل معك على هذا الرقم لتأكيد الطلب",
+  order_phone_invalid: "أدخل رقم أردني صحيح (10 أرقام يبدأ بـ 07)",
+  track_phone_invalid: "أدخل رقم أردني صحيح (10 أرقام يبدأ بـ 07)",
   order_city_label: "المدينة",
   order_city_placeholder: "عمان، إربد، الزرقاء، العقبة...",
   order_submit: "🛒 تأكيد الطلب",

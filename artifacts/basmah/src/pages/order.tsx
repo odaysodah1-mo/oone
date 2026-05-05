@@ -150,7 +150,11 @@ export default function Order() {
   const isAr = i18n.language === "ar";
 
   const [phone, setPhone] = useState("");
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [city, setCity] = useState("");
+
+  const isValidPhone = /^07\d{8}$/.test(phone);
+  const showPhoneError = phoneTouched && phone.length > 0 && !isValidPhone;
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "card" | "wallet">("cod");
   const [successData, setSuccessData] = useState<{ orderId: number; totalPrice: number } | null>(null);
 
@@ -194,7 +198,7 @@ export default function Order() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone || !city) return;
+    if (!isValidPhone || !city) return;
     createOrder.mutate({
       data: {
         teamId: order.teamId!,
@@ -350,11 +354,17 @@ export default function Order() {
             <label className="text-white/50 text-xs font-bold">{t("order_phone_label")}</label>
             <input
               required type="tel" dir="ltr"
-              value={phone} onChange={e => setPhone(e.target.value)}
+              value={phone}
+              onChange={e => { setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); setPhoneTouched(true); }}
+              onBlur={() => setPhoneTouched(true)}
               placeholder="07xxxxxxxx"
-              className="w-full px-4 py-3.5 bg-white/[0.04] border border-white/[0.10] text-white font-bold text-lg text-center focus:outline-none focus:border-[#bfff00]/50 transition-colors tracking-widest rounded-xl placeholder:text-white/20"
+              className="w-full px-4 py-3.5 bg-white/[0.04] text-white font-bold text-lg text-center focus:outline-none transition-colors tracking-widest rounded-xl placeholder:text-white/20 border"
+              style={{ borderColor: showPhoneError ? "#f87171" : "rgba(255,255,255,0.10)" }}
             />
-            <p className="text-white/25 text-[10px]">{t("order_phone_hint")}</p>
+            {showPhoneError
+              ? <p className="text-red-400 text-[11px]">{t("order_phone_invalid")}</p>
+              : <p className="text-white/25 text-[10px]">{t("order_phone_hint")}</p>
+            }
           </div>
 
           <div className="space-y-1.5">
@@ -369,12 +379,12 @@ export default function Order() {
 
           <button
             type="submit"
-            disabled={createOrder.isPending || !phone || !city}
+            disabled={createOrder.isPending || !isValidPhone || !city}
             className="w-full py-4 font-black text-xl rounded-xl transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
-              background: (!phone || !city) ? "#1a1a1a" : "linear-gradient(135deg,#bfff00 0%,#7ecf00 100%)",
-              color: (!phone || !city) ? "#444" : "#000",
-              boxShadow: (phone && city) ? "0 0 30px rgba(191,255,0,0.25)" : "none",
+              background: (!isValidPhone || !city) ? "#1a1a1a" : "linear-gradient(135deg,#bfff00 0%,#7ecf00 100%)",
+              color: (!isValidPhone || !city) ? "#444" : "#000",
+              boxShadow: (isValidPhone && city) ? "0 0 30px rgba(191,255,0,0.25)" : "none",
             }}
           >
             {createOrder.isPending ? (
