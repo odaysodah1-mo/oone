@@ -8,7 +8,6 @@ import { FONT_STYLES, type JerseyColors } from "@/components/configurator-jersey
 import { ShirtStickerStage, type ShirtStickerStageHandle } from "@/components/shirt-sticker-stage";
 import { VirtualTryOn3D } from "@/components/virtual-tryon";
 import {
-  STICKER_LIBRARY,
   getStickerCanvas,
   type StickerDef,
 } from "@/components/sticker-library";
@@ -29,7 +28,8 @@ const SIZE_INFO: Record<string, string> = {
   L: "178–186 سم", XL: "186–194 سم", XXL: "> 194 سم",
 };
 
-const STICKER_CATS = Array.from(new Set(STICKER_LIBRARY.map(s => s.category)));
+/* API sticker shape from /api/stickers */
+interface ApiSticker { id: number; name: string; url: string; category: string; }
 
 type CustomTab = "colors" | "name" | "size";
 type MobileTab = "stickers" | "colors" | "name" | "size";
@@ -38,8 +38,10 @@ type MobileTab = "stickers" | "colors" | "name" | "size";
 function StickerBtn({ s, selected, onClick }: {
   s: StickerDef; selected: boolean; onClick: () => void;
 }) {
+  /* Hooks must be at the top — called unconditionally */
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
+    if (s.url) return; // URL stickers use <img>, no canvas needed
     const img = getStickerCanvas(s);
     if (!img || !canvasRef.current) return;
     const c = canvasRef.current;
@@ -49,15 +51,21 @@ function StickerBtn({ s, selected, onClick }: {
     ctx.clearRect(0, 0, c.width, c.height);
     ctx.drawImage(img, 0, 0);
   }, [s]);
+
+  const btnStyle = {
+    background: selected ? "rgba(191,255,0,0.14)" : "rgba(255,255,255,0.03)",
+    border:     selected ? "1.5px solid #bfff00"  : "1.5px solid rgba(255,255,255,0.06)",
+    boxShadow:  selected ? "0 0 12px rgba(191,255,0,0.35)" : "none",
+  };
+
   return (
     <button onClick={onClick}
       className="flex flex-col items-center gap-1 p-1.5 rounded-xl transition-all duration-150 active:scale-90"
-      style={{
-        background: selected ? "rgba(191,255,0,0.14)" : "rgba(255,255,255,0.03)",
-        border:     selected ? "1.5px solid #bfff00"  : "1.5px solid rgba(255,255,255,0.06)",
-        boxShadow:  selected ? "0 0 12px rgba(191,255,0,0.35)" : "none",
-      }}>
-      <canvas ref={canvasRef} width={80} height={80} className="w-10 h-10" />
+      style={btnStyle}>
+      {s.url
+        ? <img src={s.url} alt={s.label} className="w-10 h-10 object-contain" />
+        : <canvas ref={canvasRef} width={80} height={80} className="w-10 h-10" />
+      }
       <span className="text-[9px] text-white/45 font-bold truncate max-w-[44px] text-center leading-tight">
         {s.label}
       </span>
@@ -160,8 +168,9 @@ export default function TeamDetail() {
     body: "#cc0000", sleeves: "#ffffff", collar: "#cc0000", trim: "#ffffff",
   });
 
-  /* stickers */
-  const [stickerCat, setStickerCat]         = useState(STICKER_CATS[0]);
+  /* stickers — fetched from API (admin-managed) */
+  const [apiStickers, setApiStickers]       = useState<StickerDef[]>([]);
+  const [stickerCat, setStickerCat]         = useState<string>("");
   const [pendingSticker, setPendingSticker] = useState<StickerDef | null>(null);
   const [placedCount, setPlacedCount]       = useState(0);
   const [nahfaText, setNahfaText]           = useState("");
@@ -187,6 +196,24 @@ export default function TeamDetail() {
 
   /* mobile */
   const [mobileTab, setMobileTab] = useState<MobileTab>("stickers");
+
+  /* Load active stickers from API (admin-managed) */
+  useEffect(() => {
+    fetch("/api/stickers")
+      .then(r => r.ok ? r.json() : [])
+      .then((rows: ApiSticker[]) => {
+        const defs: StickerDef[] = rows.map(r => ({
+          id: String(r.id),
+          label: r.name,
+          category: r.category,
+          url: r.url,
+        }));
+        setApiStickers(defs);
+        /* Set first category as default */
+        if (defs.length > 0) setStickerCat(defs[0].category);
+      })
+      .catch(() => {});
+  }, []);
 
   /* Load jersey colors */
   useEffect(() => {
@@ -291,7 +318,8 @@ export default function TeamDetail() {
     setNahfaText("");
   }, [nahfaText]);
 
-  const filteredStickers = STICKER_LIBRARY.filter(s => s.category === stickerCat);
+  const stickerCats = Array.from(new Set(apiStickers.map(s => s.category)));
+  const filteredStickers = apiStickers.filter(s => s.category === stickerCat);
 
   const hasPhoto  = !!selectedColor?.frontImageUrl;
   const photoFront = selectedColor?.frontImageUrl;
@@ -369,7 +397,7 @@ export default function TeamDetail() {
             <p className="text-[10px] font-black text-white/35 uppercase tracking-widest">{t("td_stickers_panel")}</p>
           </div>
           <div className="flex border-b border-white/[0.06] overflow-x-auto scrollbar-none">
-            {STICKER_CATS.map(cat => (
+            {stickerCats.map(cat => (
               <button key={cat} onClick={() => setStickerCat(cat)}
                 className="shrink-0 px-2.5 py-2 text-[10px] font-black transition-colors"
                 style={{
@@ -381,15 +409,21 @@ export default function TeamDetail() {
             ))}
           </div>
           <div className="flex-1 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-white/10">
-            <div className="grid grid-cols-2 gap-1.5">
-              <AnimatePresence mode="wait">
-                <motion.div key={stickerCat} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="contents">
-                  {filteredStickers.map(s => (
-                    <StickerBtn key={s.id} s={s} selected={pendingSticker?.id === s.id} onClick={() => selectSticker(s)} />
-                  ))}
-                </motion.div>
-              </AnimatePresence>
-            </div>
+            {apiStickers.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-[10px] text-white/20">لا توجد ملصقات مفعّلة</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-1.5">
+                <AnimatePresence mode="wait">
+                  <motion.div key={stickerCat} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="contents">
+                    {filteredStickers.map(s => (
+                      <StickerBtn key={s.id} s={s} selected={pendingSticker?.id === s.id} onClick={() => selectSticker(s)} />
+                    ))}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            )}
           </div>
           <div className="p-2.5 border-t border-white/[0.06] space-y-2">
             <p className="text-[10px] font-black text-[#bfff00]/60 uppercase tracking-widest">{t("td_your_mark")}</p>
@@ -639,7 +673,7 @@ export default function TeamDetail() {
           {mobileTab === "stickers" && (
             <div className="p-3 space-y-3">
               <div className="flex overflow-x-auto gap-1.5 pb-1 scrollbar-none">
-                {STICKER_CATS.map(cat => (
+                {stickerCats.map(cat => (
                   <button key={cat} onClick={() => setStickerCat(cat)}
                     className="shrink-0 px-3 py-1.5 text-[10px] font-black rounded-full border transition-colors"
                     style={{

@@ -24,6 +24,19 @@ interface PlacedSticker {
 function StickerImg({ s, className, style }: {
   s: StickerDef; className?: string; style?: React.CSSProperties;
 }) {
+  /* URL-based stickers (admin-managed) — render as <img> */
+  if (s.url) {
+    return (
+      <img
+        src={s.url}
+        alt={s.label}
+        className={className}
+        style={{ objectFit: "contain", ...style }}
+        draggable={false}
+      />
+    );
+  }
+  /* Emoji / text stickers — rendered on canvas */
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const src = getStickerCanvas(s);
@@ -231,12 +244,21 @@ export const ShirtStickerStage = forwardRef<ShirtStickerStageHandle, ShirtSticke
         });
         ctx.drawImage(img, 0, 0, w, h);
 
-        // Draw stickers
+        // Draw stickers (supports both canvas-rendered and URL-based)
         for (const s of sideStickers) {
-          const sc = getStickerCanvas(s.stickerDef);
-          if (!sc) continue;
           const sz = s.size;
-          ctx.drawImage(sc, (s.x / 100) * w - sz / 2, (s.y / 100) * h - sz / 2, sz, sz);
+          const dx = (s.x / 100) * w - sz / 2;
+          const dy = (s.y / 100) * h - sz / 2;
+          if (s.stickerDef.url) {
+            /* URL sticker — load as image */
+            const si = new Image();
+            si.crossOrigin = "anonymous";
+            await new Promise<void>(r => { si.onload = () => r(); si.onerror = () => r(); si.src = s.stickerDef.url!; });
+            ctx.drawImage(si, dx, dy, sz, sz);
+          } else {
+            const sc = getStickerCanvas(s.stickerDef);
+            if (sc) ctx.drawImage(sc, dx, dy, sz, sz);
+          }
         }
 
         // Draw name/number text on back view

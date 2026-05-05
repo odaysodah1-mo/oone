@@ -9,55 +9,15 @@ export interface StickerDef {
   id: string;
   label: string;
   category: string;
+  /** Remote image URL for admin-managed stickers */
+  url?: string;
+  /** Inline emoji rendered on canvas */
   emoji?: string;
+  /** Inline text rendered on canvas */
   text?: string;
   textColor?: string;
   isArabic?: boolean;
 }
-
-export const STICKER_LIBRARY: StickerDef[] = [
-  /* ── Trending / Memes ── */
-  { id: "fire",      label: "🔥",     category: "ترند",  emoji: "🔥" },
-  { id: "skull",     label: "💀",     category: "ترند",  emoji: "💀" },
-  { id: "100",       label: "💯",     category: "ترند",  emoji: "💯" },
-  { id: "lightning", label: "⚡",     category: "ترند",  emoji: "⚡" },
-  { id: "crown",     label: "👑",     category: "ترند",  emoji: "👑" },
-  { id: "muscle",    label: "💪",     category: "ترند",  emoji: "💪" },
-  { id: "rocket",    label: "🚀",     category: "ترند",  emoji: "🚀" },
-  { id: "alien",     label: "👾",     category: "ترند",  emoji: "👾" },
-  { id: "cool",      label: "😎",     category: "ترند",  emoji: "😎" },
-  { id: "moai",      label: "🗿",     category: "ترند",  emoji: "🗿" },
-  { id: "clown",     label: "🤡",     category: "ترند",  emoji: "🤡" },
-  { id: "rage",      label: "😤",     category: "ترند",  emoji: "😤" },
-  { id: "nerd",      label: "🤓",     category: "ترند",  emoji: "🤓" },
-  { id: "boom",      label: "💥",     category: "ترند",  emoji: "💥" },
-
-  /* ── Jordan / Football ── */
-  { id: "jo_flag",   label: "🇯🇴",    category: "أردن",  emoji: "🇯🇴" },
-  { id: "ball",      label: "⚽",     category: "أردن",  emoji: "⚽" },
-  { id: "trophy",    label: "🏆",     category: "أردن",  emoji: "🏆" },
-  { id: "star",      label: "⭐",     category: "أردن",  emoji: "⭐" },
-  { id: "medal",     label: "🥇",     category: "أردن",  emoji: "🥇" },
-  { id: "diamond",   label: "💎",     category: "أردن",  emoji: "💎" },
-  { id: "eagle",     label: "🦅",     category: "أردن",  emoji: "🦅" },
-  { id: "heart",     label: "❤️",     category: "أردن",  emoji: "❤️" },
-
-  /* ── English text ── */
-  { id: "goat",    label: "GOAT",   category: "نص", text: "GOAT",   textColor: "#ffd700" },
-  { id: "mvp",     label: "MVP",    category: "نص", text: "MVP",    textColor: "#ffffff" },
-  { id: "legend",  label: "LEGEND", category: "نص", text: "LEGEND", textColor: "#ff4444" },
-  { id: "king_en", label: "KING",   category: "نص", text: "KING",   textColor: "#ffd700" },
-  { id: "beast",   label: "BEAST",  category: "نص", text: "BEAST",  textColor: "#00ff88" },
-  { id: "grind",   label: "GRIND",  category: "نص", text: "GRIND",  textColor: "#ff9900" },
-
-  /* ── Arabic text ── */
-  { id: "ar_king",   label: "ملك",    category: "عربي", text: "ملك",    textColor: "#ffd700", isArabic: true },
-  { id: "ar_legend", label: "أسطورة", category: "عربي", text: "أسطورة", textColor: "#ff4444", isArabic: true },
-  { id: "ar_goat",   label: "الأفضل", category: "عربي", text: "الأفضل", textColor: "#00ff88", isArabic: true },
-  { id: "ar_champ",  label: "بطل",    category: "عربي", text: "بطل",    textColor: "#00b4d8", isArabic: true },
-  { id: "ar_boss",   label: "رئيس",   category: "عربي", text: "رئيس",   textColor: "#ff9900", isArabic: true },
-  { id: "ar_nash",   label: "نشمي",   category: "عربي", text: "نشمي",   textColor: "#bfff00", isArabic: true },
-];
 
 /* ═══════════════════════════════════════════════════════
    TEXTURE GENERATORS (Canvas API only)
