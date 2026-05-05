@@ -848,9 +848,12 @@ function ImageUploadSlot({
   const [bgStep, setBgStep]         = useState<"idle" | "analyzing" | "uploading">("idle");
   const [precut, setPrecut]         = useState(false);
 
+  const adminKey = sessionStorage.getItem(STORAGE_KEY) ?? "";
+
   const { uploadFile, isUploading, progress } = useUpload({
     onSuccess: r => onChange(`/api/storage${r.objectPath}`),
     onError: () => toast.error("فشل رفع الصورة"),
+    extraHeaders: adminKey ? { "x-admin-key": adminKey } : {},
   });
 
   const busy = removingBg || isUploading;
@@ -866,7 +869,11 @@ function ImageUploadSlot({
       setBgStep("analyzing");
       const form = new FormData();
       form.append("image", file);
-      const resp = await fetch("/api/admin/remove-background", { method: "POST", body: form });
+      const resp = await fetch("/api/admin/remove-background", {
+        method: "POST",
+        headers: adminKey ? { "x-admin-key": adminKey } : {},
+        body: form,
+      });
       if (!resp.ok) throw new Error(`server ${resp.status}`);
       const resultBlob = await resp.blob();
       const processed = new File(

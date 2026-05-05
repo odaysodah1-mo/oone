@@ -16,6 +16,8 @@ interface UploadResponse {
 interface UseUploadOptions {
   /** Base path where object storage routes are mounted (default: "/api/storage") */
   basePath?: string;
+  /** Extra headers to include in the presigned-URL request (e.g. auth headers) */
+  extraHeaders?: Record<string, string>;
   onSuccess?: (response: UploadResponse) => void;
   onError?: (error: Error) => void;
 }
@@ -55,6 +57,7 @@ interface UseUploadOptions {
  */
 export function useUpload(options: UseUploadOptions = {}) {
   const basePath = options.basePath ?? "/api/storage";
+  const extraHeaders = options.extraHeaders ?? {};
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [progress, setProgress] = useState(0);
@@ -65,6 +68,7 @@ export function useUpload(options: UseUploadOptions = {}) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...extraHeaders,
         },
         body: JSON.stringify({
           name: file.name,
@@ -140,6 +144,7 @@ export function useUpload(options: UseUploadOptions = {}) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...extraHeaders,
         },
         body: JSON.stringify({
           name: file.name,
