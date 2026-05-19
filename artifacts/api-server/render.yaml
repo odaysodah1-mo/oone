@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: oone-api
+    env: node
+    region: frankfurt
+    buildCommand: cd ../.. && pnpm install --frozen-lockfile && cd artifacts/api-server && node ./build.mjs
+    startCommand: node --enable-source-maps ./dist/index.mjs
+    healthCheckPath: /api/health
+    plan: free
+    numInstances: 1
+    envVars:
+      - key: SUPABASE_URL
+        value: https://garubydkynlycfwkllvn.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcnVieWRreW5seWNmd2tsbHZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODE2MjEzMCwiZXhwIjoyMDkzNzM4MTMwfQ.C2B8aXk_z6SVKkpDUcax0UxEwEA1S4QktmtEowQaYtc
+      - key: ADMIN_SECRET
+        value: oDay@0788712344
+      - key: PORT
+        value: "10000"
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGINS
+        value: https://oone-rho.vercel.app,https://oone-admin.vercel.app
+      - key: BASE_URL
+        value: https://oone-rho.vercel.app
+      - key: WHATSAPP_TOKEN
+        value: EAAJnSZCZBgqkBO2Lr8pLFnrjZB0tam1zJhju2smj3mX7KcVZBVhqEZCNJOmRUGygYzcJwVOGq7DRzI3AjLwhFZBpqzXJ0qGqaEXB6A1ZABo8BKWICEdZBZBQWrGNrRdTvV6PBdTdKmIJCEz5DDhmfDTHvl8VFBtM51KXWvCcXys7IhBwrjX2VIB0wAXZB6YfCi
