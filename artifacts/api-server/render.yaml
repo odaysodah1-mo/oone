@@ -5,7 +5,7 @@ services:
     region: frankfurt
     buildCommand: cd ../.. && pnpm install --frozen-lockfile && cd artifacts/api-server && node ./build.mjs
     startCommand: node --enable-source-maps ./dist/index.mjs
-    healthCheckPath: /api/health
+    healthCheckPath: /api/healthz
     plan: free
     numInstances: 1
     envVars:
@@ -20,8 +20,8 @@ services:
       - key: NODE_ENV
         value: production
       - key: CORS_ORIGINS
-        value: https://oone-rho.vercel.app,https://oone-admin.vercel.app
+        value: https://oone-oone-s-projects.vercel.app,https://oone-admin.vercel.app,https://oone-swart.vercel.app
       - key: BASE_URL
-        value: https://oone-rho.vercel.app
+        value: https://oone-oone-s-projects.vercel.app
       - key: WHATSAPP_TOKEN
         value: EAAJnSZCZBgqkBO2Lr8pLFnrjZB0tam1zJhju2smj3mX7KcVZBVhqEZCNJOmRUGygYzcJwVOGq7DRzI3AjLwhFZBpqzXJ0qGqaEXB6A1ZABo8BKWICEdZBZBQWrGNrRdTvV6PBdTdKmIJCEz5DDhmfDTHvl8VFBtM51KXWvCcXys7IhBwrjX2VIB0wAXZB6YfCi
