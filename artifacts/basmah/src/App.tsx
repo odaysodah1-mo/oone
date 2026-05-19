@@ -13,6 +13,8 @@ import Orders from "@/pages/orders";
 import Stats from "@/pages/stats";
 import Admin from "@/pages/admin";
 import Track from "@/pages/track";
+import Marketplace from "@/pages/marketplace";
+import DesignDetail from "@/pages/design-detail";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -34,6 +36,8 @@ function Router() {
       <Route path="/orders" component={Orders} />
       <Route path="/stats" component={Stats} />
       <Route path="/track" component={Track} />
+      <Route path="/marketplace" component={Marketplace} />
+      <Route path="/marketplace/designs/:id" component={DesignDetail} />
       <Route component={NotFound} />
     </Switch>
   );

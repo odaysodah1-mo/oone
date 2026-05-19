@@ -123,6 +123,7 @@ interface Props {
   colors:              JerseyColors;
   withCustomization:   boolean;
   teamId?:             number;
+  customImageUrl?:     string;
 }
 
 /* ─── Raised heat-transfer print overlay ─────────────────────────── */
@@ -211,7 +212,7 @@ function FifaOverlay({ isBack, name, number, fontId, trimColor, teamId }: {
 /* ─── Main component ─────────────────────────────────────────────── */
 export function JerseyPhotoViewer({
   images, activeImageIndex, onImageIndexChange,
-  name, number, fontId, colors, withCustomization, teamId,
+  name, number, fontId, colors, withCustomization, teamId, customImageUrl,
 }: Props) {
   useJerseyCSS();
 
@@ -380,6 +381,7 @@ export function JerseyPhotoViewer({
                   name={displayName || "BASMAH"}
                   number={displayNum || "10"}
                   view="front" fontId={fontId}
+                  customImageUrl={customImageUrl}
                 />
               </div>
             )}

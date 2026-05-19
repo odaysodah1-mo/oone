@@ -7,3 +7,4 @@ export * from "./stickers";
 export * from "./branches";
 export * from "./visitors";
 export * from "./settings";
+export * from "./marketplace";

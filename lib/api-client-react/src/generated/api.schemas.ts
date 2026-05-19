@@ -94,6 +94,9 @@ export interface Order {
   customerCity: string;
   status: OrderStatus;
   createdAt: string;
+  confirmToken?: string;
+  confirmUrl?: string;
+  waUrl?: string;
 }
 
 export interface OrderStats {

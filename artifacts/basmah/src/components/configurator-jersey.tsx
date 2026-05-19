@@ -23,10 +23,10 @@ function darken(hex: string, amt = 40): string {
 const lighten = (hex: string, amt = 25) => darken(hex, -amt);
 
 export function ConfiguratorJersey({
-  colors, name, number, view = "front", fontId = "block",
+  colors, name, number, view = "front", fontId = "block", customImageUrl,
 }: {
   colors: JerseyColors; name: string; number: string;
-  view?: "front" | "back"; fontId?: string;
+  view?: "front" | "back"; fontId?: string; customImageUrl?: string;
 }) {
   const font = FONT_STYLES.find(f => f.id === fontId) ?? FONT_STYLES[0];
   const uid  = [colors.body, colors.sleeves, view].join("").replace(/[^a-z0-9]/gi, "").slice(0, 16);
@@ -268,6 +268,33 @@ export function ConfiguratorJersey({
         <path d="M 112,538 C 144,550 356,550 388,538"
           fill="none" stroke={colors.trim} strokeWidth="1.2" strokeOpacity="0.22" strokeDasharray="4,3" />
       </g>
+
+      {/* ═══════════════════════════════════════════════════════
+          CUSTOM IMAGE — front chest area
+      ═══════════════════════════════════════════════════════ */}
+      {view === "front" && customImageUrl && (
+        <>
+          <defs>
+            <clipPath id={`ci-clip-${uid}`}>
+              <rect x="148" y="160" width="204" height="220" rx="8" />
+            </clipPath>
+          </defs>
+          {/* Print area background */}
+          <rect x="148" y="160" width="204" height="220" rx="8"
+            fill="#fff" opacity="0.08" stroke={colors.trim} strokeWidth="1" strokeOpacity="0.15" />
+          <image
+            href={customImageUrl}
+            x="148" y="160" width="204" height="220"
+            preserveAspectRatio="xMidYMid slice"
+            clipPath={`url(#ci-clip-${uid})`}
+            opacity="0.92"
+          />
+          {/* Emboss shadow */}
+          <rect x="148" y="160" width="204" height="220" rx="8"
+            fill="none" stroke="rgba(0,0,0,0.25)" strokeWidth="2"
+            style={{ transform: "translate(1px, 2px)" }} />
+        </>
+      )}
 
       {/* ═══════════════════════════════════════════════════════
           NAME & NUMBER — back only (FIFA standard)

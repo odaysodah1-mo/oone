@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useDeferredValue } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGetTeam } from "@workspace/api-client-react";
@@ -104,6 +104,8 @@ export default function TeamDetail() {
     body: "#cc0000", sleeves: "#ffffff", collar: "#cc0000", trim: "#ffffff",
   });
   const [withCustomization, setWithCustomization] = useState(true);
+  const deferredName = useDeferredValue(name);
+  const deferredNumber = useDeferredValue(number);
   const [mobileTab, setMobileTab] = useState<MobileTab>("colors");
   const [phrase, setPhrase]           = useState("");
   const [phraseEnabled, setPhraseEnabled] = useState(false);
@@ -278,45 +280,70 @@ export default function TeamDetail() {
     </div>
   );
 
-  /* Name + Number inputs */
-  const PrintSection = ({ compact = false }: { compact?: boolean }) => (
-    <AnimatePresence>
-      {withCustomization && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          transition={{ duration: 0.2 }}
-          className="overflow-hidden"
-        >
-          <div className={`space-y-3 ${compact ? "" : "pt-1"}`}>
-            <div>
-              <input
-                value={name}
-                onChange={e => setName(e.target.value.replace(/[^A-Za-z\s.]/g, "").toUpperCase())}
-                placeholder={t("td_name_label")}
-                maxLength={12} dir="ltr" lang="en"
-                className={`w-full bg-white/[0.04] border border-white/[0.09] text-white placeholder:text-white/20
-                            font-black tracking-[3px] focus:outline-none focus:border-[#bfff00]/40 transition-colors
-                            ${compact ? "px-3 py-2 text-sm" : "px-4 py-3 text-base"}`}
-              />
-              <div className="flex justify-end mt-1">
-                <span className="text-[9px] text-white/20 font-bold">{name.length}/12</span>
+
+  /* Name + Number inputs — local state for smooth typing, sync on blur */
+  const PrintSection = ({ compact = false }: { compact?: boolean }) => {
+    const [localName, setLocalName] = useState(name);
+    const [localNum, setLocalNum] = useState(number);
+    useEffect(() => { setLocalName(name); }, [name]);
+    useEffect(() => { setLocalNum(number); }, [number]);
+    const syncName = () => setName(localName);
+    const syncNum = () => setNumber(localNum);
+    return (
+      <AnimatePresence>
+        {withCustomization && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className={`relative ${compact ? "" : "pt-2"} space-y-2`}>
+              <div
+                className="flex rounded-xl overflow-hidden border transition-all duration-200"
+                style={{
+                  borderColor: name || number ? "rgba(191,255,0,0.3)" : "rgba(255,255,255,0.09)",
+                  background: "rgba(255,255,255,0.03)",
+                }}
+              >
+                <div className="flex-1 relative">
+                  <input
+                    value={localName}
+                    onChange={e => setLocalName(e.target.value.slice(0, 12))}
+                    onBlur={syncName}
+                    placeholder={t("td_name_label")}
+                    maxLength={12} dir="auto"
+                    className="w-full bg-transparent text-white placeholder:text-white/20 font-black tracking-[3px] focus:outline-none px-3 py-2.5 text-sm"
+                  />
+                  <div className="absolute left-2 top-1/2 -translate-y-1/2">
+                    <span className="text-[9px] font-bold" style={{ color: name ? "#bfff00" : "rgba(255,255,255,0.12)" }}>
+                      {name.length}/12
+                    </span>
+                  </div>
+                </div>
+                <div className="w-px self-stretch my-2" style={{ background: "rgba(255,255,255,0.08)" }} />
+                <div className="w-16 shrink-0">
+                  <input
+                    value={localNum}
+                    onChange={e => setLocalNum(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
+                    onBlur={syncNum}
+                    placeholder="10" maxLength={2} type="tel"
+                    className="w-full bg-transparent text-white placeholder:text-white/15 font-black text-center focus:outline-none py-2.5 text-2xl"
+                  />
+                </div>
               </div>
+              {!localName && !localNum && (
+                <p className="text-[9px] text-white/15 mt-1 text-center">
+                  مثال: <span className="text-white/25">MESSI</span> · <span className="text-white/25">10</span>
+                </p>
+              )}
             </div>
-            <input
-              value={number}
-              onChange={e => setNumber(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
-              placeholder="10" maxLength={2} type="tel"
-              className={`w-full bg-white/[0.04] border border-white/[0.09] text-white placeholder:text-white/15
-                          font-black text-center focus:outline-none focus:border-[#bfff00]/40 transition-colors
-                          ${compact ? "py-3 text-3xl" : "py-4 text-5xl"}`}
-            />
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  };
 
   /* Custom phrase section */
   const PhraseSection = ({ compact = false }: { compact?: boolean }) => (
@@ -465,9 +492,10 @@ export default function TeamDetail() {
             images={selectedColor?.images ?? (selectedColor ? [selectedColor.frontImageUrl] : [])}
             activeImageIndex={activeImageIndex}
             onImageIndexChange={setActiveImageIndex}
-            name={name} number={number} fontId={fontId}
+            name={deferredName} number={deferredNumber} fontId={fontId}
             colors={colors} withCustomization={withCustomization}
             teamId={team?.id}
+
           />
         </div>
 

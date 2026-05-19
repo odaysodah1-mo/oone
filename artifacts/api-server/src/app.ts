@@ -31,7 +31,9 @@ app.use(
     },
   }),
 );
-app.use(cors());
+const ALLOWED_ORIGINS: string[] = (process.env.CORS_ORIGINS || "http://localhost:5173,http://localhost:5174,http://localhost:3000")
+  .split(",").map(s => s.trim()).filter(Boolean);
+app.use(cors({ origin: ALLOWED_ORIGINS, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -74,6 +76,15 @@ const branchDistDir = path.resolve(
 app.use("/basmah-branch", express.static(branchDistDir));
 app.get("/basmah-branch/*splat", (_req, res) => {
   res.sendFile(path.join(branchDistDir, "index.html"));
+});
+
+const adminDistDir = path.resolve(
+  __dirname,
+  "../../../artifacts/basmah-admin/dist/public",
+);
+app.use("/basmah-admin", express.static(adminDistDir));
+app.get("/basmah-admin/*splat", (_req, res) => {
+  res.sendFile(path.join(adminDistDir, "index.html"));
 });
 
 export default app;

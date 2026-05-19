@@ -1,20 +1,27 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
-import { ordersTable, teamsTable, jerseyColorsTable, settingsTable } from "@workspace/db";
-import { eq, desc, count, sum } from "drizzle-orm";
+import { createHmac } from "crypto";
 import { CreateOrderBody } from "@workspace/api-zod";
 import { adminAuth } from "../middleware/adminAuth";
+import { sendOrderWhatsApp, makeWaUrl } from "../lib/whatsapp";
+import { supabase, toCamelCaseArr, toCamelCaseSingle } from "../lib/supabase-db";
 
 const router = Router();
+const SECRET = process.env.SESSION_SECRET ?? "";
+const BASE_URL = process.env.BASE_URL ?? "http://localhost:5173";
 
-/* GET /orders — full list with customer data, admin-only */
+function generateConfirmToken(orderId: number): string {
+  const data = `${orderId}:${SECRET}`;
+  return createHmac("sha256", SECRET).update(data).digest("hex").slice(0, 16);
+}
+
 router.get("/orders", adminAuth, async (req, res) => {
   try {
-    const orders = await db
-      .select()
-      .from(ordersTable)
-      .orderBy(desc(ordersTable.createdAt));
-    res.json(orders);
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json(toCamelCaseArr(data || []));
   } catch (err) {
     req.log.error({ err }, "Failed to list orders");
     res.status(500).json({ error: "Internal server error" });
@@ -29,54 +36,53 @@ router.post("/orders", async (req, res) => {
   }
   const data = parsed.data;
 
-  /* Server-side phone validation (Jordanian format) */
   if (!/^07\d{8}$/.test(data.customerPhone)) {
     res.status(400).json({ error: "رقم الهاتف غير صالح" });
     return;
   }
 
   try {
-    const [team] = await db
-      .select()
-      .from(teamsTable)
-      .where(eq(teamsTable.id, data.teamId));
-    if (!team) {
+    const { data: team, error: teamErr } = await supabase
+      .from("teams")
+      .select("*")
+      .eq("id", data.teamId)
+      .single();
+    if (teamErr || !team) {
       res.status(404).json({ error: "Team not found" });
       return;
     }
+    const teamSnake = team;
 
-    /* ── Price calculation using jersey color pricing when available ── */
-    let unitPrice = team.basePrice;
+    let unitPrice = teamSnake.base_price;
     const jerseyColorId =
       typeof (req.body as Record<string, unknown>).jerseyColorId === "number"
         ? (req.body as Record<string, unknown>).jerseyColorId as number
         : null;
 
     if (jerseyColorId) {
-      const [color] = await db
-        .select()
-        .from(jerseyColorsTable)
-        .where(eq(jerseyColorsTable.id, jerseyColorId));
+      const { data: color } = await supabase
+        .from("jersey_colors")
+        .select("*")
+        .eq("id", jerseyColorId)
+        .single();
       if (color) {
         const hasCustomization = !!(data.playerName && data.playerName.trim());
         const colorPrice = hasCustomization
-          ? color.priceWithCustomization
-          : color.priceWithoutCustomization;
+          ? color.price_with_customization
+          : color.price_without_customization;
         if (colorPrice !== null && colorPrice !== undefined) {
           unitPrice = colorPrice;
         }
       }
     }
 
-    /* Apply team-level discount */
-    const discount = team.discountPercent ?? 0;
+    const discount = teamSnake.discount_percent ?? 0;
     const discountedUnitPrice = discount > 0
       ? Math.round(unitPrice * (1 - discount / 100))
       : unitPrice;
     let totalPrice = discountedUnitPrice * data.quantity;
-
-    /* ── Optional extras: custom phrase + notes ── */
     const rawBody = req.body as Record<string, unknown>;
+
     const customPhrase = typeof rawBody.customPhrase === "string"
       ? rawBody.customPhrase.trim().slice(0, 60) || null
       : null;
@@ -86,118 +92,162 @@ router.post("/orders", async (req, res) => {
 
     let phrasePrintPrice = 0;
     if (customPhrase) {
-      const [setting] = await db
-        .select()
-        .from(settingsTable)
-        .where(eq(settingsTable.key, "phrase_print_price"));
+      const { data: setting } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "phrase_print_price")
+        .single();
       phrasePrintPrice = parseInt(setting?.value ?? "0", 10) || 0;
       totalPrice += phrasePrintPrice;
     }
 
-    const [order] = await db
-      .insert(ordersTable)
-      .values({
-        teamId: data.teamId,
-        teamName: team.name,
-        customerName: data.customerName,
-        jerseyNumber: data.jerseyNumber,
+    const { data: order, error: orderErr } = await supabase
+      .from("orders")
+      .insert({
+        team_id: data.teamId,
+        team_name: teamSnake.name,
+        customer_name: data.customerName,
+        jersey_number: data.jerseyNumber,
         size: data.size,
         color: data.color,
         quantity: data.quantity,
-        totalPrice,
-        customerPhone: data.customerPhone,
-        customerCity: data.customerCity,
+        total_price: totalPrice,
+        customer_phone: data.customerPhone,
+        customer_city: data.customerCity,
         status: "pending",
-        governorate: (data as Record<string, unknown>).governorate as string ?? null,
-        playerName: data.playerName ?? null,
-        frontImageUrl: data.frontImageUrl ?? null,
-        backImageUrl: data.backImageUrl ?? null,
-        jerseyColorName: data.jerseyColorName ?? null,
-        customPhrase,
-        phrasePrintPrice: phrasePrintPrice || null,
+        governorate: typeof rawBody.governorate === "string" ? rawBody.governorate : "عمان",
+        player_name: data.playerName ?? null,
+        front_image_url: data.frontImageUrl ?? null,
+        back_image_url: data.backImageUrl ?? null,
+        jersey_color_name: data.jerseyColorName ?? null,
+        custom_phrase: customPhrase,
+        phrase_print_price: phrasePrintPrice || null,
         notes,
         address: typeof rawBody.address === "string" ? rawBody.address.trim().slice(0, 300) || null : null,
       })
-      .returning();
+      .select()
+      .single();
+    if (orderErr) throw orderErr;
 
-    await db
-      .update(teamsTable)
-      .set({ orderCount: team.orderCount + data.quantity })
-      .where(eq(teamsTable.id, data.teamId));
+    await supabase
+      .from("teams")
+      .update({ order_count: teamSnake.order_count + data.quantity })
+      .eq("id", data.teamId);
 
-    res.status(201).json(order);
+    const camelOrder = toCamelCaseSingle(order);
+    const confirmToken = generateConfirmToken(camelOrder.id);
+    const waUrl = makeWaUrl(camelOrder.customerPhone, camelOrder.id, teamSnake.name, confirmToken);
+
+    sendOrderWhatsApp(camelOrder.customerPhone, camelOrder.id, teamSnake.name, confirmToken);
+
+    res.status(201).json({ ...camelOrder, confirmToken, confirmUrl: waUrl.split("?text=")[0], waUrl });
   } catch (err) {
     req.log.error({ err }, "Failed to create order");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-/* Track orders by phone number — public */
 router.get("/orders/by-phone", async (req, res) => {
   const phone = typeof req.query.phone === "string" ? req.query.phone.trim() : null;
   if (!phone) { res.status(400).json({ error: "phone required" }); return; }
   if (!/^07\d{8}$/.test(phone)) { res.status(400).json({ error: "رقم الهاتف غير صالح" }); return; }
   try {
-    const orders = await db
-      .select({
-        id: ordersTable.id,
-        teamName: ordersTable.teamName,
-        jerseyNumber: ordersTable.jerseyNumber,
-        size: ordersTable.size,
-        color: ordersTable.color,
-        quantity: ordersTable.quantity,
-        totalPrice: ordersTable.totalPrice,
-        status: ordersTable.status,
-        createdAt: ordersTable.createdAt,
-        jerseyColorName: ordersTable.jerseyColorName,
-        playerName: ordersTable.playerName,
-      })
-      .from(ordersTable)
-      .where(eq(ordersTable.customerPhone, phone))
-      .orderBy(desc(ordersTable.createdAt));
-    res.json(orders);
+    const { data, error } = await supabase
+      .from("orders")
+      .select("id, team_name, jersey_number, size, color, quantity, total_price, status, created_at, jersey_color_name, player_name")
+      .eq("customer_phone", phone)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json(toCamelCaseArr(data || []));
   } catch (err) {
     req.log.error({ err }, "Failed to track orders by phone");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-/* Public aggregate stats */
 router.get("/orders/stats", async (req, res) => {
   try {
-    const [{ total }] = await db.select({ total: count() }).from(ordersTable);
-    const [{ revenue }] = await db.select({ revenue: sum(ordersTable.totalPrice) }).from(ordersTable);
+    const { count: total, error: tErr } = await supabase
+      .from("orders")
+      .select("*", { count: "exact", head: true });
+    if (tErr) throw tErr;
 
-    const topTeamRows = await db
-      .select({ teamName: ordersTable.teamName, cnt: count() })
-      .from(ordersTable)
-      .groupBy(ordersTable.teamName)
-      .orderBy(desc(count()))
-      .limit(1);
+    const { data: revData, error: rErr } = await supabase
+      .from("orders")
+      .select("total_price");
+    if (rErr) throw rErr;
 
-    const popularSizeRows = await db
-      .select({ size: ordersTable.size, cnt: count() })
-      .from(ordersTable)
-      .groupBy(ordersTable.size)
-      .orderBy(desc(count()))
-      .limit(1);
+    const totalRevenue = (revData || []).reduce((s: number, r: any) => s + (r.total_price || 0), 0);
 
-    const popularColorRows = await db
-      .select({ color: ordersTable.color, cnt: count() })
-      .from(ordersTable)
-      .groupBy(ordersTable.color)
-      .orderBy(desc(count()))
-      .limit(1);
+    const { data: allOrders, error: aErr } = await supabase
+      .from("orders")
+      .select("team_name, size, color, quantity");
+    if (aErr) throw aErr;
+
+    const teamCounts: Record<string, number> = {};
+    const sizeCounts: Record<string, number> = {};
+    const colorCounts: Record<string, number> = {};
+    for (const o of allOrders || []) {
+      teamCounts[o.team_name] = (teamCounts[o.team_name] || 0) + (o.quantity || 1);
+      sizeCounts[o.size] = (sizeCounts[o.size] || 0) + 1;
+      colorCounts[o.color] = (colorCounts[o.color] || 0) + 1;
+    }
+    const topTeam = Object.entries(teamCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "ريال مدريد";
+    const popularSize = Object.entries(sizeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "L";
+    const popularColor = Object.entries(colorCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "#FFFFFF";
 
     res.json({
       totalOrders: Number(total) || 0,
-      totalRevenue: Number(revenue) || 0,
-      topTeam: topTeamRows[0]?.teamName || "ريال مدريد",
-      popularSize: popularSizeRows[0]?.size || "L",
-      popularColor: popularColorRows[0]?.color || "#FFFFFF",
+      totalRevenue,
+      topTeam,
+      popularSize,
+      popularColor,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to get stats");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/orders/confirm", async (req, res) => {
+  const token = typeof req.query.token === "string" ? req.query.token : "";
+  const id = parseInt(req.query.id as string, 10);
+
+  if (!token || isNaN(id)) {
+    res.status(400).json({ error: "Invalid confirmation link" });
+    return;
+  }
+
+  const expectedToken = generateConfirmToken(id);
+  if (token !== expectedToken) {
+    res.status(400).json({ error: "Invalid confirmation link" });
+    return;
+  }
+
+  try {
+    const { data: order, error } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("id", id)
+      .single();
+    if (error || !order) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+
+    if (["confirmed", "shipped", "delivered"].includes(order.status)) {
+      res.redirect(`${BASE_URL}/track?phone=${order.customer_phone}&confirmed=already`);
+      return;
+    }
+
+    await supabase
+      .from("orders")
+      .update({ status: "confirmed" })
+      .eq("id", id);
+
+    res.redirect(`${BASE_URL}/track?phone=${order.customer_phone}&confirmed=ok`);
+  } catch (err) {
+    req.log.error({ err }, "Failed to confirm order");
     res.status(500).json({ error: "Internal server error" });
   }
 });

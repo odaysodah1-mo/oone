@@ -7,10 +7,10 @@ import { useOrder } from "@/components/order-context";
 import { useTranslation } from "react-i18next";
 
 /* ── Success screen ──────────────────────────────── */
-function SuccessScreen({ orderId, phone, teamName, playerName, jerseyNumber, totalPrice, frontImageUrl, onTrack }: {
+function SuccessScreen({ orderId, phone, teamName, playerName, jerseyNumber, totalPrice, frontImageUrl, waUrl, onTrack }: {
   orderId: number; phone: string; teamName: string;
   playerName?: string; jerseyNumber?: string; totalPrice: number;
-  frontImageUrl?: string; onTrack: () => void;
+  frontImageUrl?: string; waUrl?: string; onTrack: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === "ar";
@@ -121,6 +121,19 @@ function SuccessScreen({ orderId, phone, teamName, playerName, jerseyNumber, tot
             {t("success_whatsapp")}
           </a>
 
+          {waUrl && (
+            <a href={waUrl} target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-black text-sm transition-all active:scale-95"
+              style={{ background: "#25d366", color: "#000" }}
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.121 1.532 5.849L0 24l6.335-1.61A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.891 0-3.662-.504-5.197-1.382l-.373-.22-3.763.957.99-3.671-.242-.388A9.947 9.947 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+              </svg>
+              تأكيد الطلب عبر واتساب
+            </a>
+          )}
+
           <button
             onClick={() => { navigator.clipboard.writeText(igText); }}
             className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-black text-sm transition-all active:scale-95 bg-gradient-to-r from-[#f09433] via-[#e6683c] to-[#dc2743] text-white"
@@ -161,10 +174,25 @@ export default function Order() {
     "جرش", "عجلون", "المفرق", "الطفيلة", "معان", "العقبة",
   ] as const;
 
+  const CITY_SUGGESTIONS: Record<string, string[]> = {
+    "عمان": ["جبل عمان", "خلدا", "عبدون", "دابوق", "الشميساني", "طبربور"],
+    "إربد": ["وسط إربد", "الحصن", "الرمثا", "بني كنانة", "الكورة", "الصريح"],
+    "الزرقاء": ["وسط الزرقاء", "الرصيفة", "الهاشمية", "الأزرق", "الظليل"],
+    "البلقاء": ["السلط", "الشونة الجنوبية", "دير علا", "ماحص", "الفحيص"],
+    "الكرك": ["وسط الكرك", "المزار الجنوبي", "القصر", "الأغوار الجنوبية"],
+    "مادبا": ["وسط مادبا", "ذيبان", "ماعين", "فلسطين"],
+    "جرش": ["وسط جرش", "سوف", "بليلا"],
+    "عجلون": ["وسط عجلون", "كفرنجة", "صخرة"],
+    "المفرق": ["وسط المفرق", "البادية الشمالية", "الرويشد"],
+    "الطفيلة": ["وسط الطفيلة", "بصيرا", "الحسا"],
+    "معان": ["وسط معان", "الشوبك", "وادي موسى"],
+    "العقبة": ["وسط العقبة", "وادي رم"],
+  };
+
   const isValidPhone = /^07\d{8}$/.test(phone);
   const showPhoneError = phoneTouched && phone.length > 0 && !isValidPhone;
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "card" | "wallet">("cod");
-  const [successData, setSuccessData] = useState<{ orderId: number; totalPrice: number } | null>(null);
+  const [successData, setSuccessData] = useState<{ orderId: number; totalPrice: number; waUrl?: string; confirmUrl?: string } | null>(null);
 
   const PAYMENT_METHODS = [
     { id: "cod",    icon: "💵", label: t("order_pay_cod"),    sublabel: t("order_pay_cod_sub"),    available: true  },
@@ -199,6 +227,7 @@ export default function Order() {
         playerName={order.playerName}
         jerseyNumber={order.jerseyNumber}
         frontImageUrl={order.frontImageUrl}
+        waUrl={successData.waUrl}
         onTrack={() => setLocation(`/track`)}
       />
     );
@@ -228,11 +257,11 @@ export default function Order() {
         address: address.trim() || undefined,
       } as Parameters<typeof createOrder.mutate>[0]["data"]
     }, {
-      onSuccess: (data: { id: number; totalPrice: number }) => {
+      onSuccess: (data: { id: number; totalPrice: number; waUrl?: string; confirmUrl?: string }) => {
         queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetOrderStatsQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetPopularTeamsQueryKey() });
-        setSuccessData({ orderId: data.id, totalPrice: data.totalPrice });
+        setSuccessData({ orderId: data.id, totalPrice: data.totalPrice, waUrl: data.waUrl, confirmUrl: data.confirmUrl });
         clearOrder();
       },
       onError: () => alert(t("order_error")),
@@ -396,29 +425,39 @@ export default function Order() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-white/50 text-xs font-bold">{t("order_city_label")}</label>
-            <input
-              required
-              value={city} onChange={e => setCity(e.target.value)}
-              placeholder={t("order_city_placeholder")}
-              className="w-full px-4 py-3.5 bg-white/[0.04] border border-white/[0.10] text-white font-bold focus:outline-none focus:border-[#bfff00]/50 transition-colors rounded-xl placeholder:text-white/20"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-white/50 text-xs font-bold">المحافظة</label>
+            <label className="text-white/50 text-xs font-bold">المدينة / المحافظة</label>
             <select
               required
               value={governorate}
-              onChange={e => setGovernorate(e.target.value)}
+              onChange={e => { setGovernorate(e.target.value); setCity(""); }}
               className="w-full px-4 py-3.5 bg-white/[0.04] border border-white/[0.10] text-white font-bold focus:outline-none focus:border-[#bfff00]/50 transition-colors rounded-xl appearance-none"
               style={{ colorScheme: "dark" }}
             >
-              <option value="" disabled className="bg-[#111]">اختر محافظتك</option>
+              <option value="" disabled className="bg-[#111]">اختر المحافظة</option>
               {GOVERNORATES.map(g => (
                 <option key={g} value={g} className="bg-[#111]">{g}</option>
               ))}
             </select>
+            {governorate && (
+              <div className="flex flex-wrap gap-1 pt-1">
+                {CITY_SUGGESTIONS[governorate]?.slice(0, 6).map(s => (
+                  <button
+                    key={s} type="button"
+                    onClick={() => setCity(s)}
+                    className={`text-[10px] px-2 py-1 rounded-full border transition-all ${
+                      city === s ? "border-[#bfff00] bg-[#bfff00]/10 text-[#bfff00]" : "border-white/10 text-white/40 hover:border-white/30"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+            <input
+              value={city} onChange={e => setCity(e.target.value)}
+              placeholder="أدخل اسم المنطقة أو الحي"
+              className="w-full px-4 py-3.5 bg-white/[0.04] border border-white/[0.10] text-white font-bold focus:outline-none focus:border-[#bfff00]/50 transition-colors rounded-xl placeholder:text-white/20"
+            />
           </div>
 
           <div className="space-y-1.5">

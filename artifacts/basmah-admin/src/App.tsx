@@ -6,7 +6,7 @@ import {
   ShoppingBag, Shirt, Type, LogOut, LayoutDashboard,
   ChevronDown, Plus, Trash2, Pencil, Check, X, Upload,
   BarChart3, Package, TrendingUp, RefreshCw, Eye, EyeOff,
-  Star, RotateCcw, Sticker, Link as LinkIcon, MapPin,
+  Star, RotateCcw, Sticker, Link as LinkIcon, MapPin, Store,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -163,7 +163,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
 }
 
 /* ─── Sidebar ─────────────────────────────────────────── */
-type Section = "dashboard" | "orders" | "teams" | "nahfat" | "stickers" | "branches" | "settings";
+type Section = "dashboard" | "orders" | "teams" | "nahfat" | "stickers" | "marketplace" | "branches" | "settings";
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: "dashboard", label: "لوحة المعلومات", icon: <LayoutDashboard size={18} /> },
@@ -172,6 +172,7 @@ const NAV_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: "branches",  label: "الفروع",            icon: <MapPin size={18} /> },
   { id: "nahfat",    label: "النهفات",           icon: <Type size={18} /> },
   { id: "stickers",  label: "الملصقات",          icon: <Sticker size={18} /> },
+  { id: "marketplace", label: "السوق",            icon: <Store size={18} /> },
   { id: "settings",  label: "الإعدادات",         icon: <Star size={18} /> },
 ];
 
@@ -217,6 +218,7 @@ function MobileNav({ active, onSelect, onLogout }: {
     { id: "teams"     as Section, label: "الفرق",    icon: <Shirt size={20} /> },
     { id: "nahfat"    as Section, label: "النهفات",  icon: <Type size={20} /> },
     { id: "stickers"  as Section, label: "الملصقات", icon: <Sticker size={20} /> },
+    { id: "marketplace" as Section, label: "السوق",   icon: <Store size={20} /> },
   ];
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-slate-900 border-t border-slate-700 flex" dir="rtl">
@@ -2003,6 +2005,244 @@ function StickersSection() {
   );
 }
 
+function MarketplaceSection() {
+  const [shops, setShops] = useState<any[]>([]);
+  const [designs, setDesigns] = useState<any[]>([]);
+  const [orders, setMpOrders] = useState<any[]>([]);
+  const [tab, setTab] = useState<"shops" | "designs" | "orders">("shops");
+  const [loading, setLoading] = useState(true);
+  const [showShopForm, setShowShopForm] = useState(false);
+  const [showDesignForm, setShowDesignForm] = useState(false);
+  const [editingShop, setEditingShop] = useState<any | null>(null);
+  const [editingDesign, setEditingDesign] = useState<any | null>(null);
+  const [shopForm, setShopForm] = useState({ name: "", slug: "", description: "", logo: "", contactPhone: "", commissionPercent: 15, isActive: true });
+  const [designForm, setDesignForm] = useState({ shopId: "", title: "", description: "", imageUrl: "", price: "", category: "عام", tags: "", isActive: true });
+  const { uploadFile, isUploading } = useUpload();
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    const [s, d, o] = await Promise.all([
+      fetch("/api/admin/marketplace/shops").then(r => r.ok ? r.json() : []),
+      fetch("/api/admin/marketplace/designs").then(r => r.ok ? r.json() : []),
+      fetch("/api/admin/marketplace/orders").then(r => r.ok ? r.json() : []),
+    ]);
+    setShops(s); setDesigns(d); setMpOrders(o); setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const saveShop = async () => {
+    const body = editingShop ? { ...shopForm, id: undefined } : shopForm;
+    const url = editingShop ? `/api/admin/marketplace/shops/${editingShop.id}` : "/api/admin/marketplace/shops";
+    const method = editingShop ? "PUT" : "POST";
+    const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (r.ok) { toast.success(editingShop ? "تم تحديث المحل" : "تم إضافة المحل"); fetchData(); setShowShopForm(false); setEditingShop(null); }
+    else toast.error("فشل الحفظ");
+  };
+
+  const saveDesign = async () => {
+    const body = { ...designForm, shopId: Number(designForm.shopId), price: Number(designForm.price), tags: designForm.tags || undefined };
+    const url = editingDesign ? `/api/admin/marketplace/designs/${editingDesign.id}` : "/api/admin/marketplace/designs";
+    const method = editingDesign ? "PUT" : "POST";
+    const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (r.ok) { toast.success(editingDesign ? "تم تحديث التصميم" : "تم إضافة التصميم"); fetchData(); setShowDesignForm(false); setEditingDesign(null); }
+    else toast.error("فشل الحفظ");
+  };
+
+  const deleteShop = async (id: number) => {
+    if (!confirm("حذف المحل؟")) return;
+    await fetch(`/api/admin/marketplace/shops/${id}`, { method: "DELETE" });
+    toast.success("تم الحذف"); fetchData();
+  };
+
+  const deleteDesign = async (id: number) => {
+    if (!confirm("حذف التصميم؟")) return;
+    await fetch(`/api/admin/marketplace/designs/${id}`, { method: "DELETE" });
+    toast.success("تم الحذف"); fetchData();
+  };
+
+  const updateOrderStatus = async (id: number, status: string) => {
+    await fetch(`/api/admin/marketplace/orders/${id}/status`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    toast.success("تم تحديث الحالة"); fetchData();
+  };
+
+  const handleImageUpload = async (cb: (url: string) => void) => {
+    const input = document.createElement("input"); input.type = "file"; input.accept = "image/*";
+    input.onchange = async () => {
+      const file = input.files?.[0]; if (!file) return;
+      const res = await uploadFile(file);
+      if (res) cb(`/api/storage${res.objectPath}`);
+    };
+    input.click();
+  };
+
+  const STATUSES: Record<string, string> = { pending: "قيد الانتظار", confirmed: "مؤكد", shipped: "تم الشحن", delivered: "تم التوصيل", cancelled: "ملغي" };
+  const COLOR_MAP: Record<string, string> = { pending: "bg-amber-100 text-amber-800", confirmed: "bg-blue-100 text-blue-800", shipped: "bg-purple-100 text-purple-800", delivered: "bg-green-100 text-green-800", cancelled: "bg-red-100 text-red-800" };
+
+  if (loading) return <div className="p-8 text-center text-muted-foreground">جاري التحميل...</div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-black">سوق التصاميم</h2>
+        <div className="flex gap-1 bg-white rounded-lg border p-1">
+          {(["shops", "designs", "orders"] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${tab === t ? "bg-primary text-black shadow-sm" : "text-muted-foreground"}`}>
+              {t === "shops" ? "المطابع" : t === "designs" ? "التصاميم" : "الطلبات"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ═══════ Shops ═══════ */}
+      {tab === "shops" && (
+        <div className="space-y-3">
+          <button onClick={() => { setShowShopForm(true); setEditingShop(null); setShopForm({ name: "", slug: "", description: "", logo: "", contactPhone: "", commissionPercent: 15, isActive: true }); }}
+            className="flex items-center gap-2 text-sm font-bold text-primary hover:underline"><Plus size={16} /> إضافة محل</button>
+          {showShopForm && (
+            <div className="bg-white rounded-xl border p-4 space-y-3">
+              <input placeholder="اسم المحل" value={shopForm.name} onChange={e => setShopForm(f => ({ ...f, name: e.target.value, slug: e.target.value.replace(/\s+/g, "-").toLowerCase() }))} className="w-full border rounded-lg px-3 py-2 text-sm" />
+              <input placeholder="الرابط المختصر (slug)" value={shopForm.slug} onChange={e => setShopForm(f => ({ ...f, slug: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm" dir="ltr" />
+              <textarea placeholder="وصف" value={shopForm.description} onChange={e => setShopForm(f => ({ ...f, description: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm" />
+              <div className="flex items-center gap-3">
+                <input placeholder="رابط الشعار" value={shopForm.logo} onChange={e => setShopForm(f => ({ ...f, logo: e.target.value }))} className="flex-1 border rounded-lg px-3 py-2 text-sm" dir="ltr" />
+                <button onClick={() => handleImageUpload(url => setShopForm(f => ({ ...f, logo: url })))} className="text-xs bg-muted px-3 py-2 rounded-lg font-bold">رفع</button>
+              </div>
+              <input placeholder="رقم التواصل" value={shopForm.contactPhone} onChange={e => setShopForm(f => ({ ...f, contactPhone: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm" />
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 text-sm"><span>نسبة العمولة %</span><input type="number" value={shopForm.commissionPercent} onChange={e => setShopForm(f => ({ ...f, commissionPercent: Number(e.target.value) }))} className="w-20 border rounded-lg px-2 py-1 text-sm" /></div>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={shopForm.isActive} onChange={e => setShopForm(f => ({ ...f, isActive: e.target.checked }))} /> نشط</label>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={saveShop} className="px-4 py-2 bg-primary text-black font-bold text-sm rounded-lg">حفظ</button>
+                <button onClick={() => { setShowShopForm(false); setEditingShop(null); }} className="px-4 py-2 bg-muted text-sm rounded-lg">إلغاء</button>
+              </div>
+            </div>
+          )}
+          <div className="bg-white rounded-xl border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 text-xs text-muted-foreground">
+                <tr><th className="p-3 text-right">الاسم</th><th className="p-3 text-right">الرابط</th><th className="p-3 text-right">رقم التواصل</th><th className="p-3 text-center">العمولة</th><th className="p-3 text-center">نشط</th><th className="p-3 text-left"></th></tr>
+              </thead>
+              <tbody>
+                {shops.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">لا يوجد مطابع</td></tr>}
+                {shops.map(s => (
+                  <tr key={s.id} className="border-t hover:bg-muted/30">
+                    <td className="p-3 font-bold">{s.name}</td>
+                    <td className="p-3 text-xs text-muted-foreground" dir="ltr">{s.slug}</td>
+                    <td className="p-3 text-xs">{s.contactPhone || "—"}</td>
+                    <td className="p-3 text-center font-bold">{s.commissionPercent}%</td>
+                    <td className="p-3 text-center">{s.isActive ? <Check className="inline text-green-600" size={14} /> : <X className="inline text-red-400" size={14} />}</td>
+                    <td className="p-3 text-left">
+                      <button onClick={() => { setEditingShop(s); setShopForm(s); setShowShopForm(true); }} className="text-blue-600 hover:underline text-xs ml-2">تعديل</button>
+                      <button onClick={() => deleteShop(s.id)} className="text-red-500 hover:underline text-xs">حذف</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════ Designs ═══════ */}
+      {tab === "designs" && (
+        <div className="space-y-3">
+          <button onClick={() => { setShowDesignForm(true); setEditingDesign(null); setDesignForm({ shopId: shops[0]?.id?.toString() || "", title: "", description: "", imageUrl: "", price: "", category: "عام", tags: "", isActive: true }); }}
+            className="flex items-center gap-2 text-sm font-bold text-primary hover:underline"><Plus size={16} /> إضافة تصميم</button>
+          {showDesignForm && (
+            <div className="bg-white rounded-xl border p-4 space-y-3">
+              <select value={designForm.shopId} onChange={e => setDesignForm(f => ({ ...f, shopId: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm">
+                <option value="">اختر المحل</option>
+                {shops.filter(s => s.isActive).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <input placeholder="عنوان التصميم" value={designForm.title} onChange={e => setDesignForm(f => ({ ...f, title: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm" />
+              <textarea placeholder="وصف" value={designForm.description} onChange={e => setDesignForm(f => ({ ...f, description: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm" />
+              <div className="flex items-center gap-3">
+                <input placeholder="رابط الصورة" value={designForm.imageUrl} onChange={e => setDesignForm(f => ({ ...f, imageUrl: e.target.value }))} className="flex-1 border rounded-lg px-3 py-2 text-sm" dir="ltr" />
+                <button onClick={() => handleImageUpload(url => setDesignForm(f => ({ ...f, imageUrl: url })))} className="text-xs bg-muted px-3 py-2 rounded-lg font-bold">رفع</button>
+              </div>
+              <div className="flex gap-3">
+                <input placeholder="السعر" type="number" value={designForm.price} onChange={e => setDesignForm(f => ({ ...f, price: e.target.value }))} className="w-24 border rounded-lg px-3 py-2 text-sm" />
+                <select value={designForm.category} onChange={e => setDesignForm(f => ({ ...f, category: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm">
+                  {["عام", "رياضي", "كلاسيك", "حديث", "مودرن", "تصاميم خاصة"].map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <input placeholder="وسوم (مفصولة بفواصل)" value={designForm.tags} onChange={e => setDesignForm(f => ({ ...f, tags: e.target.value }))} className="flex-1 border rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={designForm.isActive} onChange={e => setDesignForm(f => ({ ...f, isActive: e.target.checked }))} /> منشور</label>
+              <div className="flex gap-2">
+                <button onClick={saveDesign} className="px-4 py-2 bg-primary text-black font-bold text-sm rounded-lg">حفظ</button>
+                <button onClick={() => { setShowDesignForm(false); setEditingDesign(null); }} className="px-4 py-2 bg-muted text-sm rounded-lg">إلغاء</button>
+              </div>
+            </div>
+          )}
+          <div className="bg-white rounded-xl border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 text-xs text-muted-foreground">
+                <tr><th className="p-3 text-right">التصميم</th><th className="p-3 text-right">المحل</th><th className="p-3 text-center">السعر</th><th className="p-3 text-center">القسم</th><th className="p-3 text-center">نشط</th><th className="p-3 text-left"></th></tr>
+              </thead>
+              <tbody>
+                {designs.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">لا يوجد تصاميم</td></tr>}
+                {designs.map(d => (
+                  <tr key={d.id} className="border-t hover:bg-muted/30">
+                    <td className="p-3 flex items-center gap-2">
+                      <img src={d.imageUrl} className="w-10 h-10 rounded-lg object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                      <span className="font-bold">{d.title}</span>
+                    </td>
+                    <td className="p-3 text-xs text-muted-foreground">{d.shopName}</td>
+                    <td className="p-3 text-center font-bold">{d.price} د.أ</td>
+                    <td className="p-3 text-center text-xs">{d.category}</td>
+                    <td className="p-3 text-center">{d.isActive ? <Check className="inline text-green-600" size={14} /> : <X className="inline text-red-400" size={14} />}</td>
+                    <td className="p-3 text-left">
+                      <button onClick={() => { setEditingDesign(d); setDesignForm({ shopId: d.shopId?.toString() || "", title: d.title, description: d.description || "", imageUrl: d.imageUrl || "", price: d.price?.toString() || "", category: d.category || "عام", tags: d.tags || "", isActive: d.isActive }); setShowDesignForm(true); }} className="text-blue-600 hover:underline text-xs ml-2">تعديل</button>
+                      <button onClick={() => deleteDesign(d.id)} className="text-red-500 hover:underline text-xs">حذف</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════ Orders ═══════ */}
+      {tab === "orders" && (
+        <div className="bg-white rounded-xl border overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-xs text-muted-foreground">
+              <tr><th className="p-3 text-right">#</th><th className="p-3 text-right">العميل</th><th className="p-3 text-right">التصميم</th><th className="p-3 text-right">المحل</th><th className="p-3 text-center">الكمية</th><th className="p-3 text-center">المجموع</th><th className="p-3 text-center">الحالة</th><th className="p-3 text-right">التاريخ</th></tr>
+            </thead>
+            <tbody>
+              {orders.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">لا يوجد طلبات</td></tr>}
+              {orders.map(o => (
+                <tr key={o.id} className="border-t hover:bg-muted/30">
+                  <td className="p-3 font-bold">{o.id}</td>
+                  <td className="p-3">{o.customerName}<br /><span className="text-[10px] text-muted-foreground">{o.customerPhone}</span></td>
+                  <td className="p-3 text-xs">{o.designTitle}</td>
+                  <td className="p-3 text-xs text-muted-foreground">{o.shopName}</td>
+                  <td className="p-3 text-center">{o.quantity}</td>
+                  <td className="p-3 text-center font-bold">{o.totalPrice} د.أ</td>
+                  <td className="p-3 text-center">
+                    <select value={o.status} onChange={e => updateOrderStatus(o.id, e.target.value)}
+                      className={`text-[10px] font-bold rounded-full px-2 py-1 border ${COLOR_MAP[o.status] || ""}`}>
+                      {Object.entries(STATUSES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                  </td>
+                  <td className="p-3 text-[10px] text-muted-foreground">{new Date(o.createdAt).toLocaleDateString("ar")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NahfatSection() {
   const [presets, setPresets] = useState<NahfatPreset[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2528,6 +2768,7 @@ export default function App() {
         {section === "nahfat" && <NahfatSection />}
         {section === "stickers" && <StickersSection />}
         {section === "branches" && <BranchesSection />}
+        {section === "marketplace" && <MarketplaceSection />}
         {section === "settings" && <SettingsSection />}
       </main>
       <MobileNav active={section} onSelect={setSection} onLogout={handleLogout} />

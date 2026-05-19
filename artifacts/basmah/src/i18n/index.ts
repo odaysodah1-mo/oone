@@ -4,12 +4,12 @@ import ar from "./ar";
 import en from "./en";
 
 const saved = localStorage.getItem("basmah-lang");
-const defaultLang = saved || "ar";
+const defaultLang = saved || "en";
 
 i18n.use(initReactI18next).init({
   resources: { ar: { translation: ar }, en: { translation: en } },
   lng: defaultLang,
-  fallbackLng: "ar",
+  fallbackLng: "en",
   interpolation: { escapeValue: false },
 });
 

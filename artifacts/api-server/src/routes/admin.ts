@@ -1,40 +1,26 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
-import {
-  ordersTable,
-  jerseyColorsTable,
-  jerseyColorImagesTable,
-  nahfatPresetsTable,
-  teamsTable,
-  stickersTable,
-  visitorsTable,
-  settingsTable,
-} from "@workspace/db";
-import { eq, desc, inArray, sql } from "drizzle-orm";
+import { supabase, toCamelCaseArr, toCamelCaseSingle } from "../lib/supabase-db";
+
+const router = Router();
+const VALID_STATUSES = ["pending", "confirmed", "shipped", "delivered", "cancelled"] as const;
 
 /* ── helper: fetch images array for a color (front + back + extras) ── */
 async function getColorImages(colorId: number, frontUrl: string, backUrl: string | null): Promise<string[]> {
-  const extras = await db
-    .select()
-    .from(jerseyColorImagesTable)
-    .where(eq(jerseyColorImagesTable.jerseyColorId, colorId))
-    .orderBy(jerseyColorImagesTable.sortOrder);
+  const { data: extras } = await supabase
+    .from("jersey_color_images")
+    .select("*")
+    .eq("jersey_color_id", colorId)
+    .order("sort_order", { ascending: true });
   const base = [frontUrl, ...(backUrl ? [backUrl] : [])];
-  const extraUrls = extras.map(e => e.imageUrl).filter(u => !base.includes(u));
+  const extraUrls = (extras || []).map(e => e.image_url).filter((u: string) => !base.includes(u));
   return [...base, ...extraUrls];
 }
 
-const router = Router();
-
-const VALID_STATUSES = ["pending", "confirmed", "shipped", "delivered", "cancelled"] as const;
-
-/* ════════════════════════════════════════════════════
-   ORDERS
-════════════════════════════════════════════════════ */
 router.get("/admin/orders", async (req, res) => {
   try {
-    const orders = await db.select().from(ordersTable).orderBy(desc(ordersTable.createdAt));
-    res.json(orders);
+    const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json(toCamelCaseArr(data || []));
   } catch (err) {
     req.log.error({ err }, "admin: failed to list orders");
     res.status(500).json({ error: "Internal server error" });
@@ -49,28 +35,25 @@ router.patch("/admin/orders/:id/status", async (req, res) => {
     res.status(400).json({ error: "Invalid status" }); return;
   }
   try {
-    const [updated] = await db
-      .update(ordersTable).set({ status }).where(eq(ordersTable.id, id)).returning();
-    if (!updated) { res.status(404).json({ error: "Order not found" }); return; }
-    res.json(updated);
+    const { data: updated, error } = await supabase
+      .from("orders").update({ status }).eq("id", id).select().single();
+    if (error || !updated) { res.status(404).json({ error: "Order not found" }); return; }
+    res.json(toCamelCaseSingle(updated));
   } catch (err) {
     req.log.error({ err }, "admin: failed to update order status");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-/* DELETE /admin/orders/delivered — bulk-purge completed orders */
 router.delete("/admin/orders/delivered", async (req, res) => {
   try {
-    const toDelete = await db
-      .select({ id: ordersTable.id })
-      .from(ordersTable)
-      .where(inArray(ordersTable.status, ["delivered", "cancelled"]));
-    if (toDelete.length === 0) {
-      res.json({ deleted: 0 }); return;
-    }
+    const { data: toDelete, error: findErr } = await supabase
+      .from("orders").select("id").in("status", ["delivered", "cancelled"]);
+    if (findErr) throw findErr;
+    if (!toDelete || toDelete.length === 0) { res.json({ deleted: 0 }); return; }
     const ids = toDelete.map(r => r.id);
-    await db.delete(ordersTable).where(inArray(ordersTable.id, ids));
+    const { error: delErr } = await supabase.from("orders").delete().in("id", ids);
+    if (delErr) throw delErr;
     req.log.info({ count: ids.length }, "admin: purged delivered/cancelled orders");
     res.json({ deleted: ids.length });
   } catch (err) {
@@ -79,13 +62,11 @@ router.delete("/admin/orders/delivered", async (req, res) => {
   }
 });
 
-/* ════════════════════════════════════════════════════
-   TEAMS
-════════════════════════════════════════════════════ */
 router.get("/admin/teams", async (req, res) => {
   try {
-    const teams = await db.select().from(teamsTable).orderBy(teamsTable.name);
-    res.json(teams.map(t => ({
+    const { data, error } = await supabase.from("teams").select("*").order("name", { ascending: true });
+    if (error) throw error;
+    res.json(toCamelCaseArr(data || []).map((t: any) => ({
       ...t,
       availableColors: JSON.parse(t.availableColors),
       availableSizes: JSON.parse(t.availableSizes),
@@ -104,22 +85,24 @@ router.post("/admin/teams", async (req, res) => {
   }
   try {
     const sizes = Array.isArray(availableSizes) ? availableSizes : ["S", "M", "L", "XL", "XXL"];
-    const [team] = await db.insert(teamsTable).values({
-      name: name as string,
-      nameEn: nameEn as string,
+    const { data: team, error } = await supabase.from("teams").insert({
+      name,
+      name_en: nameEn,
       league: typeof league === "string" && league ? league : "الدوري الأردني",
       country: typeof country === "string" && country ? country : "الأردن",
-      primaryColor: typeof primaryColor === "string" ? primaryColor : "#1a1a2e",
-      secondaryColor: typeof secondaryColor === "string" ? secondaryColor : "#ffffff",
-      availableColors: JSON.stringify([]),
-      availableSizes: JSON.stringify(sizes),
-      basePrice: typeof basePrice === "number" && basePrice > 0 ? basePrice : 89,
-      isPopular: Boolean(isPopular),
-    }).returning();
+      primary_color: typeof primaryColor === "string" ? primaryColor : "#1a1a2e",
+      secondary_color: typeof secondaryColor === "string" ? secondaryColor : "#ffffff",
+      available_colors: JSON.stringify([]),
+      available_sizes: JSON.stringify(sizes),
+      base_price: typeof basePrice === "number" && basePrice > 0 ? basePrice : 89,
+      is_popular: Boolean(isPopular),
+    }).select().single();
+    if (error) throw error;
+    const camel = toCamelCaseSingle(team);
     res.status(201).json({
-      ...team,
-      availableColors: JSON.parse(team.availableColors),
-      availableSizes: JSON.parse(team.availableSizes),
+      ...camel,
+      availableColors: JSON.parse(camel.availableColors),
+      availableSizes: JSON.parse(camel.availableSizes),
     });
   } catch (err) {
     req.log.error({ err }, "admin: failed to create team");
@@ -131,7 +114,7 @@ router.delete("/admin/teams/:id", async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid team id" }); return; }
   try {
-    await db.delete(teamsTable).where(eq(teamsTable.id, id));
+    await supabase.from("teams").delete().eq("id", id);
     res.status(204).end();
   } catch (err) {
     req.log.error({ err }, "admin: failed to delete team");
@@ -144,27 +127,24 @@ router.patch("/admin/teams/:id", async (req, res) => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid team id" }); return; }
   const { basePrice, primaryColor, secondaryColor, name, nameEn, isPopular, logoUrl, discountPercent } = req.body as Record<string, unknown>;
   const update: Record<string, unknown> = {};
-  if (typeof basePrice === "number" && basePrice > 0) update.basePrice = basePrice;
-  if (typeof primaryColor === "string") update.primaryColor = primaryColor;
-  if (typeof secondaryColor === "string") update.secondaryColor = secondaryColor;
+  if (typeof basePrice === "number" && basePrice > 0) update.base_price = basePrice;
+  if (typeof primaryColor === "string") update.primary_color = primaryColor;
+  if (typeof secondaryColor === "string") update.secondary_color = secondaryColor;
   if (typeof name === "string" && name) update.name = name;
-  if (typeof nameEn === "string" && nameEn) update.nameEn = nameEn;
-  if (typeof isPopular === "boolean") update.isPopular = isPopular;
-  if (logoUrl === null || typeof logoUrl === "string") update.logoUrl = logoUrl || null;
+  if (typeof nameEn === "string" && nameEn) update.name_en = nameEn;
+  if (typeof isPopular === "boolean") update.is_popular = isPopular;
+  if (logoUrl === null || typeof logoUrl === "string") update.logo_url = logoUrl || null;
   if (typeof discountPercent === "number" && discountPercent >= 0 && discountPercent <= 100)
-    update.discountPercent = Math.round(discountPercent);
-  if (Object.keys(update).length === 0) {
-    res.status(400).json({ error: "Nothing to update" }); return;
-  }
+    update.discount_percent = Math.round(discountPercent);
+  if (Object.keys(update).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
   try {
-    const [updated] = await db
-      .update(teamsTable).set(update as Partial<typeof teamsTable.$inferInsert>)
-      .where(eq(teamsTable.id, id)).returning();
-    if (!updated) { res.status(404).json({ error: "Team not found" }); return; }
+    const { data: updated, error } = await supabase.from("teams").update(update).eq("id", id).select().single();
+    if (error || !updated) { res.status(404).json({ error: "Team not found" }); return; }
+    const camel = toCamelCaseSingle(updated);
     res.json({
-      ...updated,
-      availableColors: JSON.parse(updated.availableColors),
-      availableSizes: JSON.parse(updated.availableSizes),
+      ...camel,
+      availableColors: JSON.parse(camel.availableColors),
+      availableSizes: JSON.parse(camel.availableSizes),
     });
   } catch (err) {
     req.log.error({ err }, "admin: failed to update team");
@@ -179,11 +159,13 @@ router.get("/admin/teams/:id/colors", async (req, res) => {
   const teamId = parseInt(req.params.id, 10);
   if (isNaN(teamId)) { res.status(400).json({ error: "Invalid team id" }); return; }
   try {
-    const colors = await db
-      .select().from(jerseyColorsTable)
-      .where(eq(jerseyColorsTable.teamId, teamId))
-      .orderBy(jerseyColorsTable.sortOrder);
-    res.json(colors);
+    const { data, error } = await supabase
+      .from("jersey_colors")
+      .select("*")
+      .eq("team_id", teamId)
+      .order("sort_order", { ascending: true });
+    if (error) throw error;
+    res.json(toCamelCaseArr(data || []));
   } catch (err) {
     req.log.error({ err }, "admin: failed to list jersey colors");
     res.status(500).json({ error: "Internal server error" });
@@ -200,19 +182,20 @@ router.post("/admin/teams/:id/colors", async (req, res) => {
     res.status(400).json({ error: "name and frontImageUrl are required" }); return;
   }
   try {
-    const [color] = await db.insert(jerseyColorsTable).values({
-      teamId,
+    const { data: color, error } = await supabase.from("jersey_colors").insert({
+      team_id: teamId,
       name,
-      frontImageUrl,
-      backImageUrl: typeof backImageUrl === "string" ? backImageUrl : null,
-      hexCode: typeof hexCode === "string" ? hexCode : "#ffffff",
-      secondaryHexCode: typeof secondaryHexCode === "string" ? secondaryHexCode : "#000000",
-      isDefault: Boolean(isDefault),
-      sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
-      priceWithCustomization: typeof priceWithCustomization === "number" ? priceWithCustomization : null,
-      priceWithoutCustomization: typeof priceWithoutCustomization === "number" ? priceWithoutCustomization : null,
-    }).returning();
-    res.status(201).json(color);
+      front_image_url: frontImageUrl,
+      back_image_url: typeof backImageUrl === "string" ? backImageUrl : null,
+      hex_code: typeof hexCode === "string" ? hexCode : "#ffffff",
+      secondary_hex_code: typeof secondaryHexCode === "string" ? secondaryHexCode : "#000000",
+      is_default: Boolean(isDefault),
+      sort_order: typeof sortOrder === "number" ? sortOrder : 0,
+      price_with_customization: typeof priceWithCustomization === "number" ? priceWithCustomization : null,
+      price_without_customization: typeof priceWithoutCustomization === "number" ? priceWithoutCustomization : null,
+    }).select().single();
+    if (error) throw error;
+    res.status(201).json(toCamelCaseSingle(color));
   } catch (err) {
     req.log.error({ err }, "admin: failed to create jersey color");
     res.status(500).json({ error: "Internal server error" });
@@ -223,30 +206,25 @@ router.patch("/admin/teams/:teamId/colors/:colorId", async (req, res) => {
   const colorId = parseInt(req.params.colorId, 10);
   if (isNaN(colorId)) { res.status(400).json({ error: "Invalid color id" }); return; }
   const body = req.body as Record<string, unknown>;
-  const { name, frontImageUrl, backImageUrl, hexCode, secondaryHexCode, isDefault, sortOrder } = body;
   const update: Record<string, unknown> = {};
-  if (typeof name === "string" && name) update.name = name;
-  if (typeof frontImageUrl === "string") update.frontImageUrl = frontImageUrl;
-  if (typeof backImageUrl === "string" || backImageUrl === null) update.backImageUrl = backImageUrl;
-  if (typeof hexCode === "string") update.hexCode = hexCode;
-  if (typeof secondaryHexCode === "string") update.secondaryHexCode = secondaryHexCode;
-  if (typeof isDefault === "boolean") update.isDefault = isDefault;
-  if (typeof sortOrder === "number") update.sortOrder = sortOrder;
-  if (typeof body.isSoldOut === "boolean") update.isSoldOut = body.isSoldOut;
+  if (typeof body.name === "string" && body.name) update.name = body.name;
+  if (typeof body.frontImageUrl === "string") update.front_image_url = body.frontImageUrl;
+  if (typeof body.backImageUrl === "string" || body.backImageUrl === null) update.back_image_url = body.backImageUrl;
+  if (typeof body.hexCode === "string") update.hex_code = body.hexCode;
+  if (typeof body.secondaryHexCode === "string") update.secondary_hex_code = body.secondaryHexCode;
+  if (typeof body.isDefault === "boolean") update.is_default = body.isDefault;
+  if (typeof body.sortOrder === "number") update.sort_order = body.sortOrder;
+  if (typeof body.isSoldOut === "boolean") update.is_sold_out = body.isSoldOut;
   if (typeof body.priceWithCustomization === "number" || body.priceWithCustomization === null)
-    update.priceWithCustomization = body.priceWithCustomization;
+    update.price_with_customization = body.priceWithCustomization;
   if (typeof body.priceWithoutCustomization === "number" || body.priceWithoutCustomization === null)
-    update.priceWithoutCustomization = body.priceWithoutCustomization;
-  if (Object.keys(update).length === 0) {
-    res.status(400).json({ error: "Nothing to update" }); return;
-  }
+    update.price_without_customization = body.priceWithoutCustomization;
+  if (Object.keys(update).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
   try {
-    const [updated] = await db
-      .update(jerseyColorsTable)
-      .set(update as Partial<typeof jerseyColorsTable.$inferInsert>)
-      .where(eq(jerseyColorsTable.id, colorId)).returning();
-    if (!updated) { res.status(404).json({ error: "Color not found" }); return; }
-    res.json(updated);
+    const { data: updated, error } = await supabase
+      .from("jersey_colors").update(update).eq("id", colorId).select().single();
+    if (error || !updated) { res.status(404).json({ error: "Color not found" }); return; }
+    res.json(toCamelCaseSingle(updated));
   } catch (err) {
     req.log.error({ err }, "admin: failed to update jersey color");
     res.status(500).json({ error: "Internal server error" });
@@ -257,7 +235,7 @@ router.delete("/admin/teams/:teamId/colors/:colorId", async (req, res) => {
   const colorId = parseInt(req.params.colorId, 10);
   if (isNaN(colorId)) { res.status(400).json({ error: "Invalid color id" }); return; }
   try {
-    await db.delete(jerseyColorsTable).where(eq(jerseyColorsTable.id, colorId));
+    await supabase.from("jersey_colors").delete().eq("id", colorId);
     res.status(204).end();
   } catch (err) {
     req.log.error({ err }, "admin: failed to delete jersey color");
@@ -270,14 +248,16 @@ router.get("/teams/:id/jersey-colors", async (req, res) => {
   const teamId = parseInt(req.params.id, 10);
   if (isNaN(teamId)) { res.status(400).json({ error: "Invalid team id" }); return; }
   try {
-    const colors = await db
-      .select().from(jerseyColorsTable)
-      .where(eq(jerseyColorsTable.teamId, teamId))
-      .orderBy(jerseyColorsTable.sortOrder);
+    const { data: colors, error } = await supabase
+      .from("jersey_colors")
+      .select("*")
+      .eq("team_id", teamId)
+      .order("sort_order", { ascending: true });
+    if (error) throw error;
     const withImages = await Promise.all(
-      colors.map(async c => ({
-        ...c,
-        images: await getColorImages(c.id, c.frontImageUrl, c.backImageUrl),
+      (colors || []).map(async (c: any) => ({
+        ...toCamelCaseSingle(c),
+        images: await getColorImages(c.id, c.front_image_url, c.back_image_url),
       }))
     );
     res.json(withImages);
@@ -296,12 +276,13 @@ router.post("/admin/jersey-colors/:colorId/images", async (req, res) => {
     res.status(400).json({ error: "imageUrl is required" }); return;
   }
   try {
-    const [img] = await db.insert(jerseyColorImagesTable).values({
-      jerseyColorId: colorId,
-      imageUrl,
-      sortOrder: typeof sortOrder === "number" ? sortOrder : 99,
-    }).returning();
-    res.status(201).json(img);
+    const { data: img, error } = await supabase.from("jersey_color_images").insert({
+      jersey_color_id: colorId,
+      image_url: imageUrl,
+      sort_order: typeof sortOrder === "number" ? sortOrder : 99,
+    }).select().single();
+    if (error) throw error;
+    res.status(201).json(toCamelCaseSingle(img));
   } catch (err) {
     req.log.error({ err }, "admin: failed to add jersey color image");
     res.status(500).json({ error: "Internal server error" });
@@ -313,7 +294,7 @@ router.delete("/admin/jersey-colors/:colorId/images/:imageId", async (req, res) 
   const imageId = parseInt(req.params.imageId, 10);
   if (isNaN(imageId)) { res.status(400).json({ error: "Invalid image id" }); return; }
   try {
-    await db.delete(jerseyColorImagesTable).where(eq(jerseyColorImagesTable.id, imageId));
+    await supabase.from("jersey_color_images").delete().eq("id", imageId);
     res.status(204).end();
   } catch (err) {
     req.log.error({ err }, "admin: failed to delete jersey color image");
@@ -326,11 +307,13 @@ router.get("/admin/jersey-colors/:colorId/images", async (req, res) => {
   const colorId = parseInt(req.params.colorId, 10);
   if (isNaN(colorId)) { res.status(400).json({ error: "Invalid color id" }); return; }
   try {
-    const imgs = await db
-      .select().from(jerseyColorImagesTable)
-      .where(eq(jerseyColorImagesTable.jerseyColorId, colorId))
-      .orderBy(jerseyColorImagesTable.sortOrder);
-    res.json(imgs);
+    const { data: imgs, error } = await supabase
+      .from("jersey_color_images")
+      .select("*")
+      .eq("jersey_color_id", colorId)
+      .order("sort_order", { ascending: true });
+    if (error) throw error;
+    res.json(toCamelCaseArr(imgs || []));
   } catch (err) {
     req.log.error({ err }, "admin: failed to list jersey color images");
     res.status(500).json({ error: "Internal server error" });
@@ -342,8 +325,9 @@ router.get("/admin/jersey-colors/:colorId/images", async (req, res) => {
 ════════════════════════════════════════════════════ */
 router.get("/admin/nahfat", async (req, res) => {
   try {
-    const presets = await db.select().from(nahfatPresetsTable).orderBy(nahfatPresetsTable.sortOrder);
-    res.json(presets);
+    const { data, error } = await supabase.from("nahfat_presets").select("*").order("sort_order", { ascending: true });
+    if (error) throw error;
+    res.json(toCamelCaseArr(data || []));
   } catch (err) {
     req.log.error({ err }, "admin: failed to list nahfat");
     res.status(500).json({ error: "Internal server error" });
@@ -354,13 +338,14 @@ router.post("/admin/nahfat", async (req, res) => {
   const { text, category, isActive, sortOrder } = req.body as Record<string, unknown>;
   if (!text || typeof text !== "string") { res.status(400).json({ error: "text is required" }); return; }
   try {
-    const [preset] = await db.insert(nahfatPresetsTable).values({
+    const { data: preset, error } = await supabase.from("nahfat_presets").insert({
       text,
       category: typeof category === "string" ? category : "عربي",
-      isActive: isActive !== false,
-      sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
-    }).returning();
-    res.status(201).json(preset);
+      is_active: isActive !== false,
+      sort_order: typeof sortOrder === "number" ? sortOrder : 0,
+    }).select().single();
+    if (error) throw error;
+    res.status(201).json(toCamelCaseSingle(preset));
   } catch (err) {
     req.log.error({ err }, "admin: failed to create nahfat");
     res.status(500).json({ error: "Internal server error" });
@@ -374,16 +359,14 @@ router.put("/admin/nahfat/:id", async (req, res) => {
   const update: Record<string, unknown> = {};
   if (typeof text === "string") update.text = text;
   if (typeof category === "string") update.category = category;
-  if (typeof isActive === "boolean") update.isActive = isActive;
-  if (typeof sortOrder === "number") update.sortOrder = sortOrder;
+  if (typeof isActive === "boolean") update.is_active = isActive;
+  if (typeof sortOrder === "number") update.sort_order = sortOrder;
   if (Object.keys(update).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
   try {
-    const [updated] = await db
-      .update(nahfatPresetsTable)
-      .set(update as { text?: string; category?: string; isActive?: boolean; sortOrder?: number })
-      .where(eq(nahfatPresetsTable.id, id)).returning();
-    if (!updated) { res.status(404).json({ error: "Not found" }); return; }
-    res.json(updated);
+    const { data: updated, error } = await supabase
+      .from("nahfat_presets").update(update).eq("id", id).select().single();
+    if (error || !updated) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(toCamelCaseSingle(updated));
   } catch (err) {
     req.log.error({ err }, "admin: failed to update nahfat");
     res.status(500).json({ error: "Internal server error" });
@@ -394,7 +377,7 @@ router.delete("/admin/nahfat/:id", async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   try {
-    await db.delete(nahfatPresetsTable).where(eq(nahfatPresetsTable.id, id));
+    await supabase.from("nahfat_presets").delete().eq("id", id);
     res.status(204).end();
   } catch (err) {
     req.log.error({ err }, "admin: failed to delete nahfat");
@@ -405,11 +388,13 @@ router.delete("/admin/nahfat/:id", async (req, res) => {
 /* Public — active nahfat */
 router.get("/nahfat", async (req, res) => {
   try {
-    const presets = await db
-      .select().from(nahfatPresetsTable)
-      .where(eq(nahfatPresetsTable.isActive, true))
-      .orderBy(nahfatPresetsTable.sortOrder);
-    res.json(presets);
+    const { data, error } = await supabase
+      .from("nahfat_presets")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+    if (error) throw error;
+    res.json(toCamelCaseArr(data || []));
   } catch (err) {
     req.log.error({ err }, "failed to list nahfat");
     res.status(500).json({ error: "Internal server error" });
@@ -421,8 +406,9 @@ router.get("/nahfat", async (req, res) => {
 ════════════════════════════════════════════════════ */
 router.get("/admin/stickers", async (req, res) => {
   try {
-    const rows = await db.select().from(stickersTable).orderBy(stickersTable.sortOrder);
-    res.json(rows);
+    const { data, error } = await supabase.from("stickers").select("*").order("sort_order", { ascending: true });
+    if (error) throw error;
+    res.json(toCamelCaseArr(data || []));
   } catch (err) {
     req.log.error({ err }, "admin: failed to list stickers");
     res.status(500).json({ error: "Internal server error" });
@@ -434,14 +420,15 @@ router.post("/admin/stickers", async (req, res) => {
   if (!name || typeof name !== "string") { res.status(400).json({ error: "name is required" }); return; }
   if (!url  || typeof url  !== "string") { res.status(400).json({ error: "url is required"  }); return; }
   try {
-    const [sticker] = await db.insert(stickersTable).values({
+    const { data: sticker, error } = await supabase.from("stickers").insert({
       name,
       url,
       category: typeof category === "string" && category ? category : "عام",
-      isActive: typeof isActive === "boolean" ? isActive : true,
-      sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
-    }).returning();
-    res.status(201).json(sticker);
+      is_active: typeof isActive === "boolean" ? isActive : true,
+      sort_order: typeof sortOrder === "number" ? sortOrder : 0,
+    }).select().single();
+    if (error) throw error;
+    res.status(201).json(toCamelCaseSingle(sticker));
   } catch (err) {
     req.log.error({ err }, "admin: failed to create sticker");
     res.status(500).json({ error: "Internal server error" });
@@ -456,15 +443,14 @@ router.put("/admin/stickers/:id", async (req, res) => {
   if (typeof name     === "string")  update.name      = name;
   if (typeof url      === "string")  update.url       = url;
   if (typeof category === "string")  update.category  = category;
-  if (typeof isActive === "boolean") update.isActive  = isActive;
-  if (typeof sortOrder=== "number")  update.sortOrder = sortOrder;
+  if (typeof isActive === "boolean") update.is_active = isActive;
+  if (typeof sortOrder=== "number")  update.sort_order= sortOrder;
   if (Object.keys(update).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
   try {
-    const [updated] = await db.update(stickersTable)
-      .set(update as Partial<typeof stickersTable.$inferInsert>)
-      .where(eq(stickersTable.id, id)).returning();
-    if (!updated) { res.status(404).json({ error: "Not found" }); return; }
-    res.json(updated);
+    const { data: updated, error } = await supabase
+      .from("stickers").update(update).eq("id", id).select().single();
+    if (error || !updated) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(toCamelCaseSingle(updated));
   } catch (err) {
     req.log.error({ err }, "admin: failed to update sticker");
     res.status(500).json({ error: "Internal server error" });
@@ -475,7 +461,7 @@ router.delete("/admin/stickers/:id", async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   try {
-    await db.delete(stickersTable).where(eq(stickersTable.id, id));
+    await supabase.from("stickers").delete().eq("id", id);
     res.status(204).end();
   } catch (err) {
     req.log.error({ err }, "admin: failed to delete sticker");
@@ -486,10 +472,12 @@ router.delete("/admin/stickers/:id", async (req, res) => {
 /* Public — active stickers */
 router.get("/stickers", async (req, res) => {
   try {
-    const rows = await db.select().from(stickersTable)
-      .where(eq(stickersTable.isActive, true))
-      .orderBy(stickersTable.sortOrder);
-    res.json(rows);
+    const { data, error } = await supabase.from("stickers")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+    if (error) throw error;
+    res.json(toCamelCaseArr(data || []));
   } catch (err) {
     req.log.error({ err }, "failed to list stickers");
     res.status(500).json({ error: "Internal server error" });
@@ -501,7 +489,9 @@ router.get("/stickers", async (req, res) => {
 ════════════════════════════════════════════════════ */
 router.get("/admin/stats/charts", async (req, res) => {
   try {
-    const all = await db.select().from(ordersTable).orderBy(desc(ordersTable.createdAt));
+    const { data: orders, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+    if (error) throw error;
+    const all = toCamelCaseArr(orders || []);
 
     /* daily orders + revenue — last 7 days */
     const now = new Date();
@@ -509,17 +499,17 @@ router.get("/admin/stats/charts", async (req, res) => {
       const d = new Date(now);
       d.setDate(d.getDate() - (6 - i));
       const y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
-      const dayOrders = all.filter(o => {
+      const dayOrders = all.filter((o: any) => {
         const od = new Date(o.createdAt);
         return od.getFullYear() === y && od.getMonth() === m && od.getDate() === day;
       });
       const label = `${d.getDate()}/${d.getMonth() + 1}`;
-      return { date: label, orders: dayOrders.length, revenue: Math.round(dayOrders.reduce((s, o) => s + o.totalPrice, 0)) };
+      return { date: label, orders: dayOrders.length, revenue: Math.round(dayOrders.reduce((s: number, o: any) => s + o.totalPrice, 0)) };
     });
 
     /* orders by team — top 6 */
     const teamMap: Record<string, number> = {};
-    all.forEach(o => { teamMap[o.teamName] = (teamMap[o.teamName] || 0) + 1; });
+    all.forEach((o: any) => { teamMap[o.teamName] = (teamMap[o.teamName] || 0) + 1; });
     const byTeam = Object.entries(teamMap)
       .sort((a, b) => b[1] - a[1]).slice(0, 6)
       .map(([team, count]) => ({ team: team.length > 12 ? team.slice(0, 12) + "…" : team, count }));
@@ -530,13 +520,13 @@ router.get("/admin/stats/charts", async (req, res) => {
       delivered: "مُسلَّم", cancelled: "ملغي",
     };
     const statusMap: Record<string, number> = {};
-    all.forEach(o => { statusMap[o.status] = (statusMap[o.status] || 0) + 1; });
+    all.forEach((o: any) => { statusMap[o.status] = (statusMap[o.status] || 0) + 1; });
     const byStatus = Object.entries(statusMap)
       .map(([status, count]) => ({ status, label: statusLabels[status] || status, count }));
 
     /* by size */
     const sizeMap: Record<string, number> = {};
-    all.forEach(o => { sizeMap[o.size] = (sizeMap[o.size] || 0) + 1; });
+    all.forEach((o: any) => { sizeMap[o.size] = (sizeMap[o.size] || 0) + 1; });
     const bySizes = Object.entries(sizeMap)
       .map(([size, count]) => ({ size, count }))
       .sort((a, b) => b.count - a.count);
@@ -554,15 +544,15 @@ router.get("/admin/stats/charts", async (req, res) => {
 
 /* Public — called by customer app on each new session */
 router.post("/track-visit", async (req, res) => {
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const today = new Date().toISOString().slice(0, 10);
   try {
-    await db
-      .insert(visitorsTable)
-      .values({ date: today, count: 1 })
-      .onConflictDoUpdate({
-        target: visitorsTable.date,
-        set: { count: sql`${visitorsTable.count} + 1` },
-      });
+    const { data: existing } = await supabase
+      .from("visitors").select("date, count").eq("date", today).maybeSingle();
+    if (existing) {
+      await supabase.from("visitors").update({ count: existing.count + 1 }).eq("date", today);
+    } else {
+      await supabase.from("visitors").insert({ date: today, count: 1 });
+    }
     res.json({ ok: true });
   } catch (err) {
     req.log.error({ err }, "track-visit failed");
@@ -573,24 +563,24 @@ router.post("/track-visit", async (req, res) => {
 /* Admin — returns today + last 7 days */
 router.get("/admin/stats/visitors", async (req, res) => {
   try {
-    const rows = await db
-      .select()
-      .from(visitorsTable)
-      .orderBy(desc(visitorsTable.date))
+    const { data: rows, error } = await supabase
+      .from("visitors")
+      .select("*")
+      .order("date", { ascending: false })
       .limit(30);
+    if (error) throw error;
 
     const today = new Date().toISOString().slice(0, 10);
-    const todayRow  = rows.find(r => r.date === today);
+    const todayRow  = rows?.find(r => r.date === today);
     const todayCount = todayRow?.count ?? 0;
-    const totalCount = rows.reduce((s, r) => s + r.count, 0);
+    const totalCount = (rows || []).reduce((s, r) => s + r.count, 0);
 
-    /* last 7 days for sparkline */
     const last7: { date: string; count: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const key = d.toISOString().slice(0, 10);
-      const row = rows.find(r => r.date === key);
+      const row = rows?.find(r => r.date === key);
       last7.push({ date: key.slice(5), count: row?.count ?? 0 });
     }
 
@@ -602,15 +592,214 @@ router.get("/admin/stats/visitors", async (req, res) => {
 });
 
 /* ═══════════════════════════════════════════════════
+   MARKETPLACE — Shops
+═══════════════════════════════════════════════════ */
+
+router.get("/admin/marketplace/shops", async (req, res) => {
+  try {
+    const { data, error } = await supabase.from("shops").select("*").order("name", { ascending: true });
+    if (error) throw error;
+    res.json(toCamelCaseArr(data || []));
+  } catch (err) {
+    req.log.error({ err }, "admin: shops list failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/admin/marketplace/shops", async (req, res) => {
+  try {
+    const { name, slug, description, logo, contactPhone, commissionPercent, isActive } = req.body;
+    if (!name || !slug) { res.status(400).json({ error: "Name and slug required" }); return; }
+    const { data: shop, error } = await supabase.from("shops").insert({
+      name, slug, description, logo,
+      contact_phone: contactPhone,
+      commission_percent: commissionPercent ?? 15,
+      is_active: isActive ?? true,
+    }).select().single();
+    if (error) throw error;
+    res.status(201).json(toCamelCaseSingle(shop));
+  } catch (err) {
+    req.log.error({ err }, "admin: create shop failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/admin/marketplace/shops/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const body = req.body;
+    const update: Record<string, unknown> = {};
+    if (body.name !== undefined) update.name = body.name;
+    if (body.slug !== undefined) update.slug = body.slug;
+    if (body.description !== undefined) update.description = body.description;
+    if (body.logo !== undefined) update.logo = body.logo;
+    if (body.contactPhone !== undefined) update.contact_phone = body.contactPhone;
+    if (body.commissionPercent !== undefined) update.commission_percent = body.commissionPercent;
+    if (body.isActive !== undefined) update.is_active = body.isActive;
+    const { data: shop, error } = await supabase.from("shops").update(update).eq("id", id).select().single();
+    if (error || !shop) { res.status(404).json({ error: "not found" }); return; }
+    res.json(toCamelCaseSingle(shop));
+  } catch (err) {
+    req.log.error({ err }, "admin: update shop failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/admin/marketplace/shops/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    await supabase.from("shops").delete().eq("id", id);
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err }, "admin: delete shop failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* ═══════════════════════════════════════════════════
+   MARKETPLACE — Designs
+═══════════════════════════════════════════════════ */
+
+router.get("/admin/marketplace/designs", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("marketplace_designs")
+      .select("id, shop_id, title, description, image_url, price, category, tags, is_active, created_at, shops!inner(name)")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    const mapped = (data || []).map((d: any) => ({
+      id: d.id,
+      shopId: d.shop_id,
+      title: d.title,
+      description: d.description,
+      imageUrl: d.image_url,
+      price: d.price,
+      category: d.category,
+      tags: d.tags,
+      isActive: d.is_active,
+      createdAt: d.created_at,
+      shopName: d.shops?.name,
+    }));
+    res.json(mapped);
+  } catch (err) {
+    req.log.error({ err }, "admin: designs list failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/admin/marketplace/designs", async (req, res) => {
+  try {
+    const { shopId, title, description, imageUrl, price, category, tags, isActive } = req.body;
+    if (!shopId || !title || !imageUrl || !price) {
+      res.status(400).json({ error: "Missing required fields" }); return;
+    }
+    const { data: design, error } = await supabase.from("marketplace_designs").insert({
+      shop_id: shopId,
+      title, description,
+      image_url: imageUrl,
+      price,
+      category: category ?? "عام", tags, is_active: isActive ?? true,
+    }).select().single();
+    if (error) throw error;
+    res.status(201).json(toCamelCaseSingle(design));
+  } catch (err) {
+    req.log.error({ err }, "admin: create design failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/admin/marketplace/designs/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const body = req.body;
+    const update: Record<string, unknown> = {};
+    if (body.shopId !== undefined) update.shop_id = body.shopId;
+    if (body.title !== undefined) update.title = body.title;
+    if (body.description !== undefined) update.description = body.description;
+    if (body.imageUrl !== undefined) update.image_url = body.imageUrl;
+    if (body.price !== undefined) update.price = body.price;
+    if (body.category !== undefined) update.category = body.category;
+    if (body.tags !== undefined) update.tags = body.tags;
+    if (body.isActive !== undefined) update.is_active = body.isActive;
+    const { data: design, error } = await supabase
+      .from("marketplace_designs").update(update).eq("id", id).select().single();
+    if (error || !design) { res.status(404).json({ error: "not found" }); return; }
+    res.json(toCamelCaseSingle(design));
+  } catch (err) {
+    req.log.error({ err }, "admin: update design failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/admin/marketplace/designs/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    await supabase.from("marketplace_designs").delete().eq("id", id);
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err }, "admin: delete design failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* ═══════════════════════════════════════════════════
+   MARKETPLACE — Orders
+═══════════════════════════════════════════════════ */
+
+router.get("/admin/marketplace/orders", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("marketplace_orders")
+      .select("id, design_id, shop_id, customer_name, customer_phone, customer_city, governorate, quantity, total_price, status, notes, created_at, marketplace_designs!inner(title), shops!inner(name)")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    const mapped = (data || []).map((d: any) => ({
+      id: d.id,
+      designTitle: d.marketplace_designs?.title,
+      shopName: d.shops?.name,
+      customerName: d.customer_name,
+      customerPhone: d.customer_phone,
+      customerCity: d.customer_city,
+      governorate: d.governorate,
+      quantity: d.quantity,
+      totalPrice: d.total_price,
+      status: d.status,
+      notes: d.notes,
+      createdAt: d.created_at,
+    }));
+    res.json(mapped);
+  } catch (err) {
+    req.log.error({ err }, "admin: marketplace orders list failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/admin/marketplace/orders/:id/status", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { status } = req.body;
+    if (!status) { res.status(400).json({ error: "Status required" }); return; }
+    const { data: order, error } = await supabase
+      .from("marketplace_orders").update({ status }).eq("id", id).select().single();
+    if (error) throw error;
+    res.json(toCamelCaseSingle(order));
+  } catch (err) {
+    req.log.error({ err }, "admin: update marketplace order status failed");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* ═══════════════════════════════════════════════════
    SITE SETTINGS
 ═══════════════════════════════════════════════════ */
 
 /* Public — get all settings as key→value map */
 router.get("/settings", async (req, res) => {
   try {
-    const rows = await db.select().from(settingsTable);
+    const { data: rows, error } = await supabase.from("settings").select("*");
+    if (error) throw error;
     const map: Record<string, string> = {};
-    for (const r of rows) map[r.key] = r.value;
+    for (const r of (rows || [])) map[r.key] = r.value;
     res.json(map);
   } catch (err) {
     req.log.error({ err }, "settings: list failed");
@@ -624,10 +813,13 @@ router.patch("/admin/settings", async (req, res) => {
   try {
     for (const [key, value] of Object.entries(body)) {
       if (typeof key !== "string" || typeof value !== "string") continue;
-      await db
-        .insert(settingsTable)
-        .values({ key, value, updatedAt: new Date() })
-        .onConflictDoUpdate({ target: settingsTable.key, set: { value, updatedAt: new Date() } });
+      const { data: existing } = await supabase
+        .from("settings").select("key").eq("key", key).maybeSingle();
+      if (existing) {
+        await supabase.from("settings").update({ value, updated_at: new Date().toISOString() }).eq("key", key);
+      } else {
+        await supabase.from("settings").insert({ key, value, updated_at: new Date().toISOString() });
+      }
     }
     res.json({ ok: true });
   } catch (err) {

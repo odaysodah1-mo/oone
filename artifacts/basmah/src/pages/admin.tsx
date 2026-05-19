@@ -18,7 +18,12 @@ interface NahfatPreset { id: number; text: string; category: string; isActive: b
    HELPERS
 ══════════════════════════════════════════════════════════ */
 const BASE = "/api";
-const fetchJson = (url: string) => fetch(BASE + url).then(r => r.json());
+const authHeaders = () => ({ "x-admin-key": sessionStorage.getItem("admin_key") || "" });
+const fetchJson = (url: string) => fetch(BASE + url, { headers: authHeaders() }).then(r => r.json());
+const fetchWithKey = (url: string, opts: RequestInit = {}) => {
+  const h = { ...authHeaders(), ...opts.headers };
+  return fetch(BASE + url, { ...opts, headers: h });
+};
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "قيد الانتظار", confirmed: "مؤكد", shipped: "تم الشحن",
@@ -31,15 +36,18 @@ const STATUS_COLORS: Record<string, string> = {
 
 /* ══════════════════════════════════════════════════════════
    ADMIN PASSWORD GATE
-══════════════════════════════════════════════════════════ */
-const ADMIN_PASS = "basmah2025";
+═════════════════════════════════════════════════════════ */
+const ADMIN_PASS = "oDay@0788712344";
+const ADMIN_KEY = "oDay@0788712344";
 
 function PasswordGate({ onEnter }: { onEnter: () => void }) {
   const [val, setVal] = useState("");
   const [err, setErr] = useState(false);
   const check = () => {
-    if (val === ADMIN_PASS) onEnter();
-    else { setErr(true); setVal(""); }
+    if (val === ADMIN_PASS) {
+      sessionStorage.setItem("admin_key", ADMIN_KEY);
+      onEnter();
+    } else { setErr(true); setVal(""); }
   };
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "#0a0a0a" }}>
@@ -77,7 +85,7 @@ function OrdersTab() {
 
   const updateStatus = useMutation({
     mutationFn: ({ id, status }: { id: number; status: string }) =>
-      fetch(`${BASE}/admin/orders/${id}/status`, {
+      fetchWithKey(`/admin/orders/${id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -174,7 +182,7 @@ function ColorsTab() {
 
   const addColor = useMutation({
     mutationFn: (data: typeof form) =>
-      fetch(`${BASE}/admin/teams/${selectedTeam}/colors`, {
+      fetchWithKey(`/admin/teams/${selectedTeam}/colors`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...data, sortOrder: colors.length }),
@@ -188,7 +196,7 @@ function ColorsTab() {
 
   const deleteColor = useMutation({
     mutationFn: (colorId: number) =>
-      fetch(`${BASE}/admin/teams/${selectedTeam}/colors/${colorId}`, { method: "DELETE" }),
+      fetchWithKey(`/admin/teams/${selectedTeam}/colors/${colorId}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-colors", selectedTeam] }),
   });
 
@@ -316,7 +324,7 @@ function NahfatTab() {
   const [editText, setEditText] = useState("");
 
   const addPreset = useMutation({
-    mutationFn: () => fetch(`${BASE}/admin/nahfat`, {
+    mutationFn: () => fetchWithKey(`/admin/nahfat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: newText, category: newCat, isActive: true, sortOrder: presets.length }),
@@ -326,7 +334,7 @@ function NahfatTab() {
 
   const updatePreset = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<NahfatPreset> }) =>
-      fetch(`${BASE}/admin/nahfat/${id}`, {
+      fetchWithKey(`/admin/nahfat/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -335,7 +343,7 @@ function NahfatTab() {
   });
 
   const deletePreset = useMutation({
-    mutationFn: (id: number) => fetch(`${BASE}/admin/nahfat/${id}`, { method: "DELETE" }),
+    mutationFn: (id: number) => fetchWithKey(`/admin/nahfat/${id}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-nahfat"] }),
   });
 

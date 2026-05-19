@@ -4,6 +4,7 @@ const ar = {
   nav_orders: "الطلبات",
   nav_track: "📦 تتبع طلبي",
   nav_stats: "الإحصائيات",
+  nav_marketplace: "تشكيلة",
 
   /* ── Home ── */
   home_hero_title: "اترك",
@@ -133,7 +134,7 @@ const ar = {
 
   /* ── Success ── */
   success_title: "تم الطلب!",
-  success_accent: "يسلموا",
+  success_accent: "",
   success_sub: "راح نتواصل معك على {{phone}} قريباً",
   success_status: "في الانتظار — سنؤكد طلبك قريباً",
   success_whatsapp: "شارك على واتساب",

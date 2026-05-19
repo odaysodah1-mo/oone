@@ -4,6 +4,7 @@ const en = {
   nav_orders: "Orders",
   nav_track: "📦 Track My Order",
   nav_stats: "Stats",
+  nav_marketplace: "Collection",
 
   /* ── Home ── */
   home_hero_title: "Leave Your",

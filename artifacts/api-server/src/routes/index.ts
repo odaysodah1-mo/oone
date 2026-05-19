@@ -6,6 +6,7 @@ import adminRouter from "./admin";
 import storageRouter from "./storage";
 import branchRouter from "./branch";
 import removeBgRouter from "./remove-bg";
+import marketplaceRouter from "./marketplace";
 import { adminAuth } from "../middleware/adminAuth";
 
 const router: IRouter = Router();
@@ -30,5 +31,6 @@ router.use(adminRouter);
 router.use(storageRouter);
 router.use(branchRouter);
 router.use(removeBgRouter);
+router.use(marketplaceRouter);
 
 export default router;

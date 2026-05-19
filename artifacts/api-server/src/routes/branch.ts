@@ -1,8 +1,8 @@
 import { Router, Request } from "express";
-import { createHmac, createHash } from "crypto";
-import { db } from "@workspace/db";
-import { branchesTable, ordersTable } from "@workspace/db";
+import { createHmac } from "crypto";
+import bcrypt from "bcryptjs";
 import { eq, desc, and, count, sum } from "drizzle-orm";
+import { supabase } from "../lib/supabase-db";
 
 const router = Router();
 
@@ -15,11 +15,14 @@ const JORDAN_GOVERNORATES = [
 
 const BRANCH_STATUSES = ["pending", "confirmed", "shipped", "delivered"] as const;
 
-/* ── Token helpers ───────────────────────────────────────── */
 interface BranchPayload { id: number; username: string; governorate: string; commissionRate: number; iat: number }
 
-function hashPassword(password: string): string {
-  return createHash("sha256").update(password + SECRET).digest("hex");
+async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 12);
+}
+
+async function comparePassword(password: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(password, hash);
 }
 
 function createToken(payload: BranchPayload): string {
@@ -46,42 +49,42 @@ function getBranchFromReq(req: Request): BranchPayload | null {
   return verifyToken(auth.slice(7));
 }
 
-/* ════════════════════════════════════════════════════
-   BRANCH AUTH
-════════════════════════════════════════════════════ */
 router.post("/branch/login", async (req, res) => {
   const { username, password } = req.body as { username?: string; password?: string };
   if (!username || !password) {
     res.status(400).json({ error: "username and password required" }); return;
   }
   try {
-    const [branch] = await db.select().from(branchesTable)
-      .where(eq(branchesTable.username, username));
-    if (!branch || !branch.active) {
+    const { data: branch, error } = await supabase
+      .from("branches")
+      .select("*")
+      .eq("username", username)
+      .single();
+    if (error || !branch || !branch.active) {
       res.status(401).json({ error: "بيانات غير صحيحة" }); return;
     }
-    if (branch.passwordHash !== hashPassword(password)) {
+    if (!(await comparePassword(password, branch.password_hash))) {
       res.status(401).json({ error: "بيانات غير صحيحة" }); return;
     }
-    const token = createToken({ id: branch.id, username: branch.username, governorate: branch.governorate, commissionRate: branch.commissionRate, iat: Date.now() });
-    res.json({ token, governorate: branch.governorate, username: branch.username, commissionRate: branch.commissionRate });
+    const token = createToken({ id: branch.id, username: branch.username, governorate: branch.governorate, commissionRate: branch.commission_rate, iat: Date.now() });
+    res.json({ token, governorate: branch.governorate, username: branch.username, commissionRate: branch.commission_rate });
   } catch (err) {
     req.log.error({ err }, "branch: login failed");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-/* ════════════════════════════════════════════════════
-   BRANCH ORDERS
-════════════════════════════════════════════════════ */
 router.get("/branch/orders", async (req, res) => {
   const branch = getBranchFromReq(req);
   if (!branch) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
-    const orders = await db.select().from(ordersTable)
-      .where(eq(ordersTable.governorate, branch.governorate))
-      .orderBy(desc(ordersTable.createdAt));
-    res.json(orders);
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("governorate", branch.governorate)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json(data);
   } catch (err) {
     req.log.error({ err }, "branch: failed to list orders");
     res.status(500).json({ error: "Internal server error" });
@@ -98,11 +101,20 @@ router.patch("/branch/orders/:id/status", async (req, res) => {
     res.status(400).json({ error: "Invalid status" }); return;
   }
   try {
-    const [existing] = await db.select().from(ordersTable)
-      .where(and(eq(ordersTable.id, id), eq(ordersTable.governorate, branch.governorate)));
-    if (!existing) { res.status(404).json({ error: "Order not found" }); return; }
-    const [updated] = await db.update(ordersTable).set({ status })
-      .where(eq(ordersTable.id, id)).returning();
+    const { data: existing, error: findErr } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("id", id)
+      .eq("governorate", branch.governorate)
+      .single();
+    if (findErr || !existing) { res.status(404).json({ error: "Order not found" }); return; }
+    const { data: updated, error: updErr } = await supabase
+      .from("orders")
+      .update({ status })
+      .eq("id", id)
+      .select()
+      .single();
+    if (updErr) throw updErr;
     res.json(updated);
   } catch (err) {
     req.log.error({ err }, "branch: failed to update order status");
@@ -114,22 +126,29 @@ router.get("/branch/stats", async (req, res) => {
   const branch = getBranchFromReq(req);
   if (!branch) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
-    const [{ total }] = await db.select({ total: count() }).from(ordersTable)
-      .where(eq(ordersTable.governorate, branch.governorate));
-    const [{ revenue }] = await db.select({ revenue: sum(ordersTable.totalPrice) }).from(ordersTable)
-      .where(and(eq(ordersTable.governorate, branch.governorate), eq(ordersTable.status, "delivered")));
-    const pending   = await db.select({ c: count() }).from(ordersTable).where(and(eq(ordersTable.governorate, branch.governorate), eq(ordersTable.status, "pending")));
-    const confirmed = await db.select({ c: count() }).from(ordersTable).where(and(eq(ordersTable.governorate, branch.governorate), eq(ordersTable.status, "confirmed")));
-    const shipped   = await db.select({ c: count() }).from(ordersTable).where(and(eq(ordersTable.governorate, branch.governorate), eq(ordersTable.status, "shipped")));
-    const delivered = await db.select({ c: count() }).from(ordersTable).where(and(eq(ordersTable.governorate, branch.governorate), eq(ordersTable.status, "delivered")));
+    const { data: orders, error } = await supabase
+      .from("orders")
+      .select("total_price, status")
+      .eq("governorate", branch.governorate);
+    if (error) throw error;
+
+    const total = orders?.length || 0;
+    let revenue = 0;
+    const statusCounts: Record<string, number> = { pending: 0, confirmed: 0, shipped: 0, delivered: 0 };
+
+    for (const o of orders || []) {
+      if (o.status === "delivered") revenue += o.total_price || 0;
+      if (statusCounts[o.status] !== undefined) statusCounts[o.status]++;
+    }
+
     res.json({
-      total: Number(total) || 0,
-      revenue: Number(revenue) || 0,
-      commission: (Number(revenue) || 0) * branch.commissionRate,
-      pending: Number(pending[0]?.c) || 0,
-      confirmed: Number(confirmed[0]?.c) || 0,
-      shipped: Number(shipped[0]?.c) || 0,
-      delivered: Number(delivered[0]?.c) || 0,
+      total,
+      revenue,
+      commission: revenue * branch.commissionRate,
+      pending: statusCounts.pending,
+      confirmed: statusCounts.confirmed,
+      shipped: statusCounts.shipped,
+      delivered: statusCounts.delivered,
     });
   } catch (err) {
     req.log.error({ err }, "branch: failed to get stats");
@@ -137,22 +156,26 @@ router.get("/branch/stats", async (req, res) => {
   }
 });
 
-/* ════════════════════════════════════════════════════
-   ADMIN → BRANCH MANAGEMENT
-════════════════════════════════════════════════════ */
-
 router.get("/admin/branches", async (req, res) => {
   try {
-    const branches = await db.select({
-      id: branchesTable.id, username: branchesTable.username,
-      governorate: branchesTable.governorate, commissionRate: branchesTable.commissionRate,
-      active: branchesTable.active, createdAt: branchesTable.createdAt,
-    }).from(branchesTable).orderBy(branchesTable.governorate);
-    const withStats = await Promise.all(branches.map(async b => {
-      const [{ total }]   = await db.select({ total: count() }).from(ordersTable).where(eq(ordersTable.governorate, b.governorate));
-      const [{ revenue }] = await db.select({ revenue: sum(ordersTable.totalPrice) }).from(ordersTable)
-        .where(and(eq(ordersTable.governorate, b.governorate), eq(ordersTable.status, "delivered")));
-      return { ...b, totalOrders: Number(total) || 0, revenue: Number(revenue) || 0, commission: (Number(revenue) || 0) * b.commissionRate };
+    const { data: branches, error } = await supabase
+      .from("branches")
+      .select("id, username, governorate, commission_rate, active, created_at")
+      .order("governorate", { ascending: true });
+    if (error) throw error;
+
+    const withStats = await Promise.all((branches || []).map(async (b: any) => {
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("total_price, status")
+        .eq("governorate", b.governorate);
+      const totalOrders = orders?.length || 0;
+      const revenue = (orders || []).reduce((s: number, o: any) => o.status === "delivered" ? s + (o.total_price || 0) : s, 0);
+      return {
+        id: b.id, username: b.username, governorate: b.governorate,
+        commissionRate: b.commission_rate, active: b.active, createdAt: b.created_at,
+        totalOrders, revenue, commission: revenue * b.commission_rate,
+      };
     }));
     res.json(withStats);
   } catch (err) {
@@ -169,17 +192,25 @@ router.post("/admin/branches", async (req, res) => {
     res.status(400).json({ error: "valid governorate required" }); return;
   }
   try {
-    const [branch] = await db.insert(branchesTable).values({
-      username,
-      passwordHash: hashPassword(password),
-      governorate,
-      commissionRate: typeof commissionRate === "number" ? commissionRate : 0.1,
-      active: true,
-    }).returning();
-    const { passwordHash: _, ...safe } = branch;
+    const { data: branch, error } = await supabase
+      .from("branches")
+      .insert({
+        username,
+        password_hash: await hashPassword(password),
+        governorate,
+        commission_rate: typeof commissionRate === "number" ? commissionRate : 0.1,
+        active: true,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    const { password_hash, ...safe } = branch;
     res.status(201).json(safe);
   } catch (err: unknown) {
-    if ((err as { code?: string }).code === "23505") { res.status(409).json({ error: "اسم المستخدم موجود مسبقاً" }); return; }
+    const pgErr = err as { code?: string; message?: string };
+    if (pgErr.message?.includes("duplicate") || pgErr.code === "23505") {
+      res.status(409).json({ error: "اسم المستخدم موجود مسبقاً" }); return;
+    }
     req.log.error({ err }, "admin: failed to create branch");
     res.status(500).json({ error: "Internal server error" });
   }
@@ -190,16 +221,20 @@ router.patch("/admin/branches/:id", async (req, res) => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const { password, commissionRate, active, governorate } = req.body as Record<string, unknown>;
   const update: Record<string, unknown> = {};
-  if (typeof password === "string" && password) update.passwordHash = hashPassword(password);
-  if (typeof commissionRate === "number") update.commissionRate = commissionRate;
+  if (typeof password === "string" && password) update.password_hash = await hashPassword(password);
+  if (typeof commissionRate === "number") update.commission_rate = commissionRate;
   if (typeof active === "boolean") update.active = active;
   if (typeof governorate === "string" && JORDAN_GOVERNORATES.includes(governorate as typeof JORDAN_GOVERNORATES[number])) update.governorate = governorate;
   if (Object.keys(update).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
   try {
-    const [updated] = await db.update(branchesTable).set(update as Partial<typeof branchesTable.$inferInsert>)
-      .where(eq(branchesTable.id, id)).returning();
-    if (!updated) { res.status(404).json({ error: "Branch not found" }); return; }
-    const { passwordHash: _, ...safe } = updated;
+    const { data: updated, error } = await supabase
+      .from("branches")
+      .update(update)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error || !updated) { res.status(404).json({ error: "Branch not found" }); return; }
+    const { password_hash, ...safe } = updated;
     res.json(safe);
   } catch (err) {
     req.log.error({ err }, "admin: failed to update branch");
@@ -211,7 +246,7 @@ router.delete("/admin/branches/:id", async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   try {
-    await db.delete(branchesTable).where(eq(branchesTable.id, id));
+    await supabase.from("branches").delete().eq("id", id);
     res.status(204).end();
   } catch (err) {
     req.log.error({ err }, "admin: failed to delete branch");

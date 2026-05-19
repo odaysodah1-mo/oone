@@ -1,15 +1,17 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
-import { teamsTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
 import { GetTeamParams } from "@workspace/api-zod";
+import { supabase, toCamelCaseArr, toCamelCaseSingle } from "../lib/supabase-db";
 
 const router = Router();
 
 router.get("/teams", async (req, res) => {
   try {
-    const teams = await db.select().from(teamsTable).orderBy(teamsTable.name);
-    const result = teams.map((t) => ({
+    const { data, error } = await supabase
+      .from("teams")
+      .select("*")
+      .order("name", { ascending: true });
+    if (error) throw error;
+    const result = toCamelCaseArr(data || []).map((t: any) => ({
       ...t,
       availableColors: JSON.parse(t.availableColors),
       availableSizes: JSON.parse(t.availableSizes),
@@ -23,13 +25,14 @@ router.get("/teams", async (req, res) => {
 
 router.get("/teams/popular", async (req, res) => {
   try {
-    const teams = await db
-      .select()
-      .from(teamsTable)
-      .where(eq(teamsTable.isPopular, true))
-      .orderBy(desc(teamsTable.orderCount))
+    const { data, error } = await supabase
+      .from("teams")
+      .select("*")
+      .eq("is_popular", true)
+      .order("order_count", { ascending: false })
       .limit(8);
-    const result = teams.map((t) => ({
+    if (error) throw error;
+    const result = toCamelCaseArr(data || []).map((t: any) => ({
       ...t,
       availableColors: JSON.parse(t.availableColors),
       availableSizes: JSON.parse(t.availableSizes),
@@ -48,14 +51,16 @@ router.get("/teams/:id", async (req, res) => {
     return;
   }
   try {
-    const [team] = await db
-      .select()
-      .from(teamsTable)
-      .where(eq(teamsTable.id, parsed.data.id));
-    if (!team) {
+    const { data, error } = await supabase
+      .from("teams")
+      .select("*")
+      .eq("id", parsed.data.id)
+      .single();
+    if (error || !data) {
       res.status(404).json({ error: "Team not found" });
       return;
     }
+    const team = toCamelCaseSingle(data);
     res.json({
       ...team,
       availableColors: JSON.parse(team.availableColors),
