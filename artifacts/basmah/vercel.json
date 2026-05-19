@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd ../.. && pnpm --filter @workspace/basmah run build",
+  "buildCommand": "cd ../.. && NODE_OPTIONS=\"--max-old-space-size=4096\" pnpm --filter @workspace/basmah run build",
   "outputDirectory": "dist/public",
-  "installCommand": "cd ../.. && pnpm install --frozen-lockfile"
+  "installCommand": "cd ../.. && pnpm install --filter @workspace/basmah --frozen-lockfile"
 }
