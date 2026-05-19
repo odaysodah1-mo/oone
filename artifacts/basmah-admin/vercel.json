@@ -1,5 +1,8 @@
 {
   "buildCommand": "cd ../.. && pnpm --filter @workspace/basmah-admin run build",
-  "outputDirectory": "dist/public",
-  "installCommand": "cd ../.. && pnpm install --frozen-lockfile"
+  "outputDirectory": "artifacts/basmah-admin/dist/public",
+  "installCommand": "pnpm install --frozen-lockfile --ignore-scripts",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "https://oone-api-xxpp.onrender.com/api/$1" }
+  ]
 }
