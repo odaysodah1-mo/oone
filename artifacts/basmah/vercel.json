@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd ../.. && pnpm --filter @workspace/basmah run build",
+  "outputDirectory": "dist/public",
+  "framework": "vite"
+}
