@@ -1,5 +1,5 @@
 {
   "buildCommand": "cd ../.. && pnpm --filter @workspace/basmah-admin run build",
   "outputDirectory": "dist/public",
-  "framework": "vite"
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile"
 }
