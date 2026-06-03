@@ -7,6 +7,7 @@ import {
   ChevronDown, Plus, Trash2, Pencil, Check, X, Upload,
   BarChart3, Package, TrendingUp, RefreshCw, Eye, EyeOff,
   Star, RotateCcw, Sticker, Link as LinkIcon, MapPin, Store,
+  Server, Wifi, WifiOff,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -70,24 +71,37 @@ interface NahfatPreset {
 }
 
 /* ─── API ─────────────────────────────────────────────── */
+let apiRetryCount = 0;
 async function apiFetch(path: string, opts?: RequestInit) {
   const adminKey = sessionStorage.getItem(STORAGE_KEY) ?? "";
-  const res = await fetch(`/api${path}`, {
-    ...opts,
-    headers: {
-      "Content-Type": "application/json",
-      "x-admin-key": adminKey,
-      ...(opts?.headers ?? {}),
-    },
-  });
-  if (res.status === 401) {
-    sessionStorage.removeItem(STORAGE_KEY);
-    window.location.reload();
-    throw new Error("Unauthorized");
+  try {
+    const res = await fetch(`/api${path}`, {
+      ...opts,
+      headers: {
+        "Content-Type": "application/json",
+        "x-admin-key": adminKey,
+        ...(opts?.headers ?? {}),
+      },
+    });
+    apiRetryCount = 0;
+    if (res.status === 401) {
+      sessionStorage.removeItem(STORAGE_KEY);
+      window.location.reload();
+      throw new Error("Unauthorized");
+    }
+    if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+    if (res.status === 204) return null;
+    return res.json();
+  } catch (err) {
+    if (err instanceof TypeError && (err.message.includes("fetch") || err.message.includes("network"))) {
+      apiRetryCount++;
+      if (apiRetryCount <= 3) {
+        await new Promise(r => setTimeout(r, 2000 * apiRetryCount));
+        return apiFetch(path, opts);
+      }
+    }
+    throw err;
   }
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-  if (res.status === 204) return null;
-  return res.json();
 }
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -122,7 +136,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
       sessionStorage.setItem(STORAGE_KEY, password);
       onLogin();
     } catch {
-      setError("تعذّر الاتصال بالسيرفر");
+      setError("تعذّر الاتصال بالسيرفر — قد يكون مستيقظًا، حاول مجددًا بعد 30 ثانية");
     } finally {
       setLoading(false);
     }
@@ -990,10 +1004,6 @@ function ImageUploadSlot({
   value: string | null;
   onChange: (url: string | null) => void;
 }) {
-  const [removingBg, setRemovingBg] = useState(false);
-  const [bgStep, setBgStep]         = useState<"idle" | "analyzing" | "uploading">("idle");
-  const [precut, setPrecut]         = useState(false);
-
   const adminKey = sessionStorage.getItem(STORAGE_KEY) ?? "";
 
   const { uploadFile, isUploading, progress } = useUpload({
@@ -1002,49 +1012,9 @@ function ImageUploadSlot({
     extraHeaders: adminKey ? { "x-admin-key": adminKey } : {},
   });
 
-  const busy = removingBg || isUploading;
-
   async function handleFile(file: File) {
-    if (precut) {
-      /* صورة جاهزة — ارفع مباشرة بدون معالجة */
-      await uploadFile(file);
-      return;
-    }
-    try {
-      setRemovingBg(true);
-      setBgStep("analyzing");
-      const form = new FormData();
-      form.append("image", file);
-      const resp = await fetch("/api/admin/remove-background", {
-        method: "POST",
-        headers: adminKey ? { "x-admin-key": adminKey } : {},
-        body: form,
-      });
-      if (!resp.ok) throw new Error(`server ${resp.status}`);
-      const resultBlob = await resp.blob();
-      const processed = new File(
-        [resultBlob],
-        file.name.replace(/\.[^.]+$/, "") + "_nobg.png",
-        { type: "image/png" },
-      );
-      setBgStep("uploading");
-      setRemovingBg(false);
-      await uploadFile(processed);
-    } catch (err) {
-      console.error("[ImageUploadSlot] bg removal failed:", err);
-      toast.error("فشل إزالة الخلفية — سيتم رفع الصورة الأصلية");
-      setRemovingBg(false);
-      setBgStep("idle");
-      await uploadFile(file);
-    } finally {
-      setBgStep("idle");
-    }
+    await uploadFile(file);
   }
-
-  const stepLabel =
-    bgStep === "analyzing" ? "جاري إزالة الخلفية…" :
-    bgStep === "uploading"  ? `جاري الرفع… ${progress}%` :
-    isUploading             ? `${progress}%` : "";
 
   return (
     <div className="flex flex-col items-center gap-1">
@@ -1061,42 +1031,22 @@ function ImageUploadSlot({
         </div>
       ) : (
         <label className={`flex flex-col items-center justify-center w-24 h-28 border-2 border-dashed rounded-xl transition-colors bg-white
-          ${busy ? "border-emerald-400 cursor-wait" : precut ? "border-blue-400 cursor-pointer hover:bg-blue-50" : "border-slate-300 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50"}`}>
-          <input type="file" accept="image/*" className="hidden" disabled={busy}
+          ${isUploading ? "border-emerald-400 cursor-wait" : "border-slate-300 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50"}`}>
+          <input type="file" accept="image/*" className="hidden" disabled={isUploading}
             onChange={async e => { const f = e.target.files?.[0]; if (f) await handleFile(f); e.target.value = ""; }} />
-          {busy ? (
+          {isUploading ? (
             <div className="text-center px-1">
               <RefreshCw size={16} className="animate-spin text-emerald-500 mx-auto mb-1" />
-              <p className="text-[9px] text-emerald-600 leading-tight">{stepLabel}</p>
+              <p className="text-[9px] text-emerald-600 leading-tight">{progress}%</p>
             </div>
           ) : (
             <div className="text-center">
-              <Upload size={16} className={`mx-auto mb-1 ${precut ? "text-blue-400" : "text-slate-400"}`} />
+              <Upload size={16} className="mx-auto mb-1 text-slate-400" />
               <p className="text-[10px] text-slate-400">رفع صورة</p>
-              {precut
-                ? <p className="text-[8px] text-blue-500 mt-0.5">✓ جاهزة</p>
-                : <p className="text-[8px] text-emerald-500 mt-0.5">✦ تُحذف الخلفية</p>
-              }
             </div>
           )}
         </label>
       )}
-
-      {/* toggle: صورة جاهزة */}
-      <button
-        type="button"
-        onClick={() => setPrecut(v => !v)}
-        className={`flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full border transition-colors
-          ${precut
-            ? "border-blue-400 bg-blue-50 text-blue-600"
-            : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"}`}
-      >
-        <span className={`w-2.5 h-2.5 rounded-full border flex-shrink-0 flex items-center justify-center
-          ${precut ? "border-blue-500 bg-blue-500" : "border-slate-300"}`}>
-          {precut && <Check size={6} strokeWidth={3} className="text-white" />}
-        </span>
-        جاهزة مقصوصة
-      </button>
     </div>
   );
 }
@@ -1176,19 +1126,7 @@ function JerseyColorCard({ color, onDelete, onUpdate }: {
   async function handleExtraFile(file: File) {
     setAddingImg(true);
     try {
-      /* try BG removal */
-      const form = new FormData();
-      form.append("image", file);
-      const resp = await fetch("/api/admin/remove-background", {
-        method: "POST", headers: adminKey ? { "x-admin-key": adminKey } : {}, body: form,
-      });
-      if (resp.ok) {
-        const blob = await resp.blob();
-        const processed = new File([blob], file.name.replace(/\.[^.]+$/, "") + "_nobg.png", { type: "image/png" });
-        await uploadFile(processed);
-      } else {
-        await uploadFile(file);
-      }
+      await uploadFile(file);
     } catch { await uploadFile(file); }
   }
 
@@ -1259,7 +1197,7 @@ function JerseyColorCard({ color, onDelete, onUpdate }: {
           </label>
         </div>
         {(addingImg || isUploading) && (
-          <p className="text-[9px] text-emerald-600 mt-0.5">{isUploading ? `رفع ${progress}%` : "إزالة الخلفية…"}</p>
+          <p className="text-[9px] text-emerald-600 mt-0.5">{isUploading ? `رفع ${progress}%` : "جاري الرفع…"}</p>
         )}
       </div>
 
@@ -2016,7 +1954,7 @@ function MarketplaceSection() {
   const [editingShop, setEditingShop] = useState<any | null>(null);
   const [editingDesign, setEditingDesign] = useState<any | null>(null);
   const [shopForm, setShopForm] = useState({ name: "", slug: "", description: "", logo: "", contactPhone: "", commissionPercent: 15, isActive: true });
-  const [designForm, setDesignForm] = useState({ shopId: "", title: "", description: "", imageUrl: "", price: "", category: "عام", tags: "", isActive: true });
+  const [designForm, setDesignForm] = useState({ shopId: "", title: "", description: "", images: [] as string[], price: "", category: "عام", tags: "", isActive: true });
   const { uploadFile, isUploading } = useUpload();
 
   const fetchData = useCallback(async () => {
@@ -2041,7 +1979,14 @@ function MarketplaceSection() {
   };
 
   const saveDesign = async () => {
-    const body = { ...designForm, shopId: Number(designForm.shopId), price: Number(designForm.price), tags: designForm.tags || undefined };
+    const body = {
+      ...designForm,
+      images: designForm.images.length > 0 ? designForm.images : undefined,
+      imageUrl: designForm.images[0] || designForm.imageUrl,
+      shopId: Number(designForm.shopId),
+      price: Number(designForm.price),
+      tags: designForm.tags || undefined,
+    };
     const url = editingDesign ? `/api/admin/marketplace/designs/${editingDesign.id}` : "/api/admin/marketplace/designs";
     const method = editingDesign ? "PUT" : "POST";
     const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -2078,6 +2023,14 @@ function MarketplaceSection() {
     };
     input.click();
   };
+
+  function addDesignImage(url: string) {
+    setDesignForm(f => ({ ...f, images: [...f.images, url] }));
+  }
+
+  function removeDesignImage(index: number) {
+    setDesignForm(f => ({ ...f, images: f.images.filter((_, i) => i !== index) }));
+  }
 
   const STATUSES: Record<string, string> = { pending: "قيد الانتظار", confirmed: "مؤكد", shipped: "تم الشحن", delivered: "تم التوصيل", cancelled: "ملغي" };
   const COLOR_MAP: Record<string, string> = { pending: "bg-amber-100 text-amber-800", confirmed: "bg-blue-100 text-blue-800", shipped: "bg-purple-100 text-purple-800", delivered: "bg-green-100 text-green-800", cancelled: "bg-red-100 text-red-800" };
@@ -2152,7 +2105,7 @@ function MarketplaceSection() {
       {/* ═══════ Designs ═══════ */}
       {tab === "designs" && (
         <div className="space-y-3">
-          <button onClick={() => { setShowDesignForm(true); setEditingDesign(null); setDesignForm({ shopId: shops[0]?.id?.toString() || "", title: "", description: "", imageUrl: "", price: "", category: "عام", tags: "", isActive: true }); }}
+          <button onClick={() => { setShowDesignForm(true); setEditingDesign(null); setDesignForm({ shopId: shops[0]?.id?.toString() || "", title: "", description: "", images: [], imageUrl: "", price: "", category: "عام", tags: "", isActive: true }); }}
             className="flex items-center gap-2 text-sm font-bold text-primary hover:underline"><Plus size={16} /> إضافة تصميم</button>
           {showDesignForm && (
             <div className="bg-white rounded-xl border p-4 space-y-3">
@@ -2162,10 +2115,27 @@ function MarketplaceSection() {
               </select>
               <input placeholder="عنوان التصميم" value={designForm.title} onChange={e => setDesignForm(f => ({ ...f, title: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm" />
               <textarea placeholder="وصف" value={designForm.description} onChange={e => setDesignForm(f => ({ ...f, description: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm" />
-              <div className="flex items-center gap-3">
-                <input placeholder="رابط الصورة" value={designForm.imageUrl} onChange={e => setDesignForm(f => ({ ...f, imageUrl: e.target.value }))} className="flex-1 border rounded-lg px-3 py-2 text-sm" dir="ltr" />
-                <button onClick={() => handleImageUpload(url => setDesignForm(f => ({ ...f, imageUrl: url })))} className="text-xs bg-muted px-3 py-2 rounded-lg font-bold">رفع</button>
+
+              {/* Images */}
+              <div>
+                <p className="text-xs text-slate-500 mb-2">صور التصميم (أول صورة هي الرئيسية)</p>
+                <div className="flex flex-wrap gap-2">
+                  {designForm.images.map((url, i) => (
+                    <div key={i} className="relative group">
+                      <img src={url} alt="" className="w-16 h-16 object-cover rounded-lg border border-slate-200" />
+                      <button onClick={() => removeDesignImage(i)}
+                        className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ fontSize: 10, lineHeight: 1 }}>✕</button>
+                      {i === 0 && <span className="absolute bottom-0 left-0 right-0 bg-emerald-500 text-white text-[8px] text-center rounded-b-lg">أساسي</span>}
+                    </div>
+                  ))}
+                  <button onClick={() => handleImageUpload(addDesignImage)} disabled={isUploading}
+                    className="w-16 h-16 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center text-slate-400 hover:border-emerald-400 hover:text-emerald-500 transition-colors">
+                    {isUploading ? <RefreshCw size={14} className="animate-spin" /> : <Plus size={16} />}
+                  </button>
+                </div>
               </div>
+
               <div className="flex gap-3">
                 <input placeholder="السعر" type="number" value={designForm.price} onChange={e => setDesignForm(f => ({ ...f, price: e.target.value }))} className="w-24 border rounded-lg px-3 py-2 text-sm" />
                 <select value={designForm.category} onChange={e => setDesignForm(f => ({ ...f, category: e.target.value }))} className="border rounded-lg px-3 py-2 text-sm">
@@ -2187,22 +2157,51 @@ function MarketplaceSection() {
               </thead>
               <tbody>
                 {designs.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">لا يوجد تصاميم</td></tr>}
-                {designs.map(d => (
-                  <tr key={d.id} className="border-t hover:bg-muted/30">
-                    <td className="p-3 flex items-center gap-2">
-                      <img src={d.imageUrl} className="w-10 h-10 rounded-lg object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                      <span className="font-bold">{d.title}</span>
-                    </td>
-                    <td className="p-3 text-xs text-muted-foreground">{d.shopName}</td>
-                    <td className="p-3 text-center font-bold">{d.price} د.أ</td>
-                    <td className="p-3 text-center text-xs">{d.category}</td>
-                    <td className="p-3 text-center">{d.isActive ? <Check className="inline text-green-600" size={14} /> : <X className="inline text-red-400" size={14} />}</td>
-                    <td className="p-3 text-left">
-                      <button onClick={() => { setEditingDesign(d); setDesignForm({ shopId: d.shopId?.toString() || "", title: d.title, description: d.description || "", imageUrl: d.imageUrl || "", price: d.price?.toString() || "", category: d.category || "عام", tags: d.tags || "", isActive: d.isActive }); setShowDesignForm(true); }} className="text-blue-600 hover:underline text-xs ml-2">تعديل</button>
-                      <button onClick={() => deleteDesign(d.id)} className="text-red-500 hover:underline text-xs">حذف</button>
-                    </td>
-                  </tr>
-                ))}
+                {designs.map(d => {
+                  const imgs = d.images || (d.imageUrl ? [d.imageUrl] : []);
+                  return (
+                    <tr key={d.id} className="border-t hover:bg-muted/30">
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex -space-x-2 rtl:space-x-reverse">
+                            {imgs.slice(0, 3).map((url: string, i: number) => (
+                              <img key={i} src={url} alt=""
+                                className="w-8 h-8 rounded-full border-2 border-white object-cover shadow-sm"
+                                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                            ))}
+                            {imgs.length > 3 && (
+                              <div className="w-8 h-8 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">+{imgs.length - 3}</div>
+                            )}
+                          </div>
+                          <span className="font-bold">{d.title}</span>
+                        </div>
+                      </td>
+                      <td className="p-3 text-xs text-muted-foreground">{d.shopName}</td>
+                      <td className="p-3 text-center font-bold">{d.price} د.أ</td>
+                      <td className="p-3 text-center text-xs">{d.category}</td>
+                      <td className="p-3 text-center">{d.isActive ? <Check className="inline text-green-600" size={14} /> : <X className="inline text-red-400" size={14} />}</td>
+                      <td className="p-3 text-left">
+                        <button onClick={() => {
+                          setEditingDesign(d);
+                          const imgs = d.images || (d.imageUrl ? [d.imageUrl] : []);
+                          setDesignForm({
+                            shopId: d.shopId?.toString() || "",
+                            title: d.title,
+                            description: d.description || "",
+                            images: imgs,
+                            imageUrl: imgs[0] || "",
+                            price: d.price?.toString() || "",
+                            category: d.category || "عام",
+                            tags: d.tags || "",
+                            isActive: d.isActive,
+                          });
+                          setShowDesignForm(true);
+                        }} className="text-blue-600 hover:underline text-xs ml-2">تعديل</button>
+                        <button onClick={() => deleteDesign(d.id)} className="text-red-500 hover:underline text-xs">حذف</button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -2744,10 +2743,77 @@ function PageHeader({ title, subtitle, children }: { title: string; subtitle?: s
   );
 }
 
+/* ── Connecting Screen (cold-start / server waking) ─── */
+function ConnectingScreen({ onRetry, elapsed }: { onRetry: () => void; elapsed: number }) {
+  const dots = ".".repeat((elapsed % 6) + 1);
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4" dir="rtl">
+      <div className="text-center max-w-sm">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-500/20 mb-6 animate-pulse">
+          <Server size={40} className="text-emerald-400" />
+        </div>
+        <h1 className="text-2xl font-bold text-white mb-3">جاري تشغيل الخادم{dots}</h1>
+        <p className="text-slate-400 text-sm leading-relaxed mb-2">
+          السيرفر مستيقظ بعد فترة خمول وقد يستغرق 30-60 ثانية
+        </p>
+        <div className="w-full bg-slate-700 rounded-full h-2 mb-2 overflow-hidden">
+          <div className="bg-emerald-500 h-full rounded-full"
+            style={{ width: `${Math.min(95, (elapsed / 60) * 100)}%` }} />
+        </div>
+        <p className="text-slate-500 text-xs">{elapsed >= 60 ? "أكثر من دقيقة..." : `${elapsed} ثانية`}</p>
+        <p className="text-slate-500 text-xs mt-3">يتم المحاولة تلقائياً...</p>
+        <button onClick={onRetry}
+          className="mt-4 bg-slate-700 hover:bg-slate-600 text-slate-300 px-4 py-2 rounded-xl text-sm transition-colors">
+          محاولة يدوية
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ─── App ─────────────────────────────────────────────── */
 export default function App() {
   const [authed, setAuthed] = useState(() => !!sessionStorage.getItem(STORAGE_KEY));
   const [section, setSection] = useState<Section>("dashboard");
+  const [connecting, setConnecting] = useState(true);
+  const [elapsed, setElapsed] = useState(0);
+  const retryRef = useRef(0);
+
+  async function checkHealth() {
+    try {
+      const res = await fetch("/api/admin/teams", {
+        headers: { "x-admin-key": sessionStorage.getItem(STORAGE_KEY) ?? "" },
+      });
+      if (res.status === 401) {
+        sessionStorage.removeItem(STORAGE_KEY);
+        setAuthed(false);
+      }
+      setConnecting(false);
+    } catch {
+      retryRef.current++;
+      const delay = Math.min(2000 * Math.pow(1.3, retryRef.current), 8000);
+      setTimeout(checkHealth, delay);
+    }
+  }
+
+  useEffect(() => {
+    checkHealth();
+    const tick = setInterval(() => setElapsed(e => e + 1), 1000);
+    return () => clearInterval(tick);
+  }, []);
+
+  function handleManualRetry() {
+    retryRef.current = 0;
+    setElapsed(0);
+    checkHealth();
+  }
+
+  if (connecting) return (
+    <>
+      <ConnectingScreen onRetry={handleManualRetry} elapsed={elapsed} />
+      <Toaster position="top-center" richColors />
+    </>
+  );
 
   if (!authed) return (
     <>

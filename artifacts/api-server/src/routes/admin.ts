@@ -660,6 +660,21 @@ router.delete("/admin/marketplace/shops/:id", async (req, res) => {
    MARKETPLACE — Designs
 ═══════════════════════════════════════════════════ */
 
+function parseImages(val: string): string[] {
+  if (!val) return [];
+  try {
+    const parsed = JSON.parse(val);
+    return Array.isArray(parsed) ? parsed : [val];
+  } catch {
+    return [val];
+  }
+}
+
+function serializeImages(val: string | string[]): string {
+  if (Array.isArray(val)) return JSON.stringify(val);
+  return val;
+}
+
 router.get("/admin/marketplace/designs", async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -672,7 +687,8 @@ router.get("/admin/marketplace/designs", async (req, res) => {
       shopId: d.shop_id,
       title: d.title,
       description: d.description,
-      imageUrl: d.image_url,
+      images: parseImages(d.image_url),
+      imageUrl: parseImages(d.image_url)[0] || d.image_url,
       price: d.price,
       category: d.category,
       tags: d.tags,
@@ -689,19 +705,24 @@ router.get("/admin/marketplace/designs", async (req, res) => {
 
 router.post("/admin/marketplace/designs", async (req, res) => {
   try {
-    const { shopId, title, description, imageUrl, price, category, tags, isActive } = req.body;
-    if (!shopId || !title || !imageUrl || !price) {
+    const { shopId, title, description, imageUrl, images, price, category, tags, isActive } = req.body;
+    if (!shopId || !title || !(imageUrl || images) || !price) {
       res.status(400).json({ error: "Missing required fields" }); return;
     }
+    const imageUrls = images || (imageUrl ? [imageUrl] : []);
     const { data: design, error } = await supabase.from("marketplace_designs").insert({
       shop_id: shopId,
       title, description,
-      image_url: imageUrl,
+      image_url: serializeImages(imageUrls),
       price,
       category: category ?? "عام", tags, is_active: isActive ?? true,
     }).select().single();
     if (error) throw error;
-    res.status(201).json(toCamelCaseSingle(design));
+    res.status(201).json({
+      ...toCamelCaseSingle(design),
+      images: parseImages(design.image_url),
+      imageUrl: parseImages(design.image_url)[0] || design.image_url,
+    });
   } catch (err) {
     req.log.error({ err }, "admin: create design failed");
     res.status(500).json({ error: "Internal server error" });
@@ -716,7 +737,11 @@ router.put("/admin/marketplace/designs/:id", async (req, res) => {
     if (body.shopId !== undefined) update.shop_id = body.shopId;
     if (body.title !== undefined) update.title = body.title;
     if (body.description !== undefined) update.description = body.description;
-    if (body.imageUrl !== undefined) update.image_url = body.imageUrl;
+    if (body.imageUrl !== undefined) {
+      update.image_url = body.images
+        ? serializeImages(body.images)
+        : serializeImages(body.imageUrl);
+    }
     if (body.price !== undefined) update.price = body.price;
     if (body.category !== undefined) update.category = body.category;
     if (body.tags !== undefined) update.tags = body.tags;
@@ -724,7 +749,11 @@ router.put("/admin/marketplace/designs/:id", async (req, res) => {
     const { data: design, error } = await supabase
       .from("marketplace_designs").update(update).eq("id", id).select().single();
     if (error || !design) { res.status(404).json({ error: "not found" }); return; }
-    res.json(toCamelCaseSingle(design));
+    res.json({
+      ...toCamelCaseSingle(design),
+      images: parseImages(design.image_url),
+      imageUrl: parseImages(design.image_url)[0] || design.image_url,
+    });
   } catch (err) {
     req.log.error({ err }, "admin: update design failed");
     res.status(500).json({ error: "Internal server error" });

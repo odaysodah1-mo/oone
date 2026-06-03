@@ -84,7 +84,7 @@ export function useUpload(options: UseUploadOptions = {}) {
 
       return response.json();
     },
-    []
+    [basePath, extraHeaders]
   );
 
   const uploadToPresignedUrl = useCallback(
@@ -164,7 +164,7 @@ export function useUpload(options: UseUploadOptions = {}) {
         headers: { "Content-Type": file.type || "application/octet-stream" },
       };
     },
-    []
+    [basePath, extraHeaders]
   );
 
   return {

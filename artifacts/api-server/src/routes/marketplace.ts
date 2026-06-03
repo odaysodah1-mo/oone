@@ -1,6 +1,16 @@
 import { Router } from "express";
 import { supabase, toCamelCaseArr, toCamelCaseSingle } from "../lib/supabase-db";
 
+function parseImages(val: string): string[] {
+  if (!val) return [];
+  try {
+    const parsed = JSON.parse(val);
+    return Array.isArray(parsed) ? parsed : [val];
+  } catch {
+    return [val];
+  }
+}
+
 const router = Router();
 
 router.get("/marketplace/shops", async (req, res) => {
@@ -36,8 +46,10 @@ router.get("/marketplace/designs", async (req, res) => {
     const { data, error } = await query.order("created_at", { ascending: false });
     if (error) throw error;
 
-    const rows = (data || []).map((row: any) => toCamelCaseSingle({
-      ...row,
+    const rows = (data || []).map((row: any) => ({
+      ...toCamelCaseSingle(row),
+      images: parseImages(row.image_url),
+      image_url: parseImages(row.image_url)[0] || row.image_url,
       shop_name: row.shops?.name,
       shop_logo: row.shops?.logo,
     }));
@@ -64,12 +76,13 @@ router.get("/marketplace/designs/:id", async (req, res) => {
       .single();
     if (error || !data) { res.status(404).json({ error: "not found" }); return; }
 
-    const row = toCamelCaseSingle({
-      ...data,
+    const row = {
+      ...toCamelCaseSingle(data),
+      images: parseImages(data.image_url),
       shop_name: data.shops?.name,
       shop_logo: data.shops?.logo,
       shop_contact: data.shops?.contact_phone,
-    });
+    };
     const { shops, ...rest } = row;
     res.json(rest);
   } catch (err) {
