@@ -476,9 +476,9 @@ export function JerseyPhotoViewer({
                   width:   i === safeIndex ? 18 : 6,
                   height:  6,
                   background: i === safeIndex
-                    ? "#bfff00"
+                    ? "hsl(var(--primary))"
                     : "rgba(255,255,255,0.25)",
-                  boxShadow: i === safeIndex ? "0 0 8px rgba(191,255,0,0.6)" : "none",
+                  boxShadow: i === safeIndex ? "0 0 8px rgba(212, 175, 85,0.6)" : "none",
                 }}
               />
             ))}

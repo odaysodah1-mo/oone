@@ -53,7 +53,7 @@ function PasswordGate({ onEnter }: { onEnter: () => void }) {
     <div className="min-h-screen flex items-center justify-center" style={{ background: "#0a0a0a" }}>
       <div className="w-full max-w-sm mx-auto p-8 rounded-3xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
         <div className="text-center mb-8">
-          <div className="text-5xl font-black mb-2" style={{ color: "#bfff00" }}>O ONE</div>
+          <div className="text-5xl font-black mb-2" style={{ color: "hsl(var(--primary))" }}>O ONE</div>
           <div className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>لوحة التحكم</div>
         </div>
         <input
@@ -64,7 +64,7 @@ function PasswordGate({ onEnter }: { onEnter: () => void }) {
           style={{ background: "rgba(255,255,255,0.07)", border: err ? "1.5px solid #ef4444" : "1.5px solid rgba(255,255,255,0.12)", color: "#fff", outline: "none", direction: "ltr" }}
         />
         {err && <p className="text-center text-sm mb-3" style={{ color: "#ef4444" }}>كلمة المرور غلط</p>}
-        <button onClick={check} className="w-full py-3 rounded-xl font-bold text-base" style={{ background: "#bfff00", color: "#0a0a0a" }}>
+        <button onClick={check} className="w-full py-3 rounded-xl font-bold text-base" style={{ background: "hsl(var(--primary))", color: "#0a0a0a" }}>
           دخول
         </button>
       </div>
@@ -106,7 +106,7 @@ function OrdersTab() {
           <button key={s} onClick={() => setFilter(s)}
             className="px-3 py-1 rounded-full text-sm font-bold transition-all"
             style={{
-              background: filter === s ? (s === "all" ? "#bfff00" : STATUS_COLORS[s]) : "rgba(255,255,255,0.06)",
+              background: filter === s ? (s === "all" ? "hsl(var(--primary))" : STATUS_COLORS[s]) : "rgba(255,255,255,0.06)",
               color: filter === s && s === "all" ? "#0a0a0a" : "#fff",
               border: "none",
             }}>
@@ -137,7 +137,7 @@ function OrdersTab() {
                   <span>🏙️ {order.customerCity}</span>
                   <span>📏 {order.size} | #{order.jerseyNumber}</span>
                   <span>🛍️ الكمية: {order.quantity}</span>
-                  <span style={{ color: "#bfff00" }}>💰 {order.totalPrice.toFixed(2)} JOD</span>
+                  <span style={{ color: "hsl(var(--primary))" }}>💰 {order.totalPrice.toFixed(2)} JOD</span>
                 </div>
                 <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.3)" }}>
                   {new Date(order.createdAt).toLocaleString("ar-JO")}
@@ -222,8 +222,8 @@ function ColorsTab() {
         <>
           {/* Add color form */}
           {adding ? (
-            <div className="rounded-2xl p-4 mb-4" style={{ background: "rgba(191,255,0,0.05)", border: "1px solid rgba(191,255,0,0.2)" }}>
-              <div className="text-sm font-bold mb-3" style={{ color: "#bfff00" }}>إضافة لون جديد</div>
+            <div className="rounded-2xl p-4 mb-4" style={{ background: "rgba(212, 175, 85,0.05)", border: "1px solid rgba(212, 175, 85,0.2)" }}>
+              <div className="text-sm font-bold mb-3" style={{ color: "hsl(var(--primary))" }}>إضافة لون جديد</div>
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs mb-1" style={{ color: "rgba(255,255,255,0.5)" }}>اسم اللون (عربي)</label>
@@ -264,7 +264,7 @@ function ColorsTab() {
                 <div className="flex gap-2">
                   <button onClick={() => addColor.mutate(form)} disabled={!form.name || !form.imageUrl}
                     className="flex-1 py-2 rounded-xl font-bold text-sm disabled:opacity-40"
-                    style={{ background: "#bfff00", color: "#0a0a0a" }}>حفظ</button>
+                    style={{ background: "hsl(var(--primary))", color: "#0a0a0a" }}>حفظ</button>
                   <button onClick={() => setAdding(false)}
                     className="px-4 py-2 rounded-xl text-sm"
                     style={{ background: "rgba(255,255,255,0.08)", color: "#fff" }}>إلغاء</button>
@@ -274,7 +274,7 @@ function ColorsTab() {
           ) : (
             <button onClick={() => setAdding(true)}
               className="w-full py-2.5 rounded-xl text-sm font-bold mb-4"
-              style={{ background: "rgba(191,255,0,0.1)", color: "#bfff00", border: "1px dashed rgba(191,255,0,0.3)" }}>
+              style={{ background: "rgba(212, 175, 85,0.1)", color: "hsl(var(--primary))", border: "1px dashed rgba(212, 175, 85,0.3)" }}>
               + إضافة لون جديد
             </button>
           )}
@@ -293,7 +293,7 @@ function ColorsTab() {
                     <div className="flex items-center gap-1.5 mb-1">
                       <span className="w-3 h-3 rounded-full inline-block border border-white/20" style={{ background: c.hexCode }} />
                       <span className="text-xs font-bold text-white truncate">{c.name}</span>
-                      {c.isDefault && <span className="text-xs px-1 rounded" style={{ background: "rgba(191,255,0,0.2)", color: "#bfff00" }}>افتراضي</span>}
+                      {c.isDefault && <span className="text-xs px-1 rounded" style={{ background: "rgba(212, 175, 85,0.2)", color: "hsl(var(--primary))" }}>افتراضي</span>}
                     </div>
                     <button onClick={() => deleteColor.mutate(c.id)}
                       className="w-full py-1 rounded-lg text-xs"
@@ -367,7 +367,7 @@ function NahfatTab() {
         </div>
         <button onClick={() => newText && addPreset.mutate()} disabled={!newText}
           className="w-full py-2 rounded-xl font-bold text-sm disabled:opacity-40"
-          style={{ background: "#bfff00", color: "#0a0a0a" }}>إضافة</button>
+          style={{ background: "hsl(var(--primary))", color: "#0a0a0a" }}>إضافة</button>
       </div>
 
       {/* List */}
@@ -384,7 +384,7 @@ function NahfatTab() {
                   className="flex-1 px-3 py-1.5 rounded-xl text-sm"
                   style={{ background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", outline: "none" }} />
                 <button onClick={() => updatePreset.mutate({ id: p.id, data: { text: editText } })}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold" style={{ background: "#bfff00", color: "#0a0a0a" }}>حفظ</button>
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold" style={{ background: "hsl(var(--primary))", color: "#0a0a0a" }}>حفظ</button>
                 <button onClick={() => setEditId(null)}
                   className="px-3 py-1.5 rounded-xl text-xs" style={{ background: "rgba(255,255,255,0.08)", color: "#fff" }}>إلغاء</button>
               </>
@@ -430,7 +430,7 @@ function DashboardTab() {
 
   const statCards = [
     { label: "إجمالي الطلبات", value: stats?.totalOrders ?? 0, icon: "📦", color: "#3b82f6" },
-    { label: "الإيرادات", value: `${(stats?.totalRevenue ?? 0).toFixed(2)} JOD`, icon: "💰", color: "#bfff00" },
+    { label: "الإيرادات", value: `${(stats?.totalRevenue ?? 0).toFixed(2)} JOD`, icon: "💰", color: "hsl(var(--primary))" },
     { label: "قيد الانتظار", value: pending, icon: "⏳", color: "#f59e0b" },
     { label: "مؤكدة", value: confirmed, icon: "✅", color: "#22c55e" },
     { label: "تم التسليم", value: delivered, icon: "🚀", color: "#8b5cf6" },
@@ -462,7 +462,7 @@ function DashboardTab() {
                 <span className="text-xs ml-2" style={{ color: "rgba(255,255,255,0.4)" }}>{o.teamName} — {o.size}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold" style={{ color: "#bfff00" }}>{o.totalPrice.toFixed(2)} JOD</span>
+                <span className="text-xs font-bold" style={{ color: "hsl(var(--primary))" }}>{o.totalPrice.toFixed(2)} JOD</span>
                 <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: STATUS_COLORS[o.status] + "33", color: STATUS_COLORS[o.status] }}>
                   {STATUS_LABELS[o.status]}
                 </span>
@@ -508,7 +508,7 @@ export default function Admin() {
       <div style={{ background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xl font-black" style={{ color: "#bfff00" }}>O ONE</span>
+            <span className="text-xl font-black" style={{ color: "hsl(var(--primary))" }}>O ONE</span>
             <span className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>/ الأدمن</span>
           </div>
           <button onClick={() => setAuthed(false)} className="text-xs px-3 py-1.5 rounded-xl"
@@ -525,7 +525,7 @@ export default function Admin() {
             <button key={t.id} onClick={() => setTab(t.id)}
               className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5"
               style={{
-                background: tab === t.id ? "#bfff00" : "transparent",
+                background: tab === t.id ? "hsl(var(--primary))" : "transparent",
                 color: tab === t.id ? "#0a0a0a" : "rgba(255,255,255,0.55)",
               }}>
               <span>{t.icon}</span>

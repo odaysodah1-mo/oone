@@ -433,7 +433,7 @@ export const ShirtStickerStage = forwardRef<ShirtStickerStageHandle, ShirtSticke
             style={{ left: `${preview.x}%`, top: `${preview.y}%`, transform: "translate(-50%,-50%)", opacity: 0.72, zIndex: 20 }}>
             <StickerImg s={pendingSticker} style={{
               width: pendingSticker.text ? 80 : 56, height: pendingSticker.text ? 40 : 56,
-              filter: "drop-shadow(0 2px 12px rgba(191,255,0,0.5))",
+              filter: "drop-shadow(0 2px 12px rgba(212, 175, 85,0.5))",
             }} />
           </div>
         )}
@@ -450,7 +450,7 @@ export const ShirtStickerStage = forwardRef<ShirtStickerStageHandle, ShirtSticke
       <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
         {pendingSticker ? (
           <motion.div initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-            className="bg-black/70 border border-[#bfff00]/40 text-[#bfff00] text-xs font-black px-5 py-2 rounded-full backdrop-blur-sm">
+            className="bg-black/70 border border-[#d4af55]/40 text-[#d4af55] text-xs font-black px-5 py-2 rounded-full backdrop-blur-sm">
             انقر على القميص لوضع الستيكر ✦
           </motion.div>
         ) : (
@@ -462,7 +462,7 @@ export const ShirtStickerStage = forwardRef<ShirtStickerStageHandle, ShirtSticke
 
       {/* View indicator */}
       <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-white/[0.05] px-2.5 py-1 rounded-full border border-white/[0.08]">
-        <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${isFront ? "bg-[#bfff00]" : "bg-white/40"}`} />
+        <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${isFront ? "bg-[#d4af55]" : "bg-white/40"}`} />
         <span className="text-[10px] text-white/30 font-bold">{isFront ? "الأمام" : "الخلف"}</span>
       </div>
 
@@ -470,7 +470,7 @@ export const ShirtStickerStage = forwardRef<ShirtStickerStageHandle, ShirtSticke
       {!pendingSticker && (
         <button
           onClick={doFlip}
-          className="absolute top-4 right-4 flex items-center gap-1.5 bg-black/60 border border-white/[0.14] hover:border-[#bfff00]/50 hover:text-[#bfff00] text-white/50 text-[10px] font-black px-2.5 py-1.5 rounded-full backdrop-blur-sm transition-all active:scale-95 select-none"
+          className="absolute top-4 right-4 flex items-center gap-1.5 bg-black/60 border border-white/[0.14] hover:border-[#d4af55]/50 hover:text-[#d4af55] text-white/50 text-[10px] font-black px-2.5 py-1.5 rounded-full backdrop-blur-sm transition-all active:scale-95 select-none"
           style={{ zIndex: 30 }}
         >
           <span style={{ display: "inline-block", transform: "scaleX(-1)" }}>↻</span>
@@ -479,7 +479,7 @@ export const ShirtStickerStage = forwardRef<ShirtStickerStageHandle, ShirtSticke
       )}
 
       {stickers.length > 0 && pendingSticker && (
-        <div className="absolute top-4 right-4 bg-[#bfff00]/10 border border-[#bfff00]/25 text-[#bfff00] text-[9px] font-black px-2 py-1 rounded-full">
+        <div className="absolute top-4 right-4 bg-[#d4af55]/10 border border-[#d4af55]/25 text-[#d4af55] text-[9px] font-black px-2 py-1 rounded-full">
           {stickers.length} ستيكر
         </div>
       )}

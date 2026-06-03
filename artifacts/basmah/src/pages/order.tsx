@@ -28,7 +28,7 @@ function SuccessScreen({ orderId, phone, teamName, playerName, jerseyNumber, tot
     id: i,
     x: Math.random() * 100,
     delay: Math.random() * 0.6,
-    color: ["#bfff00","#fff","#facc15","#60a5fa","#f472b6"][i % 5],
+    color: ["hsl(var(--primary))","#fff","#facc15","#60a5fa","#f472b6"][i % 5],
     size: 6 + Math.random() * 8,
   }));
 
@@ -44,7 +44,7 @@ function SuccessScreen({ orderId, phone, teamName, playerName, jerseyNumber, tot
       ))}
 
       <div className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse 60% 40% at 50% 50%, #bfff0012 0%, transparent 60%)" }} />
+        style={{ background: "radial-gradient(ellipse 60% 40% at 50% 50%, hsl(var(--primary))12 0%, transparent 60%)" }} />
 
       <div className="relative z-10 w-full max-w-sm text-center">
         <motion.div
@@ -58,7 +58,7 @@ function SuccessScreen({ orderId, phone, teamName, playerName, jerseyNumber, tot
           initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}
           className="text-3xl font-black mb-1"
         >
-          {t("success_title")} <span style={{ color: "#bfff00" }}>{t("success_accent")}</span>
+          {t("success_title")} <span style={{ color: "hsl(var(--primary))" }}>{t("success_accent")}</span>
         </motion.h1>
 
         <motion.p
@@ -84,7 +84,7 @@ function SuccessScreen({ orderId, phone, teamName, playerName, jerseyNumber, tot
             <div className="flex-1">
               <p className="font-black text-white text-sm">{teamName}</p>
               {playerName && (
-                <p className="text-[#bfff00] font-bold text-xs tracking-widest uppercase mt-0.5">
+                <p className="text-[hsl(var(--primary))] font-bold text-xs tracking-widest uppercase mt-0.5">
                   {playerName} {jerseyNumber ? `#${jerseyNumber}` : ""}
                 </p>
               )}
@@ -93,14 +93,14 @@ function SuccessScreen({ orderId, phone, teamName, playerName, jerseyNumber, tot
               </p>
             </div>
             <div className="text-left">
-              <p className="text-[#bfff00] font-black text-lg">{totalPrice}</p>
+              <p className="text-[hsl(var(--primary))] font-black text-lg">{totalPrice}</p>
               <p className="text-white/30 text-xs">{t("order_currency")}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-[#bfff00]/10 border border-[#bfff00]/20 rounded-xl px-3 py-2">
+          <div className="flex items-center gap-2 bg-[hsl(var(--primary))]/10 border border-[hsl(var(--primary))]/20 rounded-xl px-3 py-2">
             <span className="text-base">📬</span>
-            <span className="text-[#bfff00] text-xs font-bold">{t("success_status")}</span>
+            <span className="text-[hsl(var(--primary))] text-xs font-bold">{t("success_status")}</span>
           </div>
         </motion.div>
 
@@ -209,7 +209,7 @@ export default function Order() {
         <button
           onClick={() => setLocation("/teams")}
           className="px-8 py-3 font-black text-black rounded-xl text-sm"
-          style={{ background: "#bfff00" }}
+          style={{ background: "hsl(var(--primary))" }}
         >
           {t("order_browse_teams")}
         </button>
@@ -278,13 +278,13 @@ export default function Order() {
       {/* Header */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 80% 40% at 50% 0%, #bfff0010 0%, transparent 60%)" }} />
+          style={{ background: "radial-gradient(ellipse 80% 40% at 50% 0%, hsl(var(--primary))10 0%, transparent 60%)" }} />
         <div className="max-w-2xl mx-auto px-4 pt-12 pb-6 relative z-10">
           <motion.h1
             initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
             className="text-3xl font-black text-center mb-1"
           >
-            {t("order_confirm_title")} <span style={{ color: "#bfff00" }}>{t("order_confirm_accent")}</span>
+            {t("order_confirm_title")} <span style={{ color: "hsl(var(--primary))" }}>{t("order_confirm_accent")}</span>
           </motion.h1>
           <p className="text-white/30 text-center text-sm">{t("order_confirm_sub")}</p>
         </div>
@@ -312,7 +312,7 @@ export default function Order() {
               <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-0.5">{t("order_team_label")}</p>
               <p className="font-black text-white text-lg leading-tight">{order.teamName}</p>
               {order.playerName && (
-                <p className="text-[#bfff00] font-bold text-sm tracking-widest uppercase mt-1">
+                <p className="text-[hsl(var(--primary))] font-bold text-sm tracking-widest uppercase mt-1">
                   {order.playerName}
                   {order.jerseyNumber && ` #${order.jerseyNumber}`}
                 </p>
@@ -341,14 +341,14 @@ export default function Order() {
             </div>
             <div className="flex justify-between text-sm pt-1.5 border-t border-white/[0.06]">
               <span className="text-white font-black">{t("order_total")}</span>
-              <span className="font-black text-lg" style={{ color: "#bfff00" }}>{grandTotal} {t("order_currency")}</span>
+              <span className="font-black text-lg" style={{ color: "hsl(var(--primary))" }}>{grandTotal} {t("order_currency")}</span>
             </div>
           </div>
           {/* Custom phrase preview */}
           {order.customPhrase && (
             <div className="border-t border-white/[0.04] px-4 py-2">
               <p className="text-[10px] text-white/30 font-bold">✍️ العبارة المراد طباعتها:</p>
-              <p className="text-sm text-[#bfff00] font-black mt-0.5" dir="auto">{order.customPhrase}</p>
+              <p className="text-sm text-[hsl(var(--primary))] font-black mt-0.5" dir="auto">{order.customPhrase}</p>
             </div>
           )}
         </motion.div>
@@ -369,8 +369,8 @@ export default function Order() {
                 disabled={!m.available}
                 className="w-full flex items-center gap-3 p-3 rounded-xl border transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
-                  borderColor: paymentMethod === m.id ? "#bfff00" : "rgba(255,255,255,0.08)",
-                  background: paymentMethod === m.id ? "rgba(191,255,0,0.08)" : "rgba(255,255,255,0.02)",
+                  borderColor: paymentMethod === m.id ? "hsl(var(--primary))" : "rgba(255,255,255,0.08)",
+                  background: paymentMethod === m.id ? "rgba(212, 175, 85,0.08)" : "rgba(255,255,255,0.02)",
                   textAlign: isAr ? "right" : "left",
                 }}
               >
@@ -381,9 +381,9 @@ export default function Order() {
                 </div>
                 {m.available && (
                   <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
-                    style={{ borderColor: paymentMethod === m.id ? "#bfff00" : "#444" }}>
+                    style={{ borderColor: paymentMethod === m.id ? "hsl(var(--primary))" : "#444" }}>
                     {paymentMethod === m.id && (
-                      <div className="w-2 h-2 rounded-full" style={{ background: "#bfff00" }} />
+                      <div className="w-2 h-2 rounded-full" style={{ background: "hsl(var(--primary))" }} />
                     )}
                   </div>
                 )}
@@ -430,7 +430,7 @@ export default function Order() {
               required
               value={governorate}
               onChange={e => { setGovernorate(e.target.value); setCity(""); }}
-              className="w-full px-4 py-3.5 bg-white/[0.04] border border-white/[0.10] text-white font-bold focus:outline-none focus:border-[#bfff00]/50 transition-colors rounded-xl appearance-none"
+              className="w-full px-4 py-3.5 bg-white/[0.04] border border-white/[0.10] text-white font-bold focus:outline-none focus:border-[hsl(var(--primary))]/50 transition-colors rounded-xl appearance-none"
               style={{ colorScheme: "dark" }}
             >
               <option value="" disabled className="bg-[#111]">اختر المحافظة</option>
@@ -445,7 +445,7 @@ export default function Order() {
                     key={s} type="button"
                     onClick={() => setCity(s)}
                     className={`text-[10px] px-2 py-1 rounded-full border transition-all ${
-                      city === s ? "border-[#bfff00] bg-[#bfff00]/10 text-[#bfff00]" : "border-white/10 text-white/40 hover:border-white/30"
+                      city === s ? "border-[hsl(var(--primary))] bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]" : "border-white/10 text-white/40 hover:border-white/30"
                     }`}
                   >
                     {s}
@@ -456,7 +456,7 @@ export default function Order() {
             <input
               value={city} onChange={e => setCity(e.target.value)}
               placeholder="أدخل اسم المنطقة أو الحي"
-              className="w-full px-4 py-3.5 bg-white/[0.04] border border-white/[0.10] text-white font-bold focus:outline-none focus:border-[#bfff00]/50 transition-colors rounded-xl placeholder:text-white/20"
+              className="w-full px-4 py-3.5 bg-white/[0.04] border border-white/[0.10] text-white font-bold focus:outline-none focus:border-[hsl(var(--primary))]/50 transition-colors rounded-xl placeholder:text-white/20"
             />
           </div>
 
@@ -468,7 +468,7 @@ export default function Order() {
               onChange={e => setAddress(e.target.value.slice(0, 300))}
               placeholder="مثال: شارع الرينبو، بناية الياسمين، طابق 3، شقة 7..."
               rows={2}
-              className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.10] text-white font-medium focus:outline-none focus:border-[#bfff00]/50 transition-colors rounded-xl placeholder:text-white/20 resize-none text-sm"
+              className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.10] text-white font-medium focus:outline-none focus:border-[hsl(var(--primary))]/50 transition-colors rounded-xl placeholder:text-white/20 resize-none text-sm"
             />
           </div>
 
@@ -479,7 +479,7 @@ export default function Order() {
               onChange={e => setNotes(e.target.value.slice(0, 300))}
               placeholder="أي طلب خاص أو ملاحظة للتوصيل..."
               rows={3}
-              className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.10] text-white font-medium focus:outline-none focus:border-[#bfff00]/50 transition-colors rounded-xl placeholder:text-white/20 resize-none text-sm"
+              className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.10] text-white font-medium focus:outline-none focus:border-[hsl(var(--primary))]/50 transition-colors rounded-xl placeholder:text-white/20 resize-none text-sm"
             />
             <div className="flex justify-end">
               <span className="text-[10px] text-white/20">{notes.length}/300</span>
@@ -491,9 +491,9 @@ export default function Order() {
             disabled={createOrder.isPending || !isValidPhone || !city || !governorate || !address.trim()}
             className="w-full py-4 font-black text-xl rounded-xl transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
-              background: (!isValidPhone || !city) ? "#1a1a1a" : "linear-gradient(135deg,#bfff00 0%,#7ecf00 100%)",
+              background: (!isValidPhone || !city) ? "#1a1a1a" : "linear-gradient(135deg,hsl(var(--primary)) 0%,#c49530 100%)",
               color: (!isValidPhone || !city) ? "#444" : "#000",
-              boxShadow: (isValidPhone && city) ? "0 0 30px rgba(191,255,0,0.25)" : "none",
+              boxShadow: (isValidPhone && city) ? "0 0 30px rgba(212, 175, 85,0.25)" : "none",
             }}
           >
             {createOrder.isPending ? (

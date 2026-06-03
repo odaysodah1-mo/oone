@@ -118,13 +118,13 @@ function OrderCard({ order }: { order: TrackedOrder }) {
             <div>
               <h3 className="font-black text-white text-sm">{order.teamName}</h3>
               {order.playerName && (
-                <p className="text-[#bfff00] font-bold text-xs tracking-widest uppercase">
+                <p className="text-[hsl(var(--primary))] font-bold text-xs tracking-widest uppercase">
                   {order.playerName} #{order.jerseyNumber}
                 </p>
               )}
             </div>
             <div className="text-right shrink-0">
-              <p className="text-[#bfff00] font-black text-sm">{order.totalPrice} {t("order_currency")}</p>
+              <p className="text-[hsl(var(--primary))] font-black text-sm">{order.totalPrice} {t("order_currency")}</p>
               <p className="text-white/30 text-[9px]">#{order.id}</p>
             </div>
           </div>
@@ -197,7 +197,7 @@ export default function Track() {
     <div className="min-h-screen bg-[#050505] text-white">
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 80% 50% at 50% -10%, #bfff0015 0%, transparent 60%)" }} />
+          style={{ background: "radial-gradient(ellipse 80% 50% at 50% -10%, hsl(var(--primary))15 0%, transparent 60%)" }} />
         <div className="max-w-lg mx-auto px-4 pt-16 pb-10 text-center relative z-10">
           <motion.div
             initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
@@ -206,7 +206,7 @@ export default function Track() {
             initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.1 }}
             className="text-3xl font-black mb-2">
-            {t("track_title")} <span style={{ color: "#bfff00" }}>{t("track_accent")}</span>
+            {t("track_title")} <span style={{ color: "hsl(var(--primary))" }}>{t("track_accent")}</span>
           </motion.h1>
           <motion.p
             initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
@@ -239,7 +239,7 @@ export default function Track() {
           <button
             type="submit" disabled={loading || !isValidPhone}
             className="px-6 py-4 font-black text-black rounded-xl transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: isValidPhone ? "#bfff00" : "#333" }}
+            style={{ background: isValidPhone ? "hsl(var(--primary))" : "#333" }}
           >
             {loading ? t("track_searching") : t("track_search")}
           </button>

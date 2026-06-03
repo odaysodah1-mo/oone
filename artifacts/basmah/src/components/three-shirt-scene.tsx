@@ -340,7 +340,7 @@ export function ThreeShirtScene({ pending, onPlaced, cursorHint = true }: ThreeS
       {/* Instruction overlay */}
       {pending && cursorHint && (
         <div className="absolute inset-x-0 bottom-6 flex justify-center pointer-events-none">
-          <div className="bg-black/70 border border-[#bfff00]/40 text-[#bfff00] text-xs font-bold px-4 py-2 rounded-full backdrop-blur-sm">
+          <div className="bg-black/70 border border-[#d4af55]/40 text-[#d4af55] text-xs font-bold px-4 py-2 rounded-full backdrop-blur-sm">
             انقر على القميص لوضع الستيكر
           </div>
         </div>

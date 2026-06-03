@@ -41,10 +41,10 @@ function ColorStrip({ colors, selected, onSelect }: {
           style={{
             width: 48, height: 58,
             border: selected?.id === c.id
-              ? "2px solid #bfff00"
+              ? "2px solid hsl(var(--primary))"
               : "2px solid rgba(255,255,255,0.07)",
             boxShadow: selected?.id === c.id
-              ? "0 0 14px rgba(191,255,0,0.40)"
+              ? "0 0 14px rgba(212, 175, 85,0.40)"
               : "none",
             background: "rgba(255,255,255,0.03)",
           }}
@@ -65,7 +65,7 @@ function ColorStrip({ colors, selected, onSelect }: {
             </div>
           )}
           {selected?.id === c.id && (
-            <div className="absolute bottom-0 inset-x-0 bg-[#bfff00] text-black text-[7px] font-black text-center py-0.5 truncate px-0.5 leading-none">
+            <div className="absolute bottom-0 inset-x-0 bg-[hsl(var(--primary))] text-black text-[7px] font-black text-center py-0.5 truncate px-0.5 leading-none">
               {c.name}
             </div>
           )}
@@ -207,7 +207,7 @@ export default function TeamDetail() {
   /* ── Loading / 404 ──────────────────────────────────────── */
   if (isLoading) return (
     <div className="fixed inset-0 bg-black flex items-center justify-center">
-      <div className="w-12 h-12 border-4 border-[#bfff00] border-t-transparent rounded-full animate-spin" />
+      <div className="w-12 h-12 border-4 border-[hsl(var(--primary))] border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
@@ -215,7 +215,7 @@ export default function TeamDetail() {
     <div className="fixed inset-0 bg-black flex items-center justify-center">
       <div className="text-center space-y-4">
         <h2 className="text-3xl font-black text-white">404</h2>
-        <button onClick={() => setLocation("/teams")} className="px-6 py-3 bg-[#bfff00] text-black font-black">{t("nav_teams")}</button>
+        <button onClick={() => setLocation("/teams")} className="px-6 py-3 bg-[hsl(var(--primary))] text-black font-black">{t("nav_teams")}</button>
       </div>
     </div>
   );
@@ -231,7 +231,7 @@ export default function TeamDetail() {
         onClick={() => setWithCustomization(true)}
         className={`flex-1 font-black transition-all duration-150 ${compact ? "py-2 text-[11px]" : "py-2.5 text-xs"}`}
         style={{
-          background: withCustomization ? "#bfff00" : "transparent",
+          background: withCustomization ? "hsl(var(--primary))" : "transparent",
           color:      withCustomization ? "#000"    : "rgba(255,255,255,0.30)",
         }}
       >
@@ -241,7 +241,7 @@ export default function TeamDetail() {
         onClick={() => setWithCustomization(false)}
         className={`flex-1 font-black transition-all duration-150 ${compact ? "py-2 text-[11px]" : "py-2.5 text-xs"}`}
         style={{
-          background: !withCustomization ? "#bfff00" : "transparent",
+          background: !withCustomization ? "hsl(var(--primary))" : "transparent",
           color:      !withCustomization ? "#000"    : "rgba(255,255,255,0.30)",
         }}
       >
@@ -271,8 +271,8 @@ export default function TeamDetail() {
           <span className="text-[10px] text-white/25 font-bold mr-auto">{selectedColor.name}</span>
         </div>
       )}
-      <div className={`flex items-start gap-2 rounded-lg border border-[#bfff00]/15 bg-[#bfff00]/[0.03] ${compact ? "p-2.5" : "p-3"}`}>
-        <div className="w-5 h-5 shrink-0 mt-0.5 text-[#bfff00]/50 text-xs flex items-center justify-center">🖨️</div>
+      <div className={`flex items-start gap-2 rounded-lg border border-[hsl(var(--primary))]/15 bg-[hsl(var(--primary))]/[0.03] ${compact ? "p-2.5" : "p-3"}`}>
+        <div className="w-5 h-5 shrink-0 mt-0.5 text-[hsl(var(--primary))]/50 text-xs flex items-center justify-center">🖨️</div>
         <p className={`text-white/35 leading-relaxed ${compact ? "text-[9px]" : "text-[10px]"}`}>
           {t("td_color_note_body")}
         </p>
@@ -303,7 +303,7 @@ export default function TeamDetail() {
               <div
                 className="flex rounded-xl overflow-hidden border transition-all duration-200"
                 style={{
-                  borderColor: name || number ? "rgba(191,255,0,0.3)" : "rgba(255,255,255,0.09)",
+                  borderColor: name || number ? "rgba(212, 175, 85,0.3)" : "rgba(255,255,255,0.09)",
                   background: "rgba(255,255,255,0.03)",
                 }}
               >
@@ -317,7 +317,7 @@ export default function TeamDetail() {
                     className="w-full bg-transparent text-white placeholder:text-white/20 font-black tracking-[3px] focus:outline-none px-3 py-2.5 text-sm"
                   />
                   <div className="absolute left-2 top-1/2 -translate-y-1/2">
-                    <span className="text-[9px] font-bold" style={{ color: name ? "#bfff00" : "rgba(255,255,255,0.12)" }}>
+                    <span className="text-[9px] font-bold" style={{ color: name ? "hsl(var(--primary))" : "rgba(255,255,255,0.12)" }}>
                       {name.length}/12
                     </span>
                   </div>
@@ -348,21 +348,21 @@ export default function TeamDetail() {
   /* Custom phrase section */
   const PhraseSection = ({ compact = false }: { compact?: boolean }) => (
     <div className={`rounded-xl border transition-all duration-200 overflow-hidden ${compact ? "" : "mt-1"}`}
-      style={{ borderColor: phraseEnabled ? "rgba(191,255,0,0.35)" : "rgba(255,255,255,0.07)" }}>
+      style={{ borderColor: phraseEnabled ? "rgba(212, 175, 85,0.35)" : "rgba(255,255,255,0.07)" }}>
       <button
         type="button"
         onClick={() => setPhraseEnabled(e => !e)}
         className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-right"
-        style={{ background: phraseEnabled ? "rgba(191,255,0,0.06)" : "transparent" }}
+        style={{ background: phraseEnabled ? "rgba(212, 175, 85,0.06)" : "transparent" }}
       >
-        <span className={`font-black text-xs ${phraseEnabled ? "text-[#bfff00]" : "text-white/50"}`}>
+        <span className={`font-black text-xs ${phraseEnabled ? "text-[hsl(var(--primary))]" : "text-white/50"}`}>
           ✍️ طباعة عبارة مخصصة
         </span>
         <span className="flex items-center gap-2">
           {phrasePrintPrice > 0 && (
             <span className="text-[10px] font-bold text-white/30">+{phrasePrintPrice} د.أ</span>
           )}
-          <span className={`w-8 h-4 rounded-full transition-all duration-200 relative ${phraseEnabled ? "bg-[#bfff00]" : "bg-white/10"}`}>
+          <span className={`w-8 h-4 rounded-full transition-all duration-200 relative ${phraseEnabled ? "bg-[hsl(var(--primary))]" : "bg-white/10"}`}>
             <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all duration-200 ${phraseEnabled ? "right-0.5" : "left-0.5"}`} />
           </span>
         </span>
@@ -383,7 +383,7 @@ export default function TeamDetail() {
                 placeholder="اكتب عبارتك هنا..."
                 dir="auto"
                 className={`w-full bg-white/[0.04] border border-white/[0.09] text-white placeholder:text-white/20
-                            font-bold focus:outline-none focus:border-[#bfff00]/40 transition-colors rounded-lg
+                            font-bold focus:outline-none focus:border-[hsl(var(--primary))]/40 transition-colors rounded-lg
                             ${compact ? "px-3 py-2 text-sm" : "px-4 py-3 text-sm"}`}
               />
               <div className="flex justify-end mt-1">
@@ -407,10 +407,10 @@ export default function TeamDetail() {
             className="flex flex-col items-center justify-center border font-black transition-all duration-150 hover:scale-105 active:scale-95"
             style={{
               padding:     compact ? "8px 4px" : "12px 4px",
-              borderColor: size === s ? "#bfff00" : "rgba(255,255,255,0.07)",
-              background:  size === s ? "rgba(191,255,0,0.09)" : "rgba(255,255,255,0.02)",
-              color:       size === s ? "#bfff00" : "rgba(255,255,255,0.45)",
-              boxShadow:   size === s ? "0 0 14px rgba(191,255,0,0.20)" : "none",
+              borderColor: size === s ? "hsl(var(--primary))" : "rgba(255,255,255,0.07)",
+              background:  size === s ? "rgba(212, 175, 85,0.09)" : "rgba(255,255,255,0.02)",
+              color:       size === s ? "hsl(var(--primary))" : "rgba(255,255,255,0.45)",
+              boxShadow:   size === s ? "0 0 14px rgba(212, 175, 85,0.20)" : "none",
             }}
           >
             <span className={compact ? "text-sm" : "text-lg"}>{s}</span>
@@ -437,10 +437,10 @@ export default function TeamDetail() {
                   ${large ? "py-4 text-lg" : "py-3.5 text-base"}`}
       style={{
         background: size
-          ? "linear-gradient(135deg, #bfff00 0%, #7ecf00 100%)"
+          ? "linear-gradient(135deg, hsl(var(--primary)) 0%, #c49530 100%)"
           : "#111",
         color:     size ? "#000" : "#333",
-        boxShadow: size ? "0 0 32px rgba(191,255,0,0.28), 0 4px 18px rgba(0,0,0,0.5)" : "none",
+        boxShadow: size ? "0 0 32px rgba(212, 175, 85,0.28), 0 4px 18px rgba(0,0,0,0.5)" : "none",
       }}
     >
       {size
@@ -477,7 +477,7 @@ export default function TeamDetail() {
               <span className="text-[8px] font-black bg-red-500 text-white rounded px-1 leading-none py-0.5">-{discountPercent}%</span>
             </div>
           )}
-          <div className="text-xl font-black text-[#bfff00] leading-tight">
+          <div className="text-xl font-black text-[hsl(var(--primary))] leading-tight">
             {effectivePrice}<span className="text-[10px] text-white/35 mr-0.5">{t("td_currency")}</span>
           </div>
         </div>
@@ -562,7 +562,7 @@ export default function TeamDetail() {
               onClick={() => setMobileTab(tab.id)}
               className={`flex-1 py-2.5 text-[11px] font-black transition-all ${
                 mobileTab === tab.id
-                  ? "text-[#bfff00] border-t-2 border-[#bfff00] bg-[#bfff00]/[0.04]"
+                  ? "text-[hsl(var(--primary))] border-t-2 border-[hsl(var(--primary))] bg-[hsl(var(--primary))]/[0.04]"
                   : "text-white/25"
               }`}
             >

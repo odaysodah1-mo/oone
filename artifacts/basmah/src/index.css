@@ -48,71 +48,71 @@
 }
 
 :root {
-  /* Default to a dark, electric neon theme */
-  --background: 0 0% 4%;
-  --foreground: 0 0% 98%;
+  /* Luxury hotel palette — warm dark with gold accents */
+  --background: 40 10% 4%;             /* Warm near-black */
+  --foreground: 40 15% 90%;            /* Warm cream white */
 
-  --card: 0 0% 7%;
-  --card-foreground: 0 0% 98%;
-  --card-border: 0 0% 15%;
+  --card: 40 10% 7%;                   /* Slightly lighter warm dark */
+  --card-foreground: 40 15% 90%;
+  --card-border: 40 12% 18%;           /* Subtle warm border */
 
-  --popover: 0 0% 7%;
-  --popover-foreground: 0 0% 98%;
-  --popover-border: 0 0% 15%;
+  --popover: 40 10% 7%;
+  --popover-foreground: 40 15% 90%;
+  --popover-border: 40 12% 18%;
 
-  --primary: 73 100% 50%; /* Electric Neon Green */
+  --primary: 40 65% 52%;               /* Gold — signature luxury */
   --primary-foreground: 0 0% 0%;
 
-  --secondary: 240 5% 15%;
-  --secondary-foreground: 0 0% 98%;
+  --secondary: 40 12% 14%;             /* Warm dark gray */
+  --secondary-foreground: 40 15% 90%;
 
-  --muted: 240 5% 15%;
-  --muted-foreground: 240 5% 65%;
+  --muted: 40 10% 11%;
+  --muted-foreground: 40 8% 50%;       /* Warm muted gray */
 
-  --accent: 240 5% 15%;
-  --accent-foreground: 0 0% 98%;
+  --accent: 15 40% 22%;                /* Deep bronze/burnt sienna */
+  --accent-foreground: 40 15% 90%;
 
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 98%;
+  --destructive: 0 55% 42%;            /* Muted crimson */
+  --destructive-foreground: 0 0% 100%;
 
-  --border: 0 0% 15%;
-  --input: 0 0% 15%;
-  --ring: 73 100% 50%;
+  --border: 40 12% 16%;
+  --input: 40 12% 16%;
+  --ring: 40 65% 52%;                  /* Gold ring */
 
   --app-font-sans: 'Cairo', sans-serif;
-  --radius: 0.25rem;
+  --radius: 0.625rem;                  /* Larger radius for elegance */
 }
 
 .dark {
-  --background: 0 0% 4%;
-  --foreground: 0 0% 98%;
+  --background: 40 10% 4%;
+  --foreground: 40 15% 90%;
 
-  --card: 0 0% 7%;
-  --card-foreground: 0 0% 98%;
-  --card-border: 0 0% 15%;
+  --card: 40 10% 7%;
+  --card-foreground: 40 15% 90%;
+  --card-border: 40 12% 18%;
 
-  --popover: 0 0% 7%;
-  --popover-foreground: 0 0% 98%;
-  --popover-border: 0 0% 15%;
+  --popover: 40 10% 7%;
+  --popover-foreground: 40 15% 90%;
+  --popover-border: 40 12% 18%;
 
-  --primary: 73 100% 50%;
+  --primary: 40 65% 52%;
   --primary-foreground: 0 0% 0%;
 
-  --secondary: 240 5% 15%;
-  --secondary-foreground: 0 0% 98%;
+  --secondary: 40 12% 14%;
+  --secondary-foreground: 40 15% 90%;
 
-  --muted: 240 5% 15%;
-  --muted-foreground: 240 5% 65%;
+  --muted: 40 10% 11%;
+  --muted-foreground: 40 8% 50%;
 
-  --accent: 240 5% 15%;
-  --accent-foreground: 0 0% 98%;
+  --accent: 15 40% 22%;
+  --accent-foreground: 40 15% 90%;
 
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 98%;
+  --destructive: 0 55% 42%;
+  --destructive-foreground: 0 0% 100%;
 
-  --border: 0 0% 15%;
-  --input: 0 0% 15%;
-  --ring: 73 100% 50%;
+  --border: 40 12% 16%;
+  --input: 40 12% 16%;
+  --ring: 40 65% 52%;
 }
 
 @layer base {
@@ -121,7 +121,7 @@
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground selection:bg-primary selection:text-black;
+    @apply font-sans antialiased bg-background text-foreground selection:bg-primary selection:text-primary-foreground;
   }
 }
 

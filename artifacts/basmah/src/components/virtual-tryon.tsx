@@ -221,7 +221,7 @@ function ShirtMesh({ atlasTex, autoRotate, onOrbitChange }: ShirtMeshProps) {
 function ShirtLoader() {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
-      <div className="w-8 h-8 border-4 border-[#bfff00]/30 border-t-[#bfff00] rounded-full animate-spin" />
+      <div className="w-8 h-8 border-4 border-[#d4af55]/30 border-t-[#d4af55] rounded-full animate-spin" />
       <p className="text-xs text-white/30 font-bold tracking-widest">تحميل…</p>
     </div>
   );
@@ -306,7 +306,7 @@ export function ShirtViewer3D({
         <directionalLight position={[1.5, 3.5, 4]} intensity={1.6} color="#fff8ee" castShadow
           shadow-mapSize={[1024, 1024]} shadow-bias={-0.0005} />
         <directionalLight position={[-3.5, 2, -3]}  intensity={0.8}  color="#4488ff" />
-        <directionalLight position={[3,   -1.5, -2]} intensity={0.45} color="#bfff00" />
+        <directionalLight position={[3,   -1.5, -2]} intensity={0.45} color="#d4af55" />
         <ambientLight intensity={0.4} />
         <ContactShadows position={[0, -1.62, 0]} opacity={0.5} scale={4} blur={2.5} far={2} />
 
