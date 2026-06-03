@@ -48,71 +48,71 @@
 }
 
 :root {
-  /* Luxury hotel palette — warm dark with gold accents */
-  --background: 40 10% 4%;             /* Warm near-black */
-  --foreground: 40 15% 90%;            /* Warm cream white */
+  /* Modern luxury hotel palette — sophisticated metallic with rose gold */
+  --background: 0 0% 6%;               /* Deep charcoal near-black */
+  --foreground: 0 0% 95%;              /* Soft white */
 
-  --card: 40 10% 7%;                   /* Slightly lighter warm dark */
-  --card-foreground: 40 15% 90%;
-  --card-border: 40 12% 18%;           /* Subtle warm border */
+  --card: 0 0% 9%;                     /* Slightly lighter charcoal */
+  --card-foreground: 0 0% 95%;
+  --card-border: 0 0% 20%;             /* Subtle metallic border */
 
-  --popover: 40 10% 7%;
-  --popover-foreground: 40 15% 90%;
-  --popover-border: 40 12% 18%;
+  --popover: 0 0% 9%;
+  --popover-foreground: 0 0% 95%;
+  --popover-border: 0 0% 20%;
 
-  --primary: 40 65% 52%;               /* Gold — signature luxury */
-  --primary-foreground: 0 0% 0%;
+  --primary: 340 60% 58%;              /* Rose gold — modern signature luxury */
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 40 12% 14%;             /* Warm dark gray */
-  --secondary-foreground: 40 15% 90%;
+  --secondary: 0 0% 16%;               /* Cool dark gray */
+  --secondary-foreground: 0 0% 95%;
 
-  --muted: 40 10% 11%;
-  --muted-foreground: 40 8% 50%;       /* Warm muted gray */
+  --muted: 0 0% 13%;
+  --muted-foreground: 0 0% 55%;        /* Cool muted gray */
 
-  --accent: 15 40% 22%;                /* Deep bronze/burnt sienna */
-  --accent-foreground: 40 15% 90%;
+  --accent: 200 25% 32%;               /* Deep cool blue-gray */
+  --accent-foreground: 0 0% 95%;
 
-  --destructive: 0 55% 42%;            /* Muted crimson */
+  --destructive: 0 60% 50%;            /* Crimson */
   --destructive-foreground: 0 0% 100%;
 
-  --border: 40 12% 16%;
-  --input: 40 12% 16%;
-  --ring: 40 65% 52%;                  /* Gold ring */
+  --border: 0 0% 18%;
+  --input: 0 0% 18%;
+  --ring: 340 60% 58%;                 /* Rose gold ring */
 
   --app-font-sans: 'Cairo', sans-serif;
   --radius: 0.625rem;                  /* Larger radius for elegance */
 }
 
 .dark {
-  --background: 40 10% 4%;
-  --foreground: 40 15% 90%;
+  --background: 0 0% 6%;
+  --foreground: 0 0% 95%;
 
-  --card: 40 10% 7%;
-  --card-foreground: 40 15% 90%;
-  --card-border: 40 12% 18%;
+  --card: 0 0% 9%;
+  --card-foreground: 0 0% 95%;
+  --card-border: 0 0% 20%;
 
-  --popover: 40 10% 7%;
-  --popover-foreground: 40 15% 90%;
-  --popover-border: 40 12% 18%;
+  --popover: 0 0% 9%;
+  --popover-foreground: 0 0% 95%;
+  --popover-border: 0 0% 20%;
 
-  --primary: 40 65% 52%;
-  --primary-foreground: 0 0% 0%;
+  --primary: 340 60% 58%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 40 12% 14%;
-  --secondary-foreground: 40 15% 90%;
+  --secondary: 0 0% 16%;
+  --secondary-foreground: 0 0% 95%;
 
-  --muted: 40 10% 11%;
-  --muted-foreground: 40 8% 50%;
+  --muted: 0 0% 13%;
+  --muted-foreground: 0 0% 55%;
 
-  --accent: 15 40% 22%;
-  --accent-foreground: 40 15% 90%;
+  --accent: 200 25% 32%;
+  --accent-foreground: 0 0% 95%;
 
-  --destructive: 0 55% 42%;
+  --destructive: 0 60% 50%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 40 12% 16%;
-  --input: 40 12% 16%;
-  --ring: 40 65% 52%;
+  --border: 0 0% 18%;
+  --input: 0 0% 18%;
+  --ring: 340 60% 58%;
 }
 
 @layer base {

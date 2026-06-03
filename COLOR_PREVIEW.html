@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>معاينة الألوان الجديدة - Modern Luxury Hotel Design</title>
+    <style>
+        :root {
+            --background: 0 0% 6%;
+            --foreground: 0 0% 95%;
+            --card: 0 0% 9%;
+            --card-foreground: 0 0% 95%;
+            --primary: 340 60% 58%;
+            --secondary: 0 0% 16%;
+            --accent: 200 25% 32%;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: hsl(var(--background));
+            color: hsl(var(--foreground));
+            font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            color: hsl(var(--primary));
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 60px;
+            font-size: 1.2em;
+            color: hsl(var(--foreground));
+            opacity: 0.7;
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        .color-card {
+            background: hsl(var(--card));
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .color-card:hover {
+            transform: translateY(-8px);
+        }
+
+        .color-swatch {
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 14px;
+        }
+
+        .color-info {
+            padding: 20px;
+        }
+
+        .color-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: hsl(var(--primary));
+        }
+
+        .color-code {
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            color: hsl(var(--foreground));
+            opacity: 0.8;
+        }
+
+        .color-desc {
+            font-size: 13px;
+            color: hsl(var(--foreground));
+            opacity: 0.6;
+        }
+
+        .preview-section {
+            background: hsl(var(--card));
+            padding: 40px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+        }
+
+        .preview-section h2 {
+            color: hsl(var(--primary));
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Cairo', sans-serif;
+        }
+
+        .btn-primary {
+            background: hsl(var(--primary));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px hsla(340, 60%, 58%, 0.4);
+        }
+
+        .btn-secondary {
+            background: hsl(var(--secondary));
+            color: hsl(var(--foreground));
+            border: 2px solid hsl(var(--primary));
+        }
+
+        .btn-secondary:hover {
+            background: hsla(340, 60%, 58%, 0.1);
+        }
+
+        .btn-accent {
+            background: hsl(var(--accent));
+            color: hsl(var(--foreground));
+        }
+
+        .btn-accent:hover {
+            transform: scale(1.05);
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .feature {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid hsl(var(--primary));
+        }
+
+        .feature-title {
+            color: hsl(var(--primary));
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .feature-desc {
+            font-size: 14px;
+            color: hsl(var(--foreground));
+            opacity: 0.7;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            border-top: 1px solid hsl(var(--foreground));
+            opacity: 0.5;
+            margin-top: 60px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✨ التصميم الجديد - Modern Luxury Hotel</h1>
+        <p class="subtitle">ألوان عصرية وفخمة لفندق خمس نجوم</p>
+
+        <div class="color-grid">
+            <div class="color-card">
+                <div class="color-swatch" style="background: hsl(0, 0%, 6%);">
+                    الخلفية الرئيسية
+                </div>
+                <div class="color-info">
+                    <div class="color-name">Background</div>
+                    <div class="color-code">HSL: 0 0% 6%</div>
+                    <div class="color-code">#0f0f0f</div>
+                    <div class="color-desc">أسود داكن معدني - الخلفية الأساسية</div>
+                </div>
+            </div>
+
+            <div class="color-card">
+                <div class="color-swatch" style="background: hsl(340, 60%, 58%);">
+                    اللون الأساسي
+                </div>
+                <div class="color-info">
+                    <div class="color-name">Primary (Rose Gold)</div>
+                    <div class="color-code">HSL: 340 60% 58%</div>
+                    <div class="color-code">#E67DBA</div>
+                    <div class="color-desc">وردي ذهبي - لون الفخامة الجديد ✨</div>
+                </div>
+            </div>
+
+            <div class="color-card">
+                <div class="color-swatch" style="background: hsl(200, 25%, 32%);">
+                    اللون الإضافي
+                </div>
+                <div class="color-info">
+                    <div class="color-name">Accent (Cool Blue-Gray)</div>
+                    <div class="color-code">HSL: 200 25% 32%</div>
+                    <div class="color-code">#4a6a7a</div>
+                    <div class="color-desc">أزرق بارد داكن - تفاصيل أنيقة</div>
+                </div>
+            </div>
+
+            <div class="color-card">
+                <div class="color-swatch" style="background: hsl(0, 0%, 95%);">
+                    النصوص
+                </div>
+                <div class="color-info">
+                    <div class="color-name">Foreground</div>
+                    <div class="color-code">HSL: 0 0% 95%</div>
+                    <div class="color-code">#f2f2f2</div>
+                    <div class="color-desc">أبيض ناعم - نصوص واضحة</div>
+                </div>
+            </div>
+
+            <div class="color-card">
+                <div class="color-swatch" style="background: hsl(0, 0%, 9%);">
+                    بطاقات
+                </div>
+                <div class="color-info">
+                    <div class="color-name">Card Background</div>
+                    <div class="color-code">HSL: 0 0% 9%</div>
+                    <div class="color-code">#171717</div>
+                    <div class="color-desc">أسود فاتح قليلاً - للعناصر</div>
+                </div>
+            </div>
+
+            <div class="color-card">
+                <div class="color-swatch" style="background: hsl(0, 0%, 16%);">
+                    ثانوي
+                </div>
+                <div class="color-info">
+                    <div class="color-name">Secondary</div>
+                    <div class="color-code">HSL: 0 0% 16%</div>
+                    <div class="color-code">#292929</div>
+                    <div class="color-desc">رمادي داكن - عناصر ثانوية</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-section">
+            <h2>🎨 معاينة الأزرار والعناصر</h2>
+            <div class="button-group">
+                <button class="btn-primary">زر أساسي</button>
+                <button class="btn-secondary">زر ثانوي</button>
+                <button class="btn-accent">زر إضافي</button>
+            </div>
+
+            <h2 style="margin-top: 30px;">✨ المميزات</h2>
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-title">🌹 Rose Gold</div>
+                    <div class="feature-desc">لون فخم ومعاصر يعكس فندق خمس نجوم</div>
+                </div>
+                <div class="feature">
+                    <div class="feature-title">🌙 Dark Mode</div>
+                    <div class="feature-desc">خلفية داكنة معدنية للعيون الراحة</div>
+                </div>
+                <div class="feature">
+                    <div class="feature-title">💎 Elegant</div>
+                    <div class="feature-desc">تصميم فاخر مع نسب لون متناسقة</div>
+                </div>
+                <div class="feature">
+                    <div class="feature-title">✅ Modern</div>
+                    <div class="feature-desc">ألوان عصرية وفي الموضة الحالية</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>✅ الألوان الجديدة تم تطبيقها على جميع التطبيقات:</p>
+            <p>basmah • basmah-admin • basmah-branch • mockup-sandbox</p>
+        </div>
+    </div>
+</body>
+</html>
